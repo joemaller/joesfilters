@@ -1,0 +1,23 @@
+on 	BlurChannelInPlace(image _src, image _dest, value _radius, value _A, value _R, value _G, value _B, value _aspect)
+	
+	// _src, _dest : input/output image buffers
+	// _radius : blur radius
+	// _A, _R, _G, _B : boolean switches telling whether to blur the channel or not
+	// _aspect : aspect ratio the blur will be processed against
+		
+	if (_radius > 0)
+		float _w, _h;
+		dimensionsOf(_dest, _w, _h);
+		image _temp[_w][_h];
+
+		if (_A + _R + _G + _B < 4)
+			_temp = _src;
+		end if
+		
+		BlurChannel(_src, _temp, _radius, _A, _R, _G, _B, _aspect);	
+
+		_dest = _temp;
+	else
+		_dest = _src;
+	end if
+end
