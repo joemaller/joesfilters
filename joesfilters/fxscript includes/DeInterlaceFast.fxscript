@@ -1,8 +1,9 @@
-on DeInterlaceFast(image _srcIMG, image _destIMG, value _field)
+on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix)
 	
 	// _srcIMG : source image
 	// _destIMG : destination image
 	// _field : 0 = top field, 1 = bottom field
+	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional field-based de-interlace calls
 
 	// this might fail at some future time if the scaling method in FCP changes
 
@@ -33,7 +34,9 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field)
 	BoundsOf(_halfIMG, _r2);
 	BlitRect(_srcIMG, _r1, _halfIMG, _r2); // smash blit (isolates fields)
 	
-	makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for  field bouncing
+	if (_bounceFix)
+		makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for  field bouncing
+	end if
 	BoundsOf(_destIMG, _r1);
 	BlitRect(_halfIMG, _r2, _destIMG, _r1);
 
