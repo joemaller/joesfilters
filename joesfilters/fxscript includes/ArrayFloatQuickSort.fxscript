@@ -1,0 +1,57 @@
+// 	FXScript QuickSort by Joe Maller, December 2004
+//	Based on various internet resources, these were most helpful:
+// 	http://www.cs.ubc.ca/spider/harrison/Java/sorting-demo.html
+// 	http://www.csse.monash.edu.au/~lloyd/tildeAlgDS/Sort/
+//	http://en.wikipedia.org/wiki/Sorting_algorithm
+
+on ArrayFloatQuickSort(float _ar, value _lo, value _hi)
+	
+	float _l, _r, _pivot, _temp;
+	
+	if( _hi > _lo )
+		_l = _lo; 
+		_r = _hi;
+		_pivot = integer((_l + _r)/2);	// variable will be recast once value is found
+		
+		// find median of three pivot:		
+		if (_ar[_l] > _ar[_pivot])
+			_temp = _ar[_l]; _ar[_l] = _ar[_pivot]; _ar[_pivot] = _temp;	// swap _l & _pivot
+		end if
+		if (_ar[_l] > _ar[_r])
+			_temp = _ar[_l]; _ar[_l] = _ar[_r]; _ar[_r] = _temp;	// swap _l and _r
+		end if
+		if (_ar[_pivot] > _ar[_r])
+			_temp = _ar[_pivot]; _ar[_pivot] = _ar[_r]; _ar[_r] = _temp;	// swap _pivot & _r
+		end if
+
+		_pivot = _ar[_pivot]; // median of three
+		
+		repeat while (_r >= _l) 	// work through all indices between _l and _r
+
+			repeat while(_ar[_l] < _pivot) // don't move smaller values on left
+				_l++;
+			end repeat
+		
+			repeat while(_ar[_r] > _pivot) // don't move larger values on right
+				_r--;
+			end repeat
+			
+			if(_l > _r) 
+				exit repeat;
+			end if
+			
+			// swap _l and _r:
+			_temp = _ar[_l];
+			_ar[_l] = _ar[_r];
+			_ar[_r] =  _temp;
+			
+			// step index values for next loop:
+			_l++; 
+			_r--;
+		end repeat
+
+		ArrayFloatQuickSort(_ar, _lo, _r); 	// sort smaller partition
+		ArrayFloatQuickSort(_ar, _l,  _hi);	// sort larger partition
+
+	end if
+end
