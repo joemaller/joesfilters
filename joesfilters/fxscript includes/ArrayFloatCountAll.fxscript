@@ -1,0 +1,8 @@
+on ArrayFloatCountAll(float _ar)
+	float _count;
+	_count = ArrayFloatCount(_ar);
+	if (isIndexFloatArray(0, _ar))
+		return _count * ArrayFloatCountAll(_ar[0])
+	end if
+	return _count;
+end 
