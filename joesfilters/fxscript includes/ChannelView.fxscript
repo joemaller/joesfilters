@@ -1,4 +1,4 @@
-on ChannelView(image _src, image _dest, value _colors)
+on ChannelView(image _src, image _dest, value _colorSpace, value _colors)
 
 	// requires PlaceFrame.fxscript
 	// _src, _dest : source and destination image buffers
@@ -8,19 +8,22 @@ on ChannelView(image _src, image _dest, value _colors)
 	dimensionsOf(_dest, _dims.x, _dims.y);
 	image _temp[_dims.x][_dims.y], _temp2[_dims.x][_dims.y];
 	
-//	ConvertImage(src1, dest, kFormatYUV219);
-
-	_temp = _src;
+	
+	if (getPixelFormat(_src) != _colorSpace)
+		ConvertImage(_src, _temp, _colorSpace);
+		ConvertImage(_temp2, _temp2, _colorSpace);
+		ConvertImage(_dest, _dest, _colorSpace);
+	else
+		_temp = _src;
+	end if
 
 	_colors ^= 1;
 	boundsOf(_src, _srcBox)
 	boundsOf(_dest, _destBox);
 
-
 	_destBox *= 0.5;
 	
-	
-	if (GetPixelFormat(_dest) == kFormatYUV219)
+	if (_colorSpace == kFormatYUV219)
 		channelfill(_temp2, 255, 127, 127, 127);
 
 		channelcopy(_temp, _temp2, knone, kalpha, knone, knone)
