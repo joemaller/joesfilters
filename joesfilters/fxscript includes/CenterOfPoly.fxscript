@@ -1,0 +1,9 @@
+on CenterOfPoly(point _poly, point _center)
+	float _x, _arLength;
+	_arLength = arrayPointCount(_poly);
+	_center = _poly[0];
+	for _x = 1 to _arLength - 1
+		_center += _poly[_x]
+	next;
+	_center /= _arLength
+end
