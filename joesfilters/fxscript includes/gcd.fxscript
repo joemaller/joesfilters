@@ -1,0 +1,20 @@
+on gcd(value _m, value _n)
+	// calculate the greatest common divisor for two numbers
+	// based on various implementations of Euclid's algorithm
+	if (_m != 0 && _n != 0)
+		float _r;
+		repeat while true
+			_r = _m % _n;
+	          	_m = _n;
+            	_n = _r;
+            	if (_r == 0)
+            		exit repeat;
+            	end if
+		end repeat
+	else
+		_m = 0;
+	end if
+
+	return _m;	// gcd of input numbers
+end 
+
