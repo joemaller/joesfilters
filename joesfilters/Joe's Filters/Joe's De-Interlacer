@@ -31,14 +31,14 @@ input label1, "Motion Differencing", label, "";
 input motiondiff, "Motion Differencing", popup, 3, "None", "Single Frame", "Surrounding Fields", "Surrounding Frames";
 
 
-input qual, "Difference Quality", checkbox, 1;
-input fdiff, "difference function", checkbox, 1;
+/input qual, "Difference Quality", checkbox, 1;
+//input fdiff, "difference function", checkbox, 1;
 input showchannels, "Show Channels", checkbox, 0;
 input showcolors, "Show Colors", checkbox, 1;
-input fakeBlur, "fakeBlur", checkbox, 0;
+//input fakeBlur, "fakeBlur", checkbox, 0;
 
-input AN, "AN", angle, 0, -360, 360;
-input ORI, "OR", slider, 0, 0, 5;
+//input AN, "AN", angle, 0, -360, 360;
+//input ORI, "OR", slider, 0, 0, 5;
 
 
 //input RGBorYUV, "Difference Using", popup, 2, "RGB", "Luma";
@@ -56,7 +56,6 @@ input opacity, "Opacity", slider, 100, 0, 100;
 
 input title, "Joe's Filters", Label,"";
 input title1, "www.joesfilters.com", Label,"";
-input Color2, "Color2", color, 255, 0, 0, 125;
 
 
 fullframe
@@ -357,76 +356,60 @@ end
 // END "BlurChannelInPlace.fxscript"
 
 
-on DifferenceMask(image _src1, image _src2, image _dest, value _threshold, value _steps, value _softness, value _result, value _quality)
+
+// INCLUDE "DifferenceMask.fxscript"  v1.1
+
+on DifferenceMask(image _src1, image _src2, image _dest, value _threshold, value _steps, value _softness)
 	
 	// dependencies:
-	//			blurChannelInPlace
 	//			makeThresholdMapBez
 	//			channelcopyfit
 
+	// _src1, src2 : images to compare
+	// _dest : destination image buffer, results will replace this image's alpha channel
+	// _threshold : Threshold break for difference mask
+	// _steps : number of steps around threshold point
+	// _softness : spread of the difference mask before thresholding.
+	
 	// compares two images and generates a mask based on differences between the two
 	// the resulting mask will replace whatever alpha channel is in _dest
 		
-	// _quality: 0 = scale up on size mismatch
-	// _quality: 1 = scale down on size mismatch
-					
-
 	float _diffmap[256];
 	makeThresholdMapBez(_diffmap, _threshold, _steps, 255)	
 
 	point _src1Box[4], _src2Box[4];
 	boundsOf(_src1, _src1Box);
 	boundsOf(_src2, _src2Box);
+	
+	if (_src1Box[2].x * _src1Box[2].y == _src2Box[2].x * _src2Box[2].y)	// _src1 and _src2 should be the same size, should be most common
 
-	image _temp[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y]
-	
-	// following calculations use only the lower-right corner values for calculations for a minimal speed boost
-	
-	if (_src1Box[2] == _src2Box[2])	// _src1 and _src2 should be the same size. 
-									// If there are bugs reported about mismatched frame sizes, this is a good place to look
-		Difference(_src1, _src2, _temp, kalpha);	// no-blit difference
+		image _temp1[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y],  _temp2[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y];
 		
-	else if ((_src1Box[2].x * _src1Box[2].y > _src2Box[2].x * _src2Box[2].y) ^ _quality)	// _src1 has more pixels, scale _src2 up to match
-		blitRect(_src1, _src1Box, _temp, _src2Box);
-		Difference(_src1, _temp, _temp, kalpha);
+		_temp1 = _src1;
+		_temp2 = _src2;
+		
+	else if (_src1Box[2].x * _src1Box[2].y > _src2Box[2].x * _src2Box[2].y)	// _src1 has more pixels, scale _src1 down to match _src2 (bias for speed)
+		image _temp1[_src2Box[1].x - _src2Box[0].x][_src2Box[3].y - _src2Box[0].y],  _temp2[_src2Box[1].x - _src2Box[0].x][_src2Box[3].y - _src2Box[0].y];
 
-	else
-		blitRect(_src2, _src2Box, _temp, _src1Box);
-		Difference(_src2, _temp, _temp, kalpha);
+		_temp2 = _src2;
+		blitRect(_src1, _src1Box, _temp1, _src2Box);
+
+	else	// _src1 has fewer pixels than _src2, scale _src2 down to match
+
+		image _temp1[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y],  _temp2[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y];
+	
+		_temp1 = _src1;
+		blitRect(_src2, _src2Box, _temp2, _src1Box);
 
 	end if
-
-	BlurChannelInPlace(_temp, _temp, _softness, 0,0,1,0, aspectOf(_dest));
-	LevelMap(_temp, _temp, _diffmap, _diffmap, _diffmap, _diffmap);
 	
-	if (_result == 1) // add Alpha to _dest, isolating different areas
-		channelcopyfit(_temp, _dest, kgreen, knone, knone, knone);
-	
-	else if (_result == 2)		// show alpha only, moving areas are white
-		channelcopyfit(_temp, _dest, knone, kgreen, kgreen, kgreen);
-		channelFill(_dest, 255, -1, -1, -1);
-	
-	else if (_result == 3)		// composite color over moving areas of _dest
-	
-		boundsOf(_temp, _src1Box);	// possible slowdown but cleaner than setting the largest box earlier
-		boundsOf(_dest, _src2Box);
-		
-		if (_src1Box[2] == _src2Box[2])	// check for size mismatch
-	
-			channelcopyfit(_temp, _temp, kgreen, kgreen, kgreen, kgreen);
-			channelfill(_temp, -1, maskcolor.r, maskcolor.g, maskcolor.b);
-			matte(_temp, _dest, _dest,  maskopacity/100, kalpha);
-	
-		else
-		 	image _temp2[_src2Box[1].x - _src2Box[0].x][_src2Box[3].y - _src2Box[0].y]
-
-			channelcopyfit(_temp, _temp2, kgreen, kgreen, kgreen, kgreen);
-			channelfill(_temp2, -1, maskcolor.r, maskcolor.g, maskcolor.b);
-			matte(_temp2, _dest, _dest,  maskopacity/100, kalpha);
-		
-		end if
-	end if	
+	Difference(_temp1, _temp2, _temp1, kalpha);	// setting targets up beforehand is faster
+	BlurChannel(_temp1, _temp2, _softness, 1,1,1,1, aspectOf(_dest));
+	LevelMap(_temp2, _temp2, linearRamp, linearRamp, _diffmap, linearRamp);
+	channelcopyfit(_temp2, _dest, kgreen, knone, knone, knone);
 end
+
+// END "DifferenceMask.fxscript"
 
 
 
@@ -744,7 +727,6 @@ end
 
 
 
-
 // **** Set Definitions
 
 exposedbackground = 1;
@@ -767,10 +749,8 @@ dimensionsOf(dest, w, h);
 image xbuffer[w][h];				//full size buffer
 image xbuffer2[w][h];				//full size buffer
 
-image halfbuffer[w][h/2]
-image halfbuffer2[w][h/2]		//only used by option 3
-
-
+image halfbuffer[w][h/2];
+image halfbuffer2[w][h/2];	
 
 
 // generally optimize everything and eliminate any double-processing.
@@ -801,24 +781,7 @@ if (CLIPDUR > 0)
 		DeInterlaceFast(src1, halfbuffer2, FieldPicker ^ fieldDominance ^ 1);
 			// above might be a possible field selection bug, should use fieldDominance to flip selection? (or did that already happen?)
 		
-				
-		if (fdiff == 0)
-	
-			DifferenceMask(halfbuffer, halfbuffer2, dest, threshold, steps, soften, showMask, qual);
-
-		else
-	
-			float _diffmap[256];
-			makeThresholdMapBez(_diffmap, threshold, 1, 255);
-			
-			difference(halfbuffer2, halfbuffer, halfbuffer2, kalpha);
-			BlurChannel(halfbuffer2, halfbuffer, soften, 1,1,1,1, aspectOf(dest));
-			levelmap(halfbuffer, halfbuffer2, linearRamp, linearRamp, _diffmap, linearRamp);
-				
-			channelCopyFit(halfbuffer2, dest, kgreen, knone, knone, knone);
-		end if
-		
-
+		DifferenceMask(halfbuffer, halfbuffer2, dest, threshold, steps, soften);
 		
 	else if (motiondiff == 4) 	// surrounding frames, double-diff now-prev, now-next
 		getVideo(clip1, -CLIPOFFSET + frame - 1, xbuffer);
@@ -858,8 +821,16 @@ end if
 
 
 if (showchannels)
-	xbuffer = dest
-	ChannelView(xbuffer, dest, showcolors)
+//	xbuffer = dest
+//	ChannelView(xbuffer, dest, showcolors)
+if (fakeblur)
+BlurChannel(dest, xbuffer,10, 1,1,1,1, aspectOf(dest));
+add(dest, xbuffer, xbuffer, 1, kalpha);
+else
+	xbuffer = dest;
+end if
+ChannelView(xbuffer, dest, showcolors);
+
 end if
 
 
@@ -878,9 +849,3 @@ end if
 // 
 // end if
 // 	
-
-Color2.a = 0
-ColorRampImage(dest, maskColor, Color2, threshold, steps)
-
-
-
