@@ -44,6 +44,12 @@ on DifferenceMask(image _src1, image _src2, image _dest, value _threshold, value
 	
 	Difference(_temp1, _temp2, _temp1, kalpha);	// setting targets up beforehand is faster
 	BlurChannel(_temp1, _temp2, _softness, 1,1,1,1, aspectOf(_dest));
-	LevelMap(_temp2, _temp2, linearRamp, linearRamp, _diffmap, linearRamp);
-	channelcopyfit(_temp2, _dest, kgreen, knone, knone, knone);
+	
+	if (GetPixelFormat(dest) == kFormatYUV219)
+		LevelMap(_temp2, _temp2, linearRamp, _diffmap, linearRamp, linearRamp);
+		channelcopyfit(_temp2, _dest, kred, knone, knone, knone);
+	else
+		LevelMap(_temp2, _temp2, linearRamp, linearRamp, _diffmap, linearRamp);
+		channelcopyfit(_temp2, _dest, kgreen, knone, knone, knone);
+	end if
 end
