@@ -60,7 +60,8 @@ on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(
 
 
 
-// INCLUDE "DeInterlace.fxscript"  v1.1
+
+// INCLUDE "DeInterlace.fxscript"  v1.2
 
 on DeInterlace(image _src, image _dest, value _field, value _method)
 	// field:
@@ -71,7 +72,7 @@ on DeInterlace(image _src, image _dest, value _field, value _method)
 	// 3 = field double
 		
 	if (_method == 1)
-		DeInterlaceFast(_src, _dest, _field);
+		DeInterlaceFast(_src, _dest, _field, true);
 	else if (_method == 2)
 		DeInterlaceInterpolate(_src, _dest, _field);
 	else if (_method == 3)
@@ -131,13 +132,14 @@ end
  
 
 
-// INCLUDE "DeInterlaceFast.fxscript"  v1.5
+// INCLUDE "DeInterlaceFast.fxscript"  v1.6
 
-on DeInterlaceFast(image _srcIMG, image _destIMG, value _field)
+on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix)
 	
 	// _srcIMG : source image
 	// _destIMG : destination image
 	// _field : 0 = top field, 1 = bottom field
+	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional field-based de-interlace calls
 
 	// this might fail at some future time if the scaling method in FCP changes
 
@@ -168,7 +170,9 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field)
 	BoundsOf(_halfIMG, _r2);
 	BlitRect(_srcIMG, _r1, _halfIMG, _r2); // smash blit (isolates fields)
 	
-	makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for  field bouncing
+	if (_bounceFix)
+		makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for  field bouncing
+	end if
 	BoundsOf(_destIMG, _r1);
 	BlitRect(_halfIMG, _r2, _destIMG, _r1);
 
@@ -365,7 +369,7 @@ end
  
 
 
-// INCLUDE "getField.fxscript"  v1.4
+// INCLUDE "getField.fxscript"  v1.5
 
 on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
 	//REQUIRES: 	DeInterlaceFast.fxscript
@@ -406,7 +410,7 @@ on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nati
 	else // _field == 1
 		image _full[_nativeW][_nativeH];
 		getVideo(_clip1, _offset, _full);
-		DeInterlaceFast(_full, _dest, _field);
+		DeInterlaceFast(_full, _dest, _field, false);
 	end if
 	
 end	// end getField
@@ -415,6 +419,7 @@ end	// end getField
 
 // END "getField.fxscript"
  
+
 
 
 // INCLUDE "ErrorReporter.fxscript"  v1.1
@@ -447,6 +452,7 @@ end // end ErrorHandler
 
 
 
+
 // INCLUDE "RGBtoYUVcolor.fxscript"  vNew
 
 on RGBtoYUVcolor(color _rgbColor)
@@ -459,6 +465,7 @@ end
 
 // END "RGBtoYUVcolor.fxscript"
  
+
 
 
 
@@ -496,13 +503,13 @@ if (CLIPDUR > 0)
 	soften = threshold/4
 	
 	if (motiondiff ==2)	// single frame, diff fields
-		DeInterlaceFast(src1, halfbuffer, theField ^ 1);
+		DeInterlaceFast(src1, halfbuffer, theField ^ 1, true);
 		DifferenceMask(halfbuffer, dest, dest, threshold, 1, soften );	//  reuses pre-deinterlaced field
 	
 	else if (motiondiff == 3)	// surrounding fields
 		
 		getField(clip1, -CLIPOFFSET + frame + ((theField ^ 1) * 2 - 1), halfbuffer, w, h, theField ^ 1);
-		DeInterlaceFast(src1, halfbuffer2, theField ^ 1);
+		DeInterlaceFast(src1, halfbuffer2, theField ^ 1,false);
 
 		DifferenceMask(halfbuffer, halfbuffer2, dest, threshold, 1, soften);
 		
