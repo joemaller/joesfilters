@@ -1,0 +1,19 @@
+on ErrorReporter(image _dest, string _errorMsg)
+	float _w, _h;
+	
+	dimensionsOf(dest, _w, _h);
+	
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_w * 0.05);
+	
+	channelfill(_dest, 255, 255, 125, 0);
+	DrawString(_errorMsg, 0, 0, 1.25, _dest, kwhite, aspectof(_dest));
+
+	
+	setTextjustify(krightJustify);
+	setTextSize(_w * 0.025);
+	DrawString("FXScriptReference.org", 0.4 * _w, 0.4 * _h, 1.25, _dest, kwhite, aspectof(_dest));
+
+end // end ErrorHandler
