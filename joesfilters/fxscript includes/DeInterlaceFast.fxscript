@@ -1,5 +1,4 @@
 on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix)
-	
 	// _srcIMG : source image
 	// _destIMG : destination image
 	// _field : 0 = top field, 1 = bottom field
@@ -7,11 +6,6 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix
 
 	// this might fail at some future time if the scaling method in FCP changes
 
-	if (_field != 0 && _field != 1)
-		ErrorReporter(dest, "_field must be a boolean");
-		return;
-	end if	
-		
 	float _j;
 	point _r1[4], _r2[4];
 	BoundsOf(_srcIMG, _r1);
@@ -30,14 +24,19 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix
 			_r1[3].y -= 1;
 		end if
 	end if
-	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) /2];
+	
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) / 2];
 	BoundsOf(_halfIMG, _r2);
 	BlitRect(_srcIMG, _r1, _halfIMG, _r2); // smash blit (isolates fields)
 	
-	if (_bounceFix)
-		makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for  field bouncing
-	end if
 	BoundsOf(_destIMG, _r1);
+	
+	if (_bounceFix)
+		point _pt;
+		_pt = {0,_field}
+		_r1 += _pt;
+	end if
+	
 	BlitRect(_halfIMG, _r2, _destIMG, _r1);
 
 end
