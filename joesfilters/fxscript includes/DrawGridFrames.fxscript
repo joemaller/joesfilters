@@ -1,0 +1,81 @@
+on DrawGridFrames(clip _clip1, value _w, value _h, value _gridCount, value _getFrame, value _offset, value _temporalSpacing, value _basisSquare, value _cropFrame, value _direction, value _reverseDirection, value _reverseTime, value _alternateRowCols, value _dimFrames)
+	// _offset specifies the position of the current frame in time 
+	// _smoothMotion sets the field-bouncing flag in deInterlaceFast	
+	// direction: 0 = top>bottom, 1 = left>right, 2 = bottom>top, 3 = right>left
+	// requires: DeInterlaceFast, PlaceFrame, ceil, absNoInt
+	
+		
+	if (_gridCount > 0)	// do nothing if no squares
+		float _Nw, _Nh, _clipDUR, _clipOFFSET;
+		getnativesize(_clip1, _Nw, _Nh);		// possibly a bad decision, could be a slowdown since this could be double-called during an effect.
+		getLimits(_clip1, _clipDUR, _clipOFFSET);
+		float _FieldOrder; _FieldOrder = (fieldNumber - 1 == topfield);	// do this in here for one less thing to worry about, could be a problem later on.
+
+		float _j, _bigSquare, _rows, _nowFrame, _prevFrame, _theField;
+		point _pt, _box[4];
+	
+		_bigSquare = (_basisSquare == 0) ? ceil(Sqrt(integer(_gridCount))) : ceil(sqrt(_basisSquare));
+
+		image _img0[_w/(_bigSquare)][2*_h/(_bigSquare)], _img2[_Nw][_Nh];
+		_prevFrame = kundefined;
+		
+		if (_direction == 0 || _direction == 2)			// direction is vertical
+			_pt.y = (_direction == 0) ? -_h/2 + _h/(2*_bigSquare) : _h/2 - _h/(2*_bigSquare);	// adjust start point here or move  placeFrame orientation?
+		else 										// direction is horizontal
+			_pt.x = (_direction == 1) ? -_w/2 + _w/(2*_bigSquare) : _w/2 - _w/(2*_bigSquare);
+		end if
+		
+		for _j = 0 to (_gridCount - 1)
+			
+			if (_basisSquare != 0 && _j > _basisSquare); exit for; end if;	// seems inelegant, but working
+			
+			_nowFrame = _getFrame + ((_reverseTime * -_gridCount + _j) * _temporalSpacing + _reverseTime  * _temporalSpacing) / 2 * (_reverseTime * -2 + 1) - _offset * _temporalSpacing;
+			_theField = (absnoint(_nowFrame) - abs(_nowFrame) > 0) ^ _fieldOrder;
+			
+			if (_prevFrame != _nowFrame)
+				getVideo(_clip1, -_clipOFFSET + _nowFrame, _img2);
+			end if
+			
+			_prevFrame = _nowFrame;
+			
+			DeInterlaceFast(_img2, _img0, _theField, true);
+
+			if (_direction == 0 || _direction == 2)
+				_pt.x = (_j%_bigSquare)/_bigSquare * _w - _w/2 + _w/2/_bigSquare;
+
+				if (_alternateRowCols && _rows&1)
+					_pt.x = _w - (_pt.x + _w/2) - _w/2;
+				end if
+				if (_reverseDirection)
+					_pt.x = _w - (_pt.x + _w/2) - _w/2;
+				end if
+			else
+				_pt.y =  (_j%_bigSquare)/_bigSquare * _h - _h/2 + _h/2/_bigSquare;
+				
+				if (_alternateRowCols && _rows&1)
+					_pt.y = _h - (_pt.y + _h/2) - _h/2;
+				end if
+				if (_reverseDirection)
+					_pt.y = _h - (_pt.y + _h/2) - _h/2;
+				end if
+			end if		
+								
+			if (_dimFrames < 1 && (integer(_nowFrame) - integer(_getFrame) != 0))	// dim other frames
+				channelmultiply(_img0, _img0, 1, _dimFrames, _dimFrames, _dimFrames);
+			end if
+					
+			MakeRect(_box, _pt.x, _pt.y, 1/_bigSquare * _w, 1/_bigSquare * _h);
+
+			placeFrame(_img0, dest, _pt, 1/_bigSquare * _w, 1/_bigSquare * _h, 0, 4, _cropFrame);
+
+			if (_j % _bigSquare == _bigSquare - 1)
+				if (_direction == 0 || _direction == 2)
+					_pt.y += (_direction == 0) ? _h/_bigSquare : -_h/_bigSquare
+				else 
+					_pt.x += (_direction == 1) ? _w/_bigSquare : -_w/_bigSquare
+				end if
+				_rows++;
+			end if
+		next
+	end if	
+end
