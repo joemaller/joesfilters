@@ -6,62 +6,65 @@ on ChannelView(image _src, image _dest, value _colors)
 
 	point _dims, _srcBox[4], _destBox[4];
 	dimensionsOf(_dest, _dims.x, _dims.y);
-	image _temp[_dims.x][_dims.y];
+	image _temp[_dims.x][_dims.y], _temp2[_dims.x][_dims.y];
 	
-	
+//	ConvertImage(src1, dest, kFormatYUV219);
+
+	_temp = _src;
+
 	_colors ^= 1;
 	boundsOf(_src, _srcBox)
 	boundsOf(_dest, _destBox);
 
 
-	channelfill(_temp, 255, 0, 0, 0);
 	_destBox *= 0.5;
 	
 	
 	if (GetPixelFormat(dest) == kFormatYUV219)
-		channelfill(_temp, 255, 127, 127, 127);
+		channelfill(_temp2, 255, 127, 127, 127);
 
-		channelcopy(_src, _temp, knone, kalpha, knone, knone)
-		PlaceFrame(_temp, _dest, _destBox[0], _destBox[2].x * 2, _destBox[2].y * 2, 0, 4)
+		channelcopy(_temp, _temp2, knone, kalpha, knone, knone)
+		PlaceFrame(_temp2, _dest, _destBox[0], _destBox[2].x * 2, _destBox[2].y * 2, 0, 4)
 	
-		channelfill(_temp, 255, 127, 127, 127);
+		channelfill(_temp2, 255, 127, 127, 127);
 
-		channelcopy(_src, _temp, knone, kred, knone, knone)
-		PlaceFrame(_temp, _dest, _destBox[1], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
+		channelcopy(_temp, _temp2, knone, kred, knone, knone)
+		PlaceFrame(_temp2, _dest, _destBox[1], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
 	
-		channelfill(_temp, 255, 127, 127, 127);
+		channelfill(_temp2, 255, 127, 127, 127);
 		
-		if (_colors)
-			channelcopy(_src, _temp, knone, knone, kgreen, knone);
+		if (!_colors)
+			channelcopy(_temp, _temp2, knone, knone, kgreen, knone);
 		else
-			channelcopy(_src, _temp, knone, kgreen, knone, knone);
+			channelcopy(_temp, _temp2, knone, kgreen, knone, knone);
 		end if
-		PlaceFrame(_temp, _dest, _destBox[3], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
+		PlaceFrame(_temp2, _dest, _destBox[3], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
 		
-		channelfill(_temp, 255, 127, 127, 127);
+		channelfill(_temp2, 255, 127, 127, 127);
 
-		if (_colors)
-			channelcopy(_src, _temp, knone, knone, knone, kblue);
+		if (!_colors)
+			channelcopy(_temp, _temp2, knone, knone, knone, kblue);
 		else
-			channelcopy(_src, _temp, knone, kblue, knone, knone);
+			channelcopy(_temp, _temp2, knone, kblue, knone, knone);
 		end if
-		PlaceFrame(_temp, _dest, _destBox[2], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
+		PlaceFrame(_temp2, _dest, _destBox[2], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
 
 	else
-		channelcopy(_src, _temp, knone, kalpha, kalpha, kalpha)
-		PlaceFrame(_temp, _dest, _destBox[0], _destBox[2].x * 2, _destBox[2].y * 2, 0, 4)
+		channelfill(_temp2, 255, 0, 0, 0);
+		channelcopy(_temp, _temp2, knone, kalpha, kalpha, kalpha)
+		PlaceFrame(_temp2, _dest, _destBox[0], _destBox[2].x * 2, _destBox[2].y * 2, 0, 4)
 	
-		channelcopy(_src, _temp, knone, kred, kred, kred)
-		channelMultiply(_temp, _temp, 1, 1, _colors, _colors);
-		PlaceFrame(_temp, _dest, _destBox[1], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
+		channelcopy(_temp, _temp2, knone, kred, kred, kred)
+		channelMultiply(_temp2, _temp2, 1, 1, _colors, _colors);
+		PlaceFrame(_temp2, _dest, _destBox[1], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
 		
-		channelcopy(_src, _temp, knone, kgreen, kgreen, kgreen);
-		channelMultiply(_temp, _temp, 1, _colors, 1, _colors);
-		PlaceFrame(_temp, _dest, _destBox[3], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
+		channelcopy(_temp, _temp2, knone, kgreen, kgreen, kgreen);
+		channelMultiply(_temp2, _temp2, 1, _colors, 1, _colors);
+		PlaceFrame(_temp2, _dest, _destBox[3], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
 	
-		channelcopy(_src, _temp, knone, kblue, kblue, kblue);
-		channelMultiply(_temp, _temp, 1, _colors, _colors, 1);
-		PlaceFrame(_temp, _dest, _destBox[2], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
+		channelcopy(_temp, _temp2, knone, kblue, kblue, kblue);
+		channelMultiply(_temp2, _temp2, 1, _colors, _colors, 1);
+		PlaceFrame(_temp2, _dest, _destBox[2], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4)
 
 	end if
 end
