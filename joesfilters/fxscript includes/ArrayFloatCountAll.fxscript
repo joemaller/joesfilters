@@ -1,8 +1,10 @@
 on ArrayFloatCountAll(float _ar)
-	float _count;
-	_count = ArrayFloatCount(_ar);
-	if (isIndexFloatArray(0, _ar))
-		return _count * ArrayFloatCountAll(_ar[0])
-	end if
+	// returns the total number of non-null (!= kundefined items) in a 1D or 2D array
+	
+	float _i, _count;
+	_count = 0;
+	for _i = 0 to ArrayFloatCount(_ar)-1
+		_count += ArrayFloatCount(_ar[_i]);
+	next;
 	return _count;
 end 
