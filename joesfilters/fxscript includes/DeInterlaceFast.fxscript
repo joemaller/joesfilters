@@ -2,20 +2,20 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix
 	// _srcIMG : source image
 	// _destIMG : destination image
 	// _field : 0 = top field, 1 = bottom field
-	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional field-based de-interlace calls
+	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional time-based de-interlace calls
 
 	// this might fail at some future time if the scaling method in FCP changes
 
 	float _j;
-	point _r1[4], _r2[4];
+	point _r1[4], _r2[4], _pt;
 	BoundsOf(_srcIMG, _r1);
 	
 	if (_field) // second field, shift box down
-		_r1[0].y += 1;	// shift top row down
-		_r1[1].y += 1;
+		_pt = {0,1};
+		_r1 += _pt;	// shift top row down
 		if ((_r1[3].y - _r1[0].y) & 1) 	// frame height needs to be even
-			_r1[2].y += 1;			// shift bottom down one row
-			_r1[3].y += 1;
+			_r1[2].y -= 1;			// shift bottom down one row
+			_r1[3].y -= 1;
 		end if
 
 	else // first field
@@ -32,11 +32,9 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix
 	BoundsOf(_destIMG, _r1);
 	
 	if (_bounceFix)
-		point _pt;
-		_pt = {0,_field/2}
+		_pt = {0,(_field*2-1)/4};	// shift  sampling field up/down 0.25 px
 		_r2 -= _pt;
 	end if
 		
 	BlitRect(_halfIMG, _r2, _destIMG, _r1);
-
 end
