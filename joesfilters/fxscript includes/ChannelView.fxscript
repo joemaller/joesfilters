@@ -20,7 +20,7 @@ on ChannelView(image _src, image _dest, value _colors)
 	_destBox *= 0.5;
 	
 	
-	if (GetPixelFormat(dest) == kFormatYUV219)
+	if (GetPixelFormat(_dest) == kFormatYUV219)
 		channelfill(_temp2, 255, 127, 127, 127);
 
 		channelcopy(_temp, _temp2, knone, kalpha, knone, knone)
