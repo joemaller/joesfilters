@@ -7,12 +7,11 @@ input workflow, "Workflow", RadioGroup, 1, "Preview Camera Grid", "1. Sort Frame
 input maxCams, "Max Cameras", slider, 32, 1, 64;
 
 
-
 input output, "Output", popup, 3, "Show all Cameras in order", "TimeStretch Camera # for length of clip (select below)", "Grid All Cameras (slow)";
 input stretchCam, "Timestretch Camera #", slider, 1, 1, 64;
 //input sampleoffset, "sampleoffset", slider, 0.4, 0.33, 0.9;
 
-input title, "©ÊJoe's Filters", Label,"";
+input title, "Joe's Filters", Label,"";
 input title1, "www.joesfilters.com", Label,"";
 
 
