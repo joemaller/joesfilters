@@ -1,4 +1,6 @@
 on CenterOfPoly(point _poly, point _center)
+	// requires arrayPointCount.fxscript
+	
 	float _x, _arLength;
 	_arLength = arrayPointCount(_poly);
 	_center = _poly[0];
