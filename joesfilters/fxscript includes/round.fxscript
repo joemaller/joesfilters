@@ -2,10 +2,10 @@ on round(value _x, value _precision)	// rounding function with decimal precision
 	_x *= power(10, _precision)
 	
 	if (_x > 0) 
-		_x = (_x - integer(_x)  >= 0.5) ? _x = ceil(_x) : floor(_x);
+		_x = (_x - integer(_x)  >= 0.5) ? ceil(_x) : floor(_x);
 	else
-		_x = (_x - integer(_x)  <= -0.5) ? _x = floor(_x) : ceil(_x);
+		_x = (_x - integer(_x)  <= -0.5) ? floor(_x) : ceil(_x);
 	end if
 
 	return _x/(power(10, _precision));
-end
+end 
