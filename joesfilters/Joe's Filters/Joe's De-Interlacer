@@ -1,0 +1,594 @@
+//                         v3.5 
+//	                  
+//	   wvwwvwvww    
+//	   \                  /  
+//	     \______/  
+//	                          	
+//       Joe's Filters     
+//   for Final Cut Pro 
+
+
+// (C) 2001-2004 Joe Maller
+// http://www.joesfilters.com
+// http://www.fxscriptreference.org
+
+
+filter "Joe's De-Interlacer";
+group "BETA";
+
+
+input label0, "De-Interlace", label, "";
+input FieldPicker, "Field", RadioGroup, 1, "First", "Second";
+input FieldMethod, "Method", popup, 1, "Fast Interpolate", "Exact Interpolate", "Field Double";
+
+
+input xclip1, "xClip1", Clip;
+
+
+// two field differencing requires knowledge of field-dominance
+
+input label1, "Motion Differencing", label, "";
+
+input motiondiff, "Motion Differencing", popup, 3, "None", "Single Frame", "Surrounding Fields", "Surrounding Frames";
+input fieldDominance, "Field Dominance", popup, 2, "Upper Field First", "Lower Field First";
+
+
+input RGBorYUV, "Difference Using", popup, 2, "RGB", "Luma";
+input threshold, "Threshold", slider, 8, 1, 254;
+input steps, "Steps", slider, 1, 0, 255;
+input soften, "Soften", slider, 2.5, 0, 10;
+
+input label2, "Mask Check", label, "";
+input showMask, "View", popup, 1, "Merged Output", "Motion Mask", "Colorize Motion";
+input maskcolor, "Mask Color", color, 255, 128, 0, 255;
+input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
+
+input label3, "Fade With Original", label, "";
+input opacity, "Opacity", slider, 100, 0, 100;
+
+input title, "Joe's Filters", Label,"";
+input title1, "www.joesfilters.com", Label,"";
+
+fullframe
+
+ProducesAlpha
+
+
+
+float CLIPDUR, CLIPOFFSET;
+
+
+code
+
+
+
+
+// INCLUDE "floor.fxscript"  vNew
+
+on floor(value _x)	// simple function to round towards negative infinity
+	return( ((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x));
+end
+
+// END "floor.fxscript"
+
+
+
+// INCLUDE "ceil.fxscript"  v1.2
+
+on ceil(value _x)	// simple function to round towards positive infinity
+	return( ((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x));
+end
+// END "ceil.fxscript"
+
+
+on round(value _x, value _precision)	// rounding function with decimal precision	
+	_x *= power(10, _precision)
+	
+	if (_x > 0) 
+		_x = (_x - integer(_x)  >= 0.5) ? _x = ceil(_x) : floor(_x);
+	else
+		_x = (_x - integer(_x)  <= -0.5) ? _x = floor(_x) : ceil(_x);
+	end if
+
+	return _x/(power(10, _precision));
+end
+
+
+
+
+on Deinterlace(image _src, image _dest, value _field, value _method)
+	// 1 = DeInterlaceFast
+	// 2 = DeInterlaceInterpolate
+	// 3 = field double
+		
+	if (_method == 1)
+		DeInterlaceFast(_src, _dest, _field);
+	else if (_method == 2)
+		DeInterlaceInterpolate(_src, _dest, _field);
+	else if (_method == 3)
+		FieldDouble(_src, _dest, _field);
+	end if
+end
+
+
+
+on DeInterlaceInterpolate(image _srcIMG, image _destIMG, value _field)
+	// 0 = top field, 1 = bottom field
+	
+	float _i, _j;
+	point _r1[4], _r2[4];
+	
+	BoundsOf(_srcIMG, _r1);
+	
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) / 2];
+	BoundsOf(_halfIMG, _r2);
+
+	_i = _r2[0].y;
+
+	for _j = _r1[0].y to _r1[3].y step 2
+			
+		_r1[0].y = _j + _field;
+		_r1[1].y = _j + _field;
+		_r1[2].y = _j + 1 + _field;
+		_r1[3].y = _j + 1 + _field;
+					
+		_r2[0].y = _i;	// j starts at the topmost row of pixels in _halfIMG and counts up
+		_r2[1].y = _i;	
+		_r2[2].y = _i + 1;
+		_r2[3].y = _i + 1;		
+
+		_i++;
+
+		BlitRect(_srcIMG, _r1, _halfIMG, _r2);
+		
+	next;
+	
+	boundsOf(_halfIMG, _r1);
+	boundsOf(_destIMG, _r2);
+	
+	for _j = 0 to 3
+		_r2[_j].y += _field; // correct for field bouncing
+	next;
+	
+	BlitRect(_halfIMG, _r1, _destIMG, _r2);
+	
+end
+
+
+
+
+
+on DeInterlaceFast(image _srcIMG, image _destIMG, value _field)
+	// 0 = top field, 1 = bottom field
+
+	// this might fail at some future time if the scaling method in FCP changes
+
+	float _j;
+	point _r1[4], _r2[4];
+	
+	BoundsOf(_srcIMG, _r1);
+	
+	if (_field) // second field, shift down
+		_r1[0].y += 1;	// shift top down
+		_r1[1].y += 1;
+		if ((_r1[3].y - _r1[0].y) & 1 == 1) // even frame height
+			_r1[2].y += 1;	// even frame height, shift bottom down one row
+			_r1[3].y += 1;
+		end if
+	else // first field
+		if ((_r1[3].y - _r1[0].y) & 1) // odd frame height
+			_r1[2].y -= 1; // odd frame height, trim one row from bottom
+			_r1[3].y -= 1;
+		end if
+	end if
+									
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) / 2];
+	BoundsOf(_halfIMG, _r2);
+
+	BlitRect(_srcIMG, _r1, _halfIMG, _r2);
+	BoundsOf(_destIMG, _r1);
+
+	for _j = 0 to 3
+		_r1[_j].y += _field;	// correct for field bouncing
+	next;
+
+	BlitRect(_halfIMG, _r2, _destIMG, _r1);
+		
+end
+
+
+
+
+on FieldDouble(image _srcIMG, image _destIMG, value _field)
+	// 0 = top field, 1 = bottom field
+
+	float _i, _j, _k;
+	point _r1[4], _r2[4];
+	
+	BoundsOf(_srcIMG, _r1);
+	
+	image _tempIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y)];
+
+	_r2 = _r1;
+	_r2[2].y = _r2[1].y + 1; 
+	_r2[3].y = _r2[0].y + 1;
+
+
+	for _j = _r1[0].y to _r1[3].y step 2
+			
+		_r1[0].y = _j + _field;
+		_r1[1].y = _j + _field;
+		_r1[2].y = _j + 1 + _field;
+		_r1[3].y = _j + 1 + _field;
+
+		for _k = 0 to 1
+			BlitRect(_srcIMG, _r1, _tempIMG, _r2);
+			
+			for _i = 0 to 3
+				_r2[_i].y += 1;
+			next;
+		next;
+		
+	next;
+	
+	boundsOf(_tempIMG, _r1);
+	boundsOf(_destIMG, _r2);
+	
+	for _j = 0 to 3
+		_r1[_j].y += _field ^1; // correct for field bouncing
+	next;
+
+	BlitRect(_tempIMG, _r1, _destIMG, _r2);
+	
+end
+
+on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
+		// a fast thresholding function using BezToLevelMap instead of for:next loops
+		// _th is the point to thrreshold around, _steps are the number of grays around _th
+		// mapLength is 255 for 8-bit maps
+		
+	point _p1, _p2;
+	
+	float _top, _bottom;
+	
+	if (_th - _steps/2 < 0)
+		_steps = _th * 2;
+	else if (_th + _steps/2 > _mapLength)
+		_steps = (_mapLength - _th) * 2;
+	end if
+	
+	if (_th & 1 == 0)	// even
+		_p1 = {floor(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {floor(_th + _steps/2)/_mapLength, 1};		
+	else // _th is odd
+		_p1 = {ceil(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {ceil(_th + _steps/2)/_mapLength, 1};		
+	end if
+
+	BezToLevelMap(_lmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
+
+end
+
+on 	BlurChannelInPlace(image _src, image _dest, value _radius, value _A, value _R, value _G, value _B, value _aspect)
+	
+	if (_radius > 0)
+		float _w, _h;
+		dimensionsOf(_dest, _w, _h);
+		image _temp[_w][_h];
+		
+		BlurChannel(_src, _temp, _radius, _A, _R, _G, _B, _aspect);	
+		_dest = _temp;
+	else
+		_dest = _src;
+	end if
+end
+
+
+
+
+on DifferenceMask(image _src1, image _src2, image _dest, value _threshold, value _steps, value _softness, value _result)
+	
+	// dependencies:
+	//			blurChannelInPlace
+	//			makeThresholdMapBez
+	//			channelcopyfit
+	
+	// _src1 and _src2 will be matched to the 
+
+
+	float _diffmap[256];
+	makeThresholdMapBez(_diffmap, _threshold, _steps, 255)	
+
+
+	point _src1Box[4], _src2Box[4];
+	boundsOf(_src1, _src1Box);
+	boundsOf(_src2, _src2Box);
+
+	// following calculations use only the lower-right corner values for calculations for a minimal speed boost
+	
+	
+	if (_src1Box[2] == _src2Box[2])	// _src1 and _src2 should be the same size. 
+									// If there are bugs reported about mismatched frame sizes, this is a good place to look
+		image _temp[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y]
+		Difference(_src1, _src2, _temp, kalpha);	// no-blit difference
+		
+	else if (_src1Box[2].x * _src1Box[2].y > _src2Box[2].x * _src2Box[2].y)	// _src1 has more pixels, scale _src2 up to match
+		image _temp[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y]
+		blitRect(_src1, _src1Box, _temp, _src2Box);
+		Difference(_src1, _temp, _temp, kalpha);
+	else
+ 		image _temp[_src2Box[1].x - _src2Box[0].x][_src2Box[3].y - _src2Box[0].y]
+		blitRect(_src2, _src2Box, _temp, _src1Box);
+		Difference(_src2, _temp, _temp, kalpha);
+	end if
+	
+	BlurChannelInPlace(_temp, _temp, _softness, 0,0,1,0, aspectOf(_dest));
+	LevelMap(_temp, _temp, _diffmap, _diffmap, _diffmap, _diffmap);
+	
+	if (_result == 1) // add Alpha to _dest, isolating different areas
+		channelcopyfit(_temp, _dest, kgreen, knone, knone, knone);
+	
+	else if (_result == 2)		// show alpha only, moving areas are white
+		channelcopyfit(_temp, _dest, knone, kgreen, kgreen, kgreen);
+		channelFill(_dest, 255, -1, -1, -1);
+	
+	else if (_result == 3)		// composite color over moving areas of _dest
+	
+		boundsOf(_temp, _src1Box);	// possible slowdown but cleaner than setting the largest box earlier
+		boundsOf(_dest, _src2Box);
+		
+		if (_src1Box[2] == _src2Box[2])	// check for size mismatch
+	
+			channelcopyfit(_temp, _temp, kgreen, kgreen, kgreen, kgreen);
+			channelfill(_temp, -1, maskcolor.r, maskcolor.g, maskcolor.b);
+			matte(_temp, _dest, _dest,  maskopacity/100, kalpha);
+	
+		else
+		
+		 	image _temp2[_src2Box[1].x - _src2Box[0].x][_src2Box[3].y - _src2Box[0].y]
+
+			channelcopyfit(_temp, _temp2, kgreen, kgreen, kgreen, kgreen);
+			channelfill(_temp2, -1, maskcolor.r, maskcolor.g, maskcolor.b);
+			matte(_temp2, _dest, _dest,  maskopacity/100, kalpha);
+		
+		end if
+	end if	
+end
+
+
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+
+
+on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _B)
+	// a combination of channelcopy and blitrect, scales any specified channel to fit the target
+	// specifically for cases where a channel source is not the same size as the channel destination
+	// _A, _R, _G & _B work just like Channelcopy and are of the set {kalpha, kred, kgreen, kblue}
+	// This is meant to be a more versatile drop-in replacement for ChannelCopy
+	
+	point _srcBox[4], _destBox[4];
+	boundsOf(_src, _srcBox);
+	boundsOf(_dest, _destBox);
+
+	if (_srcBox[2] == _destBox[2])
+		// sizes are equal, normal channelcopy...
+		channelCopy(_src, _dest, _A, _R, _G, _B);
+
+	else	// sizes are unequal, do blit then channel
+		
+		image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
+		blitRect(_src, _srcBox, _temp, _destBox);
+		channelCopy(_temp, _dest, _A, _R, _G, _B);
+	end if
+end
+
+
+
+
+
+on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
+	// getField(clip, frame, dest, 720, 480, 1);
+	// replacement for GetVideo which returns a single field of interlaced video
+	// basic getVideo call plus dinmensions and field selection
+	// field is 0 or 1 to match deinterlace functions
+	
+	// getvideo into half-height buffers appears to return only the upper field (line 0)
+	// that means de-intelacing can be skipped for matching fields to save processing
+	
+	if (_field < 0 || _field > 1)
+		ErrorReporter(dest, "_field value out of range");
+		return;
+	end if
+	
+	
+	if (_field == 0)
+		image _half[_nativeW][_nativeH/2];
+		point _halfBox[4], _destBox[4];
+		boundsOf(_half, _halfBox);
+		boundsOf(_dest, _destBox);
+		
+		if (_halfBox[0] == _destBox[0] && _halfBox[2] == _destBox[2])	// _half is the same size as _dest, skip a blit
+		
+			getVideo(_clip1, _offset, _dest);
+
+		else		// _half and _dest are different sizes, use blitRect
+				
+			getVideo(_clip1, _offset, _half);
+			blitRect(_half, _halfBox, _dest, _destBox);
+		
+		end if
+		
+			
+	else // _field == 1
+		image _full[_nativeW][_nativeH];
+		getVideo(_clip1, _offset, _full);
+		DeInterlaceFast(_full, _dest, _field);
+	end if
+	
+end	// end getField
+
+
+
+on ErrorReporter(image _dest, string _errorMsg)
+	float _w, _h;
+	
+	dimensionsOf(dest, _w, _h);
+	
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_w * 0.05);
+	
+	channelfill(_dest, 255, 255, 125, 0);
+	DrawString(_errorMsg, 0, 0, 1.25, _dest, kwhite, aspectof(_dest));
+
+	
+	setTextjustify(krightJustify);
+	setTextSize(_w * 0.025);
+	DrawString("FXScriptReference.org", 0.4 * _w, 0.4 * _h, 1.25, _dest, kwhite, aspectof(_dest));
+
+end // end ErrorHandler
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// **** Correct Input Values
+
+fieldPicker -= 1; //make this either 0 or 1
+fieldDominance -= 1;
+
+
+// **** Set Definitions
+
+exposedbackground = 1;
+
+
+//dest = src1;
+
+
+
+float h, w;
+
+dimensionsOf(dest, w, h);
+image xbuffer[w][h];				//full size buffer
+image xbuffer2[w][h];				//full size buffer
+
+image halfbuffer[w][h/2]
+image halfbuffer2[w][h/2]		//only used by option 3
+
+
+
+
+
+
+
+// Build a catch for already deinterlaced frames on the first option... 
+//everything else seems to be working?
+
+
+// generally optimize everything and eliminate any double-processing.
+// might need to do differencing on half-height frames for more speed.
+
+
+
+
+if (CLIPDUR == kundefined); // check for cached data
+	getLimits(clip1, CLIPDUR, CLIPOFFSET);
+end if;
+
+if (CLIPDUR > 0)
+	
+	if (motiondiff ==2)	// single frame, diff fields
+		DeInterlaceFast(src1, xbuffer, 0);
+		DeInterlaceFast(src1, xbuffer2, 1);
+		DifferenceMask(xbuffer, xbuffer2, dest, threshold, steps, soften, showMask);
+	
+	else if (motiondiff == 3)	// surrounding fields
+		getField(clip1, -CLIPOFFSET + frame + ((fieldPicker ^ fieldDominance) * 2 - 1), halfbuffer, 720, 480, FieldPicker ^ 1);
+		
+		DeInterlaceFast(src1, halfbuffer2, FieldPicker ^ 1);
+
+		DifferenceMask(halfbuffer, halfbuffer2, dest, threshold, steps, soften, showMask);
+			
+	else if (motiondiff == 4) 	// surrounding frames, double-diff now-prev, now-next
+		getVideo(clip1, -CLIPOFFSET + frame - 1, xbuffer);
+		getVideo(clip1, -CLIPOFFSET + frame + 1, xbuffer2);
+		
+		DifferenceMask(src1, xbuffer, xbuffer, threshold, steps, soften, 2);
+		DifferenceMask(src1, xbuffer2, xbuffer2, threshold, steps, soften, 2);
+		add(xbuffer, xbuffer2, xbuffer, 1, kalpha)
+		
+		if (showMask == 1) // add Alpha to _dest, isolating different areas
+			channelcopy(xbuffer, dest, kgreen, knone, knone, knone);
+		
+		else if (showMask == 2)		// show alpha only, moving areas are white
+			dest = xbuffer;	
+			
+		else if (showMask == 3)		// composite color over moving areas of original
+		
+			channelcopy(xbuffer, xbuffer, kgreen, kgreen, kgreen, kgreen);
+			channelfill(xbuffer, -1, maskcolor.r, maskcolor.g, maskcolor.b);
+			matte(xbuffer, src1, dest, maskopacity/100, kalpha);
+		
+		end if	
+	
+	end if			
+
+end if
+
+if (showmask == 1)
+
+	if (opacity < 100)
+		channelmultiply(src1, xbuffer, 1, opacity/100, opacity/100, opacity/100)	;
+	else
+		xbuffer = src1;
+	end if
+	
+	DeInterlaceFast(src1, xbuffer2, fieldPicker);
+	channelcopy(dest, xbuffer2, kalpha, knone, knone, knone);
+	matte(xbuffer2, xbuffer, dest, 1, kalpha);
+
+end if
+	
