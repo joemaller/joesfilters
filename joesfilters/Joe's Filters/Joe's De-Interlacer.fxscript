@@ -8,20 +8,20 @@
 //	 www.joesfilters.com
 
 
-// (C) 2001-2004 Joe Maller
+// (C) 2001-2005 Joe Maller
 // http://www.joesfilters.com
 // http://www.fxscriptreference.org
 
 
-filter "Joe's De-Interlacer";
-group "BETA";
+filter "Joe's De-Interlacer [BETA]";
+group "Joe's Video Tools";
 
 input label0, "De-Interlace", label, "";
 input FieldPicker, "Field", RadioGroup, 1, "First", "Second";
 input FieldMethod, "Method", popup, 1, "Fast Interpolate", "Exact Interpolate", "Field Double";
+
 input label1, "Motion Differencing", label, "";
 input motiondiff, "Mask Sources", popup, 3, "None", "Single Frame", "Surrounding Fields", "Surrounding Frames", "Surrounding Frames (doubleDiff)";
-
 input maskDetail, "Mask Detail", slider, 0, -10, 10;
 
 input label2, "Mask Check", label, "";
@@ -32,8 +32,9 @@ input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
 input label3, "Fade With Original", label, "";
 input opacity, "Opacity", slider, 100, 0, 100;
 
-input title, "Joe's Filters", Label,"";
+input title, "©ÊJoe's Filters", Label,"";
 input title1, "www.joesfilters.com", Label,"";
+
 
 fullframe
 ProducesAlpha
@@ -532,29 +533,31 @@ if (CLIPDUR > 0)
 		channelcopy(xbuffer, dest, kalpha, knone, knone, knone);
 	end if			
  	
- 	if (showMask == 2) // show mask channel
-  		if (GetPixelFormat(dest) == kFormatYUV219)
-  			channelcopy(dest, dest, knone, kalpha, knone, knone);
- 			channelfill(dest, 255, -1, 127, 127);
-  		else
-			channelcopy(dest, dest, knone, kalpha, kalpha, kalpha);
- 			channelfill(dest, 255, -1, -1, -1);
- 		end if
- 		
- 	else // standard or highlight motion
- 		if (showMask == 3)
- 			if (GetPixelFormat(dest) == kFormatYUV219)
- 				RGBtoYUVcolor(maskColor);
-  			end if
-  			xbuffer = dest;
-			channelfill(xbuffer,-1, maskcolor.r, maskcolor.g, maskcolor.b);
-			channelfill(dest,255, -1,-1,-1);
-			matte(xbuffer, dest, dest, maskopacity/100, kalpha);
- 		end if
-		
-		if (showMask != 4)
-		 	matte(dest, src1, dest, opacity/100, kalpha);
- 		end if
+ 	if (motiondiff != 1)	// if there's no motion differencing, we're done...
+		if (showMask == 2) // show mask channel
+			if (GetPixelFormat(dest) == kFormatYUV219)
+				channelcopy(dest, dest, knone, kalpha, knone, knone);
+				channelfill(dest, 255, -1, 127, 127);
+			else
+				channelcopy(dest, dest, knone, kalpha, kalpha, kalpha);
+				channelfill(dest, 255, -1, -1, -1);
+			end if
+			
+		else // standard or highlight motion
+			if (showMask == 3)
+				if (GetPixelFormat(dest) == kFormatYUV219)
+					RGBtoYUVcolor(maskColor);
+				end if
+				xbuffer = dest;
+				channelfill(xbuffer,-1, maskcolor.r, maskcolor.g, maskcolor.b);
+				channelfill(dest,255, -1,-1,-1);
+				matte(xbuffer, dest, dest, maskopacity/100, kalpha);
+			end if
+			
+			if (showMask != 4)
+				matte(dest, src1, dest, opacity/100, kalpha);
+			end if
+		end if
 	end if
 end if
 
