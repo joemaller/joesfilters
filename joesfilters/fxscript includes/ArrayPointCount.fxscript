@@ -1,6 +1,6 @@
 on indexExistsPt(value _i, point _ar);return(_ar[_i] == true); end
 
-on ArrayPtCount(point _ar)
+on ArrayPointCount(point _ar)
 	float _l, _r, _seed, _step, _counter;
 	_seed = 7; // somewhat arbitrary, chosen after lots of performance testing
 	_step = _seed;	// store seed for later
