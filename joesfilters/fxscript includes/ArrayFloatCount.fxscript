@@ -1,0 +1,30 @@
+on indexExists(value _i, float _ar);return(_ar[_i]!=kundefined); end 
+
+on ArrayFloatCount(float _ar)
+	float _l, _r, _seed, _step, _counter;
+	_seed = 7; // somewhat arbitrary, chosen after a lot of performance testing
+	_step = _seed;
+	
+	_l = 1 // set this to save a loop checking the zeroth index
+	_r = _l + _seed;
+
+	repeat while true
+		_counter++;
+
+		if (indexExists(_l, _ar) && indexExists(_r, _ar))	// both values in array
+			_l = _r+1;	// start at _r+1 to prevent double-checking values
+			_r = _l + _step;
+			_step += _seed * _counter;
+
+		else if (!indexExists(_l, _ar) && !indexExists(_r, _ar))	// no values in array
+			return _l;	// stepped one over _r previously, last index must be _l-1, return _l to compenstate for count vs. index off-by-one
+
+		else 	// bottom value in array, top not. Half top and step bottom
+			_step = _r; // temporary storage of the _r variable
+			_l = _l+1; // increment _l to prevent double-checking values
+			_r = _l + integer((_r - _l)/2);	// half the distance between _l and _r
+			_step -= _r; // difference between old _r and new _r
+
+		end if
+	end repeat;
+end
