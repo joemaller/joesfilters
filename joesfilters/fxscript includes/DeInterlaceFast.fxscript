@@ -5,11 +5,15 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field)
 	// _field : 0 = top field, 1 = bottom field
 
 	// this might fail at some future time if the scaling method in FCP changes
+
+	if (_field != 0 && _field != 1)
+		ErrorReporter(dest, "_field must be a boolean");
+		return;
+	end if	
+		
 	float _j;
 	point _r1[4], _r2[4];
 	BoundsOf(_srcIMG, _r1);
-	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) /2];
-	BoundsOf(_halfIMG, _r2);
 	
 	if (_field) // second field, shift box down
 		_r1[0].y += 1;	// shift top row down
@@ -18,19 +22,19 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field)
 			_r1[2].y += 1;			// shift bottom down one row
 			_r1[3].y += 1;
 		end if
+
 	else // first field
 		if ((_r1[3].y - _r1[0].y) & 1) // odd frame height
 			_r1[2].y -= 1; // odd frame height, trim one row off of bottom
 			_r1[3].y -= 1;
 		end if
 	end if
-									
-	BlitRect(_srcIMG, _r1, _halfIMG, _r2);
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) /2];
+	BoundsOf(_halfIMG, _r2);
+	BlitRect(_srcIMG, _r1, _halfIMG, _r2); // smash blit (isolates fields)
 	
-	if (_field)
-		makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for potential field bouncing
-		BoundsOf(_destIMG, _r1);
-	end if
+	makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for  field bouncing
+	BoundsOf(_destIMG, _r1);
 	BlitRect(_halfIMG, _r2, _destIMG, _r1);
 
 end
