@@ -1,0 +1,21 @@
+on fitRect(point _srcRect, point _frameRect, point _destRect, value _hshift, value _vshift)
+
+	// essentially this is a pan/scan tool, fitRect places one rectangle inside another rectangle
+	// fitting values are -100 - 100 percentage values used to place _srcRect when sizes differ
+	// the new rectangle is placed in _destRect
+	// source rectangles are moved around until they align with the dest frame's edges 
+		
+	point _box, _frame;
+
+	DimensionsOfPoly(_srcRect, 4, _box);
+	DimensionsOfPoly(_frameRect, 4, _frame);
+
+	_hshift /= (_box.x > _frame.x) ? 100 : -100;		//adjust perceived direction shifts
+	_vshift /= (_box.y > _frame.y) ? 100 : -100;
+
+	_hshift = ((_box.x - _frame.x) * _hshift)/2;
+	_vshift = ((_box.y - _frame.y) * _vshift)/2;
+
+	MakeRect(_destRect, _box.h/-2 + _hshift, _box.v/-2 + _vshift, _box.h, _box.v);
+end
+

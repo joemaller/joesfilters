@@ -1,0 +1,53 @@
+on makeLevelMapBez(float _lmap, value _inBlack, value _gamma, value _inWhite, value _outBlack, value _outWhite, value _mapLength)
+		// uses BezToLevelMap to generate an adjustment level map for image correction.
+		// results have been calibrated against the slower makeLevelMapFN
+		// inputs are the adjustment array, five adjustment settings and the length of the array.
+		// mapLength is 255 for 8-bit maps
+
+
+
+	float _j, _D1, _D2;
+	point _Lpt, _Rpt, _Cpt1, _Cpt2;
+
+	_outBlack = (_outWhite-_outBlack > 0) ? _outBlack : _outWhite-1;	// corrects for  reversal of inWhite and inBlack
+
+	_Lpt = {_inBlack/_mapLength, _outBlack/_mapLength};
+	_Rpt = {_inWhite/_mapLength, _outWhite/_mapLength};
+	
+	if (_gamma > 1)
+		_j = power(_gamma/10, exp(1))
+		_D1 = 1 - 1/_gamma - _j/10;
+		_D2 = _j;
+		_Cpt1.x = sin(power(_gamma, log(2)/log(_gamma) - _j/10) * 45) * _D1 + _Lpt.x; 
+		_Cpt1.y = cos(power(_gamma, log(2)/log(_gamma) - _j/10) * 45) * _D1 + _Lpt.y;
+	
+		Interpolate(_Lpt, _Cpt1, (_inWhite-_inBlack)/255, _Cpt1)	// correct for input scaling (horizontal)
+	
+	else // gammma <= 1
+		
+		_j = power(1.825, -_gamma) - 0.445;	// I don't know why these numbers work, they were discovered after extensive testing and charting	
+		_D1 = power(4,-_gamma) + j/10 ;
+		_D2 = 1-_gamma - j
+		
+		_Cpt1.x = sin(power(gamma,exp(1)) * (90-AngleTo(_Lpt, _Rpt) )) * _D1 + _Lpt.x;
+		_Cpt1.y = cos(power(gamma,exp(1)) * (90-AngleTo(_Lpt, _Rpt) )) * _D1 + _Lpt.y;
+		
+		Interpolate(_Lpt, _Cpt1, (_outWhite - _outBlack)/_mapLength, _Cpt1)		// correct for output scaling (vertical)
+	
+	end if
+		
+	Interpolate(_Cpt1, _Rpt, 1-_D2, _Cpt2)	// possibly save the subtraction by reversing the points...
+	
+	BezToLevelMap(_lmap, _Lpt, _Cpt1, _Cpt2, _Rpt, 0, _mapLength, TRUE);
+	
+	if (inputBlack > 0)
+		_Cpt1 = {0, _Lpt.y};
+		BezToLevelMap(_lmap, _Cpt1, _Cpt1, _Lpt, _Lpt, 0, _inBlack, TRUE);
+	end if
+	if (inputWhite < _mapLength)
+		_Cpt1 = {1, _Rpt.y};
+		BezToLevelMap(_lmap, _Rpt, _Rpt, _Cpt1, _Cpt1, _inWhite, _mapLength, TRUE);
+	end if
+
+end
+

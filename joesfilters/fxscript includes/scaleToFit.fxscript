@@ -1,0 +1,30 @@
+on scaleToFit(point _srcRect, point _frameRect, point _destRect, value _scaler, value _fitMethod)
+	// scales the original frame by 1 of 3 scaling ranges
+
+	// _srcRect		: 	Original Frame Box
+	// _frameRect	:	destination frame box
+	// _destRect	: 	destination for scaled box results
+	
+	// 1 = Fit width <-> height
+	// 2 = Fit width <-> original
+	// 3 = Fit height <-> original
+	
+	point _fit
+
+	DimensionsOfPoly(_srcRect,  4,  _fit)
+			
+	_fit.x = (_frameRect[1].x - _frameRect[0].x)/_fit.x;
+	_fit.y = (_frameRect[3].y - _frameRect[0].y)/_fit.y;
+		
+	
+	if 		(_fitMethod == 1); 	_scaler = _scaler * (_fit.y - _fit.x) + _fit.x;		// W H
+	else if 	(_fitMethod == 2);	_scaler = _scaler * (1 - _fit.x) + _fit.x;		// W O
+	else if 	(_fitMethod == 3);	_scaler = _scaler * (1 - _fit.y) + _fit.y;		// H O
+	end if
+
+	_destRect = _srcRect;
+	_destRect *= _scaler;
+		
+end
+
+

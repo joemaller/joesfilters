@@ -1,0 +1,22 @@
+on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _B)
+	// a combination of channelcopy and blitrect, scales any specified channel to fit the target
+	// specifically for cases where a channel source is not the same size as the channel destination
+	// _A, _R, _G & _B work just like Channelcopy and are of the set {kalpha, kred, kgreen, kblue}
+	// This is meant to be a more versatile drop-in replacement for ChannelCopy
+	
+	point _srcBox[4], _destBox[4];
+	boundsOf(_src, _srcBox);
+	boundsOf(_dest, _destBox);
+
+	if (_srcBox[1].x - _srcBox[0].x == _destBox[1].x - _destBox[0].x && _srcBox[3].y - _srcBox[0].y == _destBox[3].y - _destBox[0].y)
+		// sizes are equal, normal channelcopy...
+		channelCopy(_src, _dest, _A, _R, _G, _B);
+
+	else	// sizes are unequal, do blit then channel
+		
+		image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
+		blitRect(_src, _srcBox, _temp, _destBox);
+		channelCopy(_temp, _dest, _A, _R, _G, _B);
+	end if
+end
+

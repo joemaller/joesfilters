@@ -1,0 +1,17 @@
+on DeInterlace(image _src, image _dest, value _field, value _method)
+	// field:
+	// 0 = top field, 1 = bottom field
+	// method:
+	// 1 = DeInterlaceFast
+	// 2 = DeInterlaceInterpolate
+	// 3 = field double
+		
+	if (_method == 1)
+		DeInterlaceFast(_src, _dest, _field);
+	else if (_method == 2)
+		DeInterlaceInterpolate(_src, _dest, _field);
+	else if (_method == 3)
+		FieldDouble(_src, _dest, _field);
+	end if
+end
+

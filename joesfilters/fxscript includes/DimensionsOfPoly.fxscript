@@ -1,0 +1,40 @@
+on DimensionsOfPoly(point _srcPoly, value _srcPolyPts, point _WH)
+	
+	// returns the maximum  Width/Height of n-sided polys 	
+	
+	// _srcPoly 		: 		polygon to fit inside _destRect
+	// _srcPolyPts 		: 		number of points in _srcPoly, because it can't be programatically determined
+	// _WH			:		a single point used to return two float values, x = Width, y = Height
+
+	float _j;
+	point _topLeft, _bottomRight;
+	
+	_topLeft = _srcPoly[0];
+	_bottomRight = _srcPoly[2];
+	
+	repeat with _j = 0 to ( _srcPolyPts -1)
+	
+		if (_srcPoly[_j].x < _topLeft.x)
+			_topLeft.x = _srcPoly[_j].x;
+		else if (_srcPoly[_j].x > _bottomRight.x)
+			_bottomRight.x = _srcPoly[_j].x;
+		end if
+
+		if (_srcPoly[_j].y < _topLeft.y)				
+			_topLeft.y = _srcPoly[_j].y;
+		else if (_srcPoly[_j].y > _bottomRight.y)
+			_bottomRight.y = _srcPoly[_j].y;
+		end if
+
+	end repeat
+
+	_WH.x = abs(_topLeft.x) + abs(_bottomRight.x);
+	_WH.x = _bottomRight.x - _topleft.x;
+	_WH.y = _bottomRight.y - _topleft.y;
+
+//	NumReporter(dest, _WH.x, "_polyW", kfloat2, destH/2 * -0.2, 32, 1);
+//	NumReporter(dest, _WH.y, "_polyH", kfloat2, destH/2 * -0.3, 32, 1);
+	
+end	
+
+

@@ -1,0 +1,7 @@
+on FastRotate(point _srcPoly, value _rotation, value _aspect)
+	// a quick tool for rotating a polygon around a centerpoint.
+	// saves the step of having to define an extra point variable and call the centerOf function first
+	point _centerPt;
+	centerOf(_srcPoly, _centerPt);
+	Rotate(_srcPoly, _centerPt, _rotation, _aspect)
+end
