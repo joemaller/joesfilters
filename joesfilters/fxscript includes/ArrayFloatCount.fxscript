@@ -1,4 +1,6 @@
-on indexExists(value _i, float _ar);return(_ar[_i]!=kundefined); end 
+on isIndexFloatArray(value _i, float _ar);return(_ar[_i][0] != kundefined); end 	//  checks for the existance of a zeroth index of the passed index
+on isIndexFloat(value _i, float _ar);return(_ar[_i] != kundefined); end 
+on ArrayFloatIndexExists(value _i, float _ar);return(isIndexFloatArray(_i, _ar) || isIndexFloat(_i, _ar)); end 
 
 on ArrayFloatCount(float _ar)
 	float _l, _r, _seed, _step, _counter;
@@ -11,13 +13,13 @@ on ArrayFloatCount(float _ar)
 	repeat while true
 		_counter++;
 
-		if (indexExists(_l, _ar) && indexExists(_r, _ar))	// both values in array
+		if (ArrayFloatIndexExists(_l, _ar) && ArrayFloatIndexExists(_r, _ar))	// both values in array
 			_l = _r+1;	// start at _r+1 to prevent double-checking values
 			_r = _l + _step;
 			_step += _seed * _counter;
 
-		else if (!indexExists(_l, _ar) && !indexExists(_r, _ar))	// no values in array
-			return _l;	// stepped one over _r previously, last index must be _l-1, return _l to compenstate for count vs. index off-by-one
+		else if (!ArrayFloatIndexExists(_l, _ar) && !ArrayFloatIndexExists(_r, _ar))	// no values in array
+				return _l;	// stepped one over _r previously, last index must be _l-1, return _l to compenstate for count vs. index off-by-one
 
 		else 	// bottom value in array, top not. Half top and step bottom
 			_step = _r; // temporary storage of the _r variable
@@ -27,4 +29,4 @@ on ArrayFloatCount(float _ar)
 
 		end if
 	end repeat;
-end
+end 
