@@ -1,0 +1,25 @@
+// 	FXScript Insertion Sort by Joe Maller, December 2004
+//	Based on various internet resources, these were most helpful:
+// 	http://www.cs.ubc.ca/spider/harrison/Java/sorting-demo.html
+// 	http://www.csse.monash.edu.au/~lloyd/tildeAlgDS/Sort/
+//	http://en.wikipedia.org/wiki/Sorting_algorithm
+
+on ArrayFloatInsertionSort(float _ar, value _arLength)
+	float _i, _j, _q;
+
+	for _i = 1 to _arLength
+		_q = _ar[_i];
+		_j = _i-1;
+
+		repeat while _j < _arLength && _j > -1
+			if ( _ar[_j] > _q )
+				_ar[_j+1] = _ar[_j];	// _ar[_j+1] was initially copied into _q because _j started at _i-1
+				_j--;
+			else
+				exit repeat
+			end if
+		end repeat
+
+		_ar[_j+1] = _q;	// this re-steps _j to compensate for the last step of the prev loop, is there a way around that?
+	next
+end 
