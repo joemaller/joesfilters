@@ -24,6 +24,12 @@ on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nati
 			getVideo(_clip1, _offset, _dest);
 		else
 			getVideo(_clip1, _offset, _half);
+			if (_bounceFix)
+				point _pt
+				_pt = {0,-1/4};	// shift  sampling field up 0.25 px (matches DeInterLaceFast)
+				_halfBox -= _pt;
+			end if
+
 			blitRect(_half, _halfBox, _dest, _destBox);
 		end if
 	end if
