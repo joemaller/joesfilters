@@ -1,0 +1,23 @@
+on ArrayPointWrap(point _ar, value _offset)
+
+	if (_offset != 0)
+		float _x, _arLength;
+		
+		_arLength = ArrayPointCount(_ar);
+		point _temp[_arLength];
+	
+		if (abs(_offset) > _arLength)
+			_offset %= _arLength
+		end if	
+		
+		if (_offset < 0)
+			_offset = _arLength + _offset;
+		end if	
+		
+		_temp = _ar;
+	
+		for _x = 0 to _arLength  - 1
+			_ar[_x] = _temp[(_x + _offset)%_arLength];
+		next;
+	end if
+end 
