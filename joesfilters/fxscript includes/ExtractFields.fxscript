@@ -1,7 +1,8 @@
 on ExtractFields(image _srcIMG, image _topField, image _bottomField)
 	
 	// faster means of getting both fields of a frame.
-	// this is faster than running DeInterlaceFast twice.
+	// this is slightly faster than running DeInterlaceFast twice.
+	// the difference is so negligible that this is probably useless.
 	
 	// _srcImg, _topField, _bottomField : image buffers for source frame and fields
 	// sizes do not matter, results will be scaled to fit
