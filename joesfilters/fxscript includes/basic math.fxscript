@@ -1,0 +1,4 @@
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
