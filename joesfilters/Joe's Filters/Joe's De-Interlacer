@@ -25,7 +25,7 @@ input motiondiff, "Mask Sources", popup, 3, "None", "Single Frame", "Surrounding
 input maskDetail, "Mask Detail", slider, 0, -10, 10;
 
 input label2, "Mask Check", label, "";
-input showMask, "View", popup, 3, "Merged Output", "Motion Mask", "Colorize Motion", "Motion Only";
+input showMask, "View", popup, 1, "Merged Output", "Motion Mask", "Colorize Motion", "Motion Only";
 input maskcolor, "Mask Color", color, 255, 128, 0, 255;
 input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
 
@@ -52,8 +52,10 @@ on min(value _a, value _b); return (_a < _b) ? _a : _b; end
 on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
 on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
 
+
 // END "basic math.fxscript"
  
+
 
 
 
@@ -77,10 +79,8 @@ on DeInterlace(image _src, image _dest, value _field, value _method)
 	end if
 end
 
-
-
 // END "DeInterlace.fxscript"
-
+ 
 
 
 // INCLUDE "DeInterlaceInterpolate.fxscript"  v1.1
@@ -127,10 +127,8 @@ on DeInterlaceInterpolate(image _srcIMG, image _destIMG, value _field)
 	
 end
 
-
-
 // END "DeInterlaceInterpolate.fxscript"
-
+ 
 
 
 // INCLUDE "DeInterlaceFast.fxscript"  v1.5
@@ -176,9 +174,8 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field)
 
 end
 
-
 // END "DeInterlaceFast.fxscript"
-
+ 
 
 
 // INCLUDE "FieldDouble.fxscript"  v1.1
@@ -228,10 +225,8 @@ on FieldDouble(image _srcIMG, image _destIMG, value _field)
 	
 end
 
-
-
 // END "FieldDouble.fxscript"
-
+ 
 
 
 // INCLUDE "makeThresholdMapBez.fxscript"  v1.1
@@ -263,11 +258,8 @@ on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
 
 end
 
-
-
 // END "makeThresholdMapBez.fxscript"
-
-
+ 
 
 
 // INCLUDE "DifferenceMask.fxscript"  v1.2
@@ -328,14 +320,11 @@ on DifferenceMask(image _src1, image _src2, image _dest, value _threshold, value
 	end if
 end
 
-
 // END "DifferenceMask.fxscript"
+ 
 
 
-
-
-
-// INCLUDE "ChannelCopyFit.fxscript"  v1.4
+// INCLUDE "ChannelCopyFit.fxscript"  v1.5
 
 on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _B)
 	// a combination of channelcopy and blitrect, scales any specified channel to fit the target
@@ -355,15 +344,14 @@ on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _
 		
 		
 		//		check for size differences
-		// 		do channelcopy on smaller image 
-		// 		is still faster to down-blit the bigger image first since channelcopy is costly
-		
-		if (_srcBox[2].x * _srcBox[2].y > _destBox[2].x * _destBox[2].y)	// _src is larger than _dest
+		// 		do channelcopy on larger image to preserve resolution 
+				
+		if (_srcBox[2].x * _srcBox[2].y < _destBox[2].x * _destBox[2].y)	// _src is smaller than _dest
 			image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
 			blitRect(_src, _srcBox, _temp, _destBox);
 			channelCopy(_temp, _dest, _A, _R, _G, _B);
 		
-		else // _dest is larger than _src
+		else // _src is larger than _dest
 			image _temp[_srcBox[1].x - _srcBox[0].x][_srcBox[3].y - _srcBox[0].y]; // create second src-sized image buffer
 			blitRect(_dest, _destBox, _temp, _srcBox);
 			channelCopy(_src, _temp, _A, _R, _G, _B);
@@ -374,12 +362,15 @@ on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _
 end
 
 // END "ChannelCopyFit.fxscript"
+ 
 
 
-
-// INCLUDE "getField.fxscript"  v1.3
+// INCLUDE "getField.fxscript"  v1.4
 
 on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
+	//REQUIRES: 	DeInterlaceFast.fxscript
+	//				ErrorReporter.fxscript
+
 	// getField(clip, frame, dest, 720, 480, 1);
 	// replacement for GetVideo which returns a single field of interlaced video
 	// basic getVideo call plus dinmensions and field selection
@@ -423,7 +414,7 @@ end	// end getField
 
 
 // END "getField.fxscript"
-
+ 
 
 
 // INCLUDE "ErrorReporter.fxscript"  v1.1
@@ -450,31 +441,8 @@ end // end ErrorHandler
 
 
 // END "ErrorReporter.fxscript"
+ 
 
-
-
-on ColorRampImage(image _img, color _fg, color _bg, value _thr, value _steps)
-
-		// can convert an image into a two-color ramp in place with thresholding
-		
-
-	float _w, _h, _adj[256];
-	dimensionsOf(_img, _w, _h);
-	
-	image _temp[_w][_h];
-	
-	Desaturate(_img, _img);
-	channelcopy(_img, _img, kgreen, knone, knone, knone)
-
-
-	makeThresholdMapBez(_adj, _thr, _steps, 255)	
-	LevelMap(_img, _temp, _adj, linearRamp, linearRamp, linearRamp);
-	
-	channelfill(_img, _bg.a, _bg.r, _bg.g, _bg.b);
-	channelfill(_temp, -1, _fg.r, _fg.g, _fg.b);
-	matte(_temp, _img, _img, 1, kalpha);
-
-end
 
 
 
@@ -488,21 +456,9 @@ on RGBtoYUVcolor(color _rgbColor)
 	_rgbColor.g = _temp.r * -0.169 + _temp.g * -0.332 + _temp.b * 0.500 + 128; 
 	_rgbColor.b = _temp.r* 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
 end 
+
 // END "RGBtoYUVcolor.fxscript"
-
-
-// INCLUDE "YUVtoRGBcolor.fxscript"  vNew
-
-on YUVtoRGBcolor(color _yuvColor)
-	color _temp;
-	_temp = _rgbColor
-      _rgbColor.r = _temp.r + (1.4075 * (_temp.b - 128));
-      _rgbColor.g = _temp.r - (0.3455 * (_temp.g - 128) - (0.7169 * (_temp.b - 128));
-      _rgbColor.b = _temp.r + (1.7790 * (_temp.g - 128);
-end
-
-
-// END "YUVtoRGBcolor.fxscript"
+ 
 
 
 
