@@ -1,0 +1,45 @@
+
+
+on FieldDouble(image _srcIMG, image _destIMG, value _field)
+	// 0 = top field, 1 = bottom field
+
+	float _i, _j, _k;
+	point _r1[4], _r2[4];
+	
+	BoundsOf(_srcIMG, _r1);
+	
+	image _tempIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y)];
+
+	_r2 = _r1;
+	_r2[2].y = _r2[1].y + 1; 
+	_r2[3].y = _r2[0].y + 1;
+
+
+	for _j = _r1[0].y to _r1[3].y step 2
+			
+		_r1[0].y = _j + _field;
+		_r1[1].y = _j + _field;
+		_r1[2].y = _j + 1 + _field;
+		_r1[3].y = _j + 1 + _field;
+
+		for _k = 0 to 1
+			BlitRect(_srcIMG, _r1, _tempIMG, _r2);
+			
+			for _i = 0 to 3
+				_r2[_i].y += 1;
+			next;
+		next;
+		
+	next;
+	
+	boundsOf(_tempIMG, _r1);
+	boundsOf(_destIMG, _r2);
+	
+	for _j = 0 to 3
+		_r1[_j].y += _field ^1; // correct for field bouncing
+	next;
+
+	BlitRect(_tempIMG, _r1, _destIMG, _r2);
+	
+end
+

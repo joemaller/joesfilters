@@ -1,0 +1,38 @@
+on DeInterlaceFast(image _srcIMG, image _destIMG, value _field)
+	// 0 = top field, 1 = bottom field
+
+	// this might fail at some future time if the scaling method in FCP changes
+
+	float _j;
+	point _r1[4], _r2[4];
+	
+	BoundsOf(_srcIMG, _r1);
+	
+	if (_field) // second field, shift down
+		_r1[0].y += 1;	// shift top down
+		_r1[1].y += 1;
+		if ((_r1[3].y - _r1[0].y) & 1 == 1) // even frame height
+			_r1[2].y += 1;	// even frame height, shift bottom down one row
+			_r1[3].y += 1;
+		end if
+	else // first field
+		if ((_r1[3].y - _r1[0].y) & 1) // odd frame height
+			_r1[2].y -= 1; // odd frame height, trim one row from bottom
+			_r1[3].y -= 1;
+		end if
+	end if
+									
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) / 2];
+	BoundsOf(_halfIMG, _r2);
+
+	BlitRect(_srcIMG, _r1, _halfIMG, _r2);
+	BoundsOf(_destIMG, _r1);
+
+	for _j = 0 to 3
+		_r1[_j].y += _field;	// correct for field bouncing
+	next;
+
+	BlitRect(_halfIMG, _r2, _destIMG, _r1);
+		
+end
+
