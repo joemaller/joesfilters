@@ -9,13 +9,18 @@ input chooseFields, "Assign Fields", RadioGroup, 1, "Select Pulldown", "Adjust P
 input pulldownIN, "Source Pulldown", popup, 11, "None", " --- ", "Standard 3:2 SSwww (1 & 2)", "Standard 3:2 wSSww (2 & 3)", "Standard 3:2 wwSSw (3 & 4)", "Standard 3:2 wwwSS (4 & 5)", "Standard 3:2 SwwwS (1 & 5)", " --- ", "Advanced 3:2 Swwww  (1)", "Advanced 3:2 wSwww  (2)", "Advanced 3:2 wwSww  (3)", "Advanced 3:2 wwwSw  (4)", "Advanced 3:2 wwwwS  (5)";
 input pulldownOUT, "Output Pulldown", popup, 11, "None", " --- ", "Standard 3:2 SSwww (1 & 2)", "Standard 3:2 wSSww (2 & 3)", "Standard 3:2 wwSSw (3 & 4)", "Standard 3:2 wwwSS (4 & 5)", "Standard 3:2 SwwwS (1 & 5)", " --- ", "Advanced 3:2 Swwww  (1)", "Advanced 3:2 wSwww  (2)", "Advanced 3:2 wwSww  (3)", "Advanced 3:2 wwwSw  (4)", "Advanced 3:2 wwwwS  (5)";
 
-input bypass, "bypass", checkbox, 0;
-input fieldCheck, "fieldCheck", checkbox, 0;
-input showtext, "showtext", checkbox, 0;
+// input bypass, "bypass", checkbox, 0;
+// input fieldCheck, "fieldCheck", checkbox, 0;
+// input showtext, "showtext", checkbox, 0;
 
 //InformationFlag("YUVaware"); 	// enable this later on for YUV speed boost, will need to fix all colors first.
 
 code
+
+float bypass, showtext;
+bypass = 0;			// disabled input controls
+showtext = 0;
+
 
 // INCLUDE "PtReporter.fxscript"  v1.1
 
