@@ -1,6 +1,5 @@
 on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
 	//REQUIRES: 	DeInterlaceFast.fxscript
-	//				ErrorReporter.fxscript
 
 	// getField(clip, frame, dest, 720, 480, 1);
 	// replacement for GetVideo which returns a single field of interlaced video
@@ -9,36 +8,36 @@ on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nati
 	
 	// getvideo into half-height buffers appears to return only the upper field (line 0)
 	// that means de-intelacing can be skipped for matching fields to save processing
+		
 	
-	if (_field < 0 || _field > 1)
-		ErrorReporter(dest, "_field value out of range");
-		return;
-	end if
-	
-	
-	if (_field == 0)
-		image _half[_nativeW][_nativeH/2];
+		image _half[_nativeW][_nativeH/2], _full[_nativeW][_nativeH];
 		point _halfBox[4], _destBox[4];
 		boundsOf(_half, _halfBox);
 		boundsOf(_dest, _destBox);
-		
-		if (_halfBox[0] == _destBox[0] && _halfBox[2] == _destBox[2])	// _half is the same size as _dest, skip a blit
-		
-			getVideo(_clip1, _offset, _dest);
 
-		else		// _half and _dest are different sizes, use blitRect
-				
-			getVideo(_clip1, _offset, _half);
-			blitRect(_half, _halfBox, _dest, _destBox);
-		
-		end if
-		
-			
-	else // _field == 1
-		image _full[_nativeW][_nativeH];
+	
+	if (_field || fieldnumber -1 || aspectOf(_dest) == 1) // second spatial field
 		getVideo(_clip1, _offset, _full);
 		DeInterlaceFast(_full, _dest, _field, false);
+		_halfBox = _destBox;
+	//	_halfBox *= 0.25; fillPoly(_halfBox, _dest, kyellow) // debug YELLOW
+		
+	else		// first spatial field, lots of optimization tricks possible
+		if (_halfBox[0].y == _destBox[0].y && _halfBox[2].y == _destBox[2].y)	// _half is the same size as _dest, skip a blit
+			getVideo(_clip1, _offset, _dest);
+		//	_halfBox *= 0.25; fillPoly(_halfBox, _dest, kred) // debug RED
+		else
+			getVideo(_clip1, _offset, _half);
+			blitRect(_half, _halfBox, _dest, _destBox);
+		//	_halfBox *= 0.25; fillPoly(_halfBox, _dest, kgreen) // debug GREEN
+		end if
 	end if
-	
-end	// end getField
 
+
+	
+		_halfBox *= 2;
+		_destBox *= 0.5;
+	//	framePoly(_halfBox, _dest, kblack, 3);
+	//	framePoly(_destBox, _dest, kwhite, 3);
+
+end
