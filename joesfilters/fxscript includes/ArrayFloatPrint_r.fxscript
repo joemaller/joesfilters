@@ -1,0 +1,11 @@
+on ArrayFloatPrint_r(float _ar)
+	float _count, _i, _h;
+	string _index;
+	dimensionsOf(dest, _h, _h);
+	_count =	ArrayFloatCount(_ar)
+	for _i = 0 to _count-1	
+		NumToString(_i, _index, kInteger);
+		numreporter(dest, _ar[_i], "_ar[" + _index + "]", kfloat2, _i/_count * _h - _h/2 + 12, 24, 345);
+	next
+end 
+
