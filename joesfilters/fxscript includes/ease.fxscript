@@ -1,0 +1,83 @@
+
+// input easing, "Easing", slider, 0, -100, 100;
+// input easeMethod, "Easing Method", popup, 3,  "Ease In", "Ease Out", "S-Curve";
+
+
+on ease(value _r, value _easing, value _method)
+	
+	// a single placeholder easing tool for easier use, 
+	
+	// required inputs:
+	// input easing, "Easing", slider, 0, -100, 100;
+	// input easeMethod, "Easing Method", popup, 3,  "Ease In", "Ease Out", "S-Curve";
+
+	
+	if (_method == 1)
+		return easeIn(_r, _easing)
+	else if (_method == 2)
+		return easeOut(_r, _easing)
+	else if (_method == 3)
+		return easeS(_r, _easing)
+	end if
+end
+
+
+// INCLUDE "easeIn.fxscript"  v1.2
+
+on easeIn(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+	
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return power(_r, _easing);
+
+end
+
+// END "easeIn.fxscript"
+ 
+
+// INCLUDE "easeOut.fxscript"  v1.2
+
+on easeOut(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return 1 - power(1 - _r, _easing);
+end
+
+// END "easeOut.fxscript"
+ 
+
+// INCLUDE "easeS.fxscript"  v1.2
+
+on easeS(value _r, value _easing)
+	// modifies a 0-1 value towards an S-curve
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	if (_r < 0.5)
+		return (power(2 * _r, _easing)/2);	// half simple gamma curve (first half S)
+	else			
+		return ((-power(-2 * _r + 2, _easing))/2 + 1);  // half inverted gamma curve (second half S)	
+	end if
+end 
+
+
+// END "easeS.fxscript"
+ 
