@@ -1,0 +1,42 @@
+on DeInterlaceInterpolate(image _srcIMG, image _destIMG, value _field)
+	// 0 = top field, 1 = bottom field
+	
+	float _i, _j;
+	point _r1[4], _r2[4];
+	
+	BoundsOf(_srcIMG, _r1);
+	
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) / 2];
+	BoundsOf(_halfIMG, _r2);
+
+	_i = _r2[0].y;
+
+	for _j = _r1[0].y to _r1[3].y step 2
+			
+		_r1[0].y = _j + _field;
+		_r1[1].y = _j + _field;
+		_r1[2].y = _j + 1 + _field;
+		_r1[3].y = _j + 1 + _field;
+					
+		_r2[0].y = _i;	// j starts at the topmost row of pixels in _halfIMG and counts up
+		_r2[1].y = _i;	
+		_r2[2].y = _i + 1;
+		_r2[3].y = _i + 1;		
+
+		_i++;
+
+		BlitRect(_srcIMG, _r1, _halfIMG, _r2);
+		
+	next;
+	
+	boundsOf(_halfIMG, _r1);
+	boundsOf(_destIMG, _r2);
+	
+	for _j = 0 to 3
+		_r2[_j].y += _field; // correct for field bouncing
+	next;
+	
+	BlitRect(_halfIMG, _r1, _destIMG, _r2);
+	
+end
+
