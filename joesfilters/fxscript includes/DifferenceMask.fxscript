@@ -1,0 +1,49 @@
+on DifferenceMask(image _src1, image _src2, image _dest, value _threshold, value _steps, value _softness)
+	
+	// dependencies:
+	//			makeThresholdMapBez
+	//			channelcopyfit
+
+	// _src1, src2 : images to compare
+	// _dest : destination image buffer, results will replace this image's alpha channel
+	// _threshold : Threshold break for difference mask
+	// _steps : number of steps around threshold point
+	// _softness : spread of the difference mask before thresholding.
+	
+	// compares two images and generates a mask based on differences between the two
+	// the resulting mask will replace whatever alpha channel is in _dest
+		
+	float _diffmap[256];
+	makeThresholdMapBez(_diffmap, _threshold, _steps, 255)	
+
+	point _src1Box[4], _src2Box[4];
+	boundsOf(_src1, _src1Box);
+	boundsOf(_src2, _src2Box);
+	
+	if (_src1Box[2].x * _src1Box[2].y == _src2Box[2].x * _src2Box[2].y)	// _src1 and _src2 should be the same size, should be most common
+
+		image _temp1[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y],  _temp2[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y];
+		
+		_temp1 = _src1;
+		_temp2 = _src2;
+		
+	else if (_src1Box[2].x * _src1Box[2].y > _src2Box[2].x * _src2Box[2].y)	// _src1 has more pixels, scale _src1 down to match _src2 (bias for speed)
+		image _temp1[_src2Box[1].x - _src2Box[0].x][_src2Box[3].y - _src2Box[0].y],  _temp2[_src2Box[1].x - _src2Box[0].x][_src2Box[3].y - _src2Box[0].y];
+
+		_temp2 = _src2;
+		blitRect(_src1, _src1Box, _temp1, _src2Box);
+
+	else	// _src1 has fewer pixels than _src2, scale _src2 down to match
+
+		image _temp1[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y],  _temp2[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y];
+	
+		_temp1 = _src1;
+		blitRect(_src2, _src2Box, _temp2, _src1Box);
+
+	end if
+	
+	Difference(_temp1, _temp2, _temp1, kalpha);	// setting targets up beforehand is faster
+	BlurChannel(_temp1, _temp2, _softness, 1,1,1,1, aspectOf(_dest));
+	LevelMap(_temp2, _temp2, linearRamp, linearRamp, _diffmap, linearRamp);
+	channelcopyfit(_temp2, _dest, kgreen, knone, knone, knone);
+end
