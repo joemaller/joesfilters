@@ -1,0 +1,1109 @@
+filter "Joe's De-Multiplexer"
+group "BETA"
+
+
+input RESETER, "Zero Memory", checkbox, 1;
+input workflow, "Workflow", RadioGroup, 1, "Preview Camera Grid", "1. Sort Frames", "2. Re-order Frames";
+input maxCams, "Max Cameras", slider, 32, 1, 64;
+
+
+
+input output, "Output", popup, 3, "Show all Cameras in order", "TimeStretch Camera # for length of clip (select below)", "Grid All Cameras (slow)";
+input stretchCam, "Timestretch Camera #", slider, 1, 1, 64;
+//input sampleoffset, "sampleoffset", slider, 0.4, 0.33, 0.9;
+
+input title, "©ÊJoe's Filters", Label,"";
+input title1, "www.joesfilters.com", Label,"";
+
+
+//input docompareFrames, "compareFrames", checkbox, 0;
+//input stepping, "stepping", slider, 2, -20, 20
+
+//input multiFrame, "Show Camera Grid", checkbox, 1;
+//input ptcheck, "ptcheck", slider, 0, 0, 200;
+//input pre_process, "pre_process", checkbox, 0;
+//input thr, "thr", slider, 80, 0, 255;
+//input steps, "steps", slider, 150, 0, 255;
+
+
+
+
+//input reversefields, "reversefields", checkbox, 1;
+
+//input inRows, "Rows", slider, 8, 1, 30;
+//input inCols, "Cols", slider, 6, 1, 30;
+//input sensitivity, "sensitivity", slider, 0.16, 0.07, 0.23;
+
+
+
+InformationFlag("YUVaware");
+
+float FRAMEMAP[64][1000], CAMCOUNT, SORTED;
+
+code
+
+
+// INCLUDE "PtReporter.fxscript"  v1.1
+
+on PtReporter(image _destIMG, point _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporterX, reporterY;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.x, reporterX, _numberformat);
+	NumToString(_data.y, reporterY, _numberformat);
+	reporterX = _label + " = {" + reporterX + "," + reporterY + "}";
+	DrawString(reporterX, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "PtReporter.fxscript"
+ 
+// INCLUDE "absNoInt.fxscript"  vNew
+
+on absNoInt(value _num)	// returns the absolute floating point value of a number
+	return _num * sign(_num);
+end
+
+// END "absNoInt.fxscript"
+ 
+
+// INCLUDE "makeThresholdMapBez.fxscript"  v1.1
+
+on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
+		// a fast thresholding function using BezToLevelMap instead of for:next loops
+		// _th is the point to thrreshold around, _steps are the number of grays around _th
+		// mapLength is 255 for 8-bit maps
+		
+	point _p1, _p2;
+	
+	float _top, _bottom;
+	
+	if (_th - _steps/2 < 0)
+		_steps = _th * 2;
+	else if (_th + _steps/2 > _mapLength)
+		_steps = (_mapLength - _th) * 2;
+	end if
+	
+	if (_th & 1 == 0)	// even
+		_p1 = {floor(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {floor(_th + _steps/2)/_mapLength, 1};		
+	else // _th is odd
+		_p1 = {ceil(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {ceil(_th + _steps/2)/_mapLength, 1};		
+	end if
+
+	BezToLevelMap(_lmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
+
+end
+
+
+// END "makeThresholdMapBez.fxscript"
+ 
+
+
+
+// INCLUDE "DeInterlaceFast.fxscript"  v1.9
+
+on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix)
+	// _srcIMG : source image
+	// _destIMG : destination image
+	// _field : 0 = top field, 1 = bottom field
+	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional time-based de-interlace calls
+
+	// this might fail at some future time if the scaling method in FCP changes
+
+	float _j;
+	point _r1[4], _r2[4], _pt;
+	BoundsOf(_srcIMG, _r1);
+	
+	if (_field) // second field, shift box down
+		_pt = {0,1};
+		_r1 += _pt;	// shift top row down
+		if ((_r1[3].y - _r1[0].y) & 1) 	// frame height needs to be even
+			_r1[2].y -= 1;			// shift bottom down one row
+			_r1[3].y -= 1;
+		end if
+
+	else // first field
+		if ((_r1[3].y - _r1[0].y) & 1) // odd frame height
+			_r1[2].y -= 1; // odd frame height, trim one row off of bottom
+			_r1[3].y -= 1;
+		end if
+	end if
+	
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) / 2];
+	BoundsOf(_halfIMG, _r2);
+	BlitRect(_srcIMG, _r1, _halfIMG, _r2); // smash blit (isolates fields)
+	
+	BoundsOf(_destIMG, _r1);
+	
+	if (_bounceFix)
+		_pt = {0,(_field*2-1)/4};	// shift  sampling field up/down 0.25 px
+		_r2 -= _pt;
+	end if
+		
+	BlitRect(_halfIMG, _r2, _destIMG, _r1);
+end 
+// END "DeInterlaceFast.fxscript"
+ 
+
+
+
+// INCLUDE "DrawGridFrames.fxscript"  v1.1
+
+on DrawGridFrames(clip _clip1, value _w, value _h, value _gridCount, value _getFrame, value _offset, value _temporalSpacing, value _basisSquare, value _cropFrame, value _direction, value _reverseDirection, value _reverseTime, value _alternateRowCols, value _dimFrames)
+	// _offset specifies the position of the current frame in time 
+	// _smoothMotion sets the field-bouncing flag in deInterlaceFast	
+	// direction: 0 = top>bottom, 1 = left>right, 2 = bottom>top, 3 = right>left
+	// requires: DeInterlaceFast, PlaceFrame, ceil, absNoInt
+	
+		
+	if (_gridCount > 0)	// do nothing if no squares
+		float _Nw, _Nh, _clipDUR, _clipOFFSET;
+		getnativesize(_clip1, _Nw, _Nh);		// possibly a bad decision, could be a slowdown since this could be double-called during an effect.
+		getLimits(_clip1, _clipDUR, _clipOFFSET);
+		float _FieldOrder; _FieldOrder = (fieldNumber - 1 == topfield);	// do this in here for one less thing to worry about, could be a problem later on.
+
+		float _j, _bigSquare, _rows, _nowFrame, _prevFrame, _theField;
+		point _pt, _box[4];
+	
+		_bigSquare = (_basisSquare == 0) ? ceil(Sqrt(integer(_gridCount))) : ceil(sqrt(_basisSquare));
+
+		image _img0[_w/(_bigSquare)][2*_h/(_bigSquare)], _img2[_Nw][_Nh];
+		_prevFrame = kundefined;
+		
+		if (_direction == 0 || _direction == 2)			// direction is vertical
+			_pt.y = (_direction == 0) ? -_h/2 + _h/(2*_bigSquare) : _h/2 - _h/(2*_bigSquare);	// adjust start point here or move  placeFrame orientation?
+		else 										// direction is horizontal
+			_pt.x = (_direction == 1) ? -_w/2 + _w/(2*_bigSquare) : _w/2 - _w/(2*_bigSquare);
+		end if
+		
+		for _j = 0 to (_gridCount - 1)
+			
+			if (_basisSquare != 0 && _j > _basisSquare); exit for; end if;	// seems inelegant, but working
+			
+			_nowFrame = _getFrame + ((_reverseTime * -_gridCount + _j) * _temporalSpacing + _reverseTime  * _temporalSpacing) / 2 * (_reverseTime * -2 + 1) - _offset * _temporalSpacing;
+			_theField = (absnoint(_nowFrame) - abs(_nowFrame) > 0) ^ _fieldOrder;
+			
+			if (_prevFrame != _nowFrame)
+				getVideo(_clip1, -_clipOFFSET + _nowFrame, _img2);
+			end if
+			
+			_prevFrame = _nowFrame;
+			
+			DeInterlaceFast(_img2, _img0, _theField, true);
+
+			if (_direction == 0 || _direction == 2)
+				_pt.x = (_j%_bigSquare)/_bigSquare * _w - _w/2 + _w/2/_bigSquare;
+
+				if (_alternateRowCols && _rows&1)
+					_pt.x = _w - (_pt.x + _w/2) - _w/2;
+				end if
+				if (_reverseDirection)
+					_pt.x = _w - (_pt.x + _w/2) - _w/2;
+				end if
+			else
+				_pt.y =  (_j%_bigSquare)/_bigSquare * _h - _h/2 + _h/2/_bigSquare;
+				
+				if (_alternateRowCols && _rows&1)
+					_pt.y = _h - (_pt.y + _h/2) - _h/2;
+				end if
+				if (_reverseDirection)
+					_pt.y = _h - (_pt.y + _h/2) - _h/2;
+				end if
+			end if		
+								
+			if (_dimFrames < 1 && (integer(_nowFrame) - integer(_getFrame) != 0))	// dim other frames
+				channelmultiply(_img0, _img0, 1, _dimFrames, _dimFrames, _dimFrames);
+			end if
+					
+			MakeRect(_box, _pt.x, _pt.y, 1/_bigSquare * _w, 1/_bigSquare * _h);
+
+			placeFrame(_img0, dest, _pt, 1/_bigSquare * _w, 1/_bigSquare * _h, 0, 4, _cropFrame);
+
+			if (_j % _bigSquare == _bigSquare - 1)
+				if (_direction == 0 || _direction == 2)
+					_pt.y += (_direction == 0) ? _h/_bigSquare : -_h/_bigSquare
+				else 
+					_pt.x += (_direction == 1) ? _w/_bigSquare : -_w/_bigSquare
+				end if
+				_rows++;
+			end if
+		next
+	end if	
+end
+
+// END "DrawGridFrames.fxscript"
+ 
+ 
+// INCLUDE "DeInterlaceInterpolate.fxscript"  v1.1
+
+on DeInterlaceInterpolate(image _srcIMG, image _destIMG, value _field, value _bounceFix)
+	// 0 = top field, 1 = bottom field
+	
+	float _i, _j;
+	point _r1[4], _r2[4];
+	
+	BoundsOf(_srcIMG, _r1);
+	
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) / 2];
+	BoundsOf(_halfIMG, _r2);
+
+	_i = _r2[0].y;
+
+	for _j = _r1[0].y to _r1[3].y step 2
+			
+		_r1[0].y = _j + _field;
+		_r1[1].y = _j + _field;
+		_r1[2].y = _j + 1 + _field;
+		_r1[3].y = _j + 1 + _field;
+					
+		_r2[0].y = _i;	// j starts at the topmost row of pixels in _halfIMG and counts up
+		_r2[1].y = _i;	
+		_r2[2].y = _i + 1;
+		_r2[3].y = _i + 1;		
+
+		_i++;
+
+		BlitRect(_srcIMG, _r1, _halfIMG, _r2);
+		
+	next;
+	
+	boundsOf(_halfIMG, _r1);
+	boundsOf(_destIMG, _r2);
+	
+	if (_bounceFix)
+		for _j = 0 to 3
+			_r2[_j].y += _field; // correct for field bouncing
+		next;
+	end if
+	BlitRect(_halfIMG, _r1, _destIMG, _r2);
+	
+end
+
+
+// END "DeInterlaceInterpolate.fxscript"
+ 
+
+
+
+// INCLUDE "getField.fxscript"  v1.6
+
+on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
+	//REQUIRES: 	DeInterlaceFast.fxscript
+
+	// getField(clip, frame, dest, 720, 480, 1);
+	// replacement for GetVideo which returns a single field of interlaced video
+	// basic getVideo call plus dinmensions and field selection
+	// field is 0 or 1 to match deinterlace functions
+	
+	// getvideo into half-height buffers appears to return only the upper field (line 0)
+	// that means de-intelacing can be skipped for matching fields to save processing
+		
+	
+		image _half[_nativeW][_nativeH/2], _full[_nativeW][_nativeH];
+		point _halfBox[4], _destBox[4];
+		boundsOf(_half, _halfBox);
+		boundsOf(_dest, _destBox);
+
+	
+	if (_field || fieldnumber -1 || aspectOf(_dest) == 1) // second spatial field
+		getVideo(_clip1, _offset, _full);
+		DeInterlaceFast(_full, _dest, _field, true);
+		_halfBox = _destBox;
+	//	_halfBox *= 0.25; fillPoly(_halfBox, _dest, kyellow) // debug YELLOW
+		
+	else		// first spatial field, lots of optimization tricks possible
+		if (_halfBox[0].y == _destBox[0].y && _halfBox[2].y == _destBox[2].y)	// _half is the same size as _dest, skip a blit
+			getVideo(_clip1, _offset, _dest);
+		//	_halfBox *= 0.25; fillPoly(_halfBox, _dest, kred) // debug RED
+		else
+			getVideo(_clip1, _offset, _half);
+			blitRect(_half, _halfBox, _dest, _destBox);
+		//	_halfBox *= 0.25; fillPoly(_halfBox, _dest, kgreen) // debug GREEN
+		end if
+	end if
+
+
+	
+		_halfBox *= 2;
+		_destBox *= 0.5;
+	//	framePoly(_halfBox, _dest, kblack, 3);
+	//	framePoly(_destBox, _dest, kwhite, 3);
+
+end
+// END "getField.fxscript"
+ 
+ 
+
+
+// INCLUDE "NumReporter.fxscript"  v1.1
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "NumReporter.fxscript"
+ 
+ 
+ 
+ 
+ 
+ 
+
+// INCLUDE "PlaceFrame.fxscript"  v1.1
+
+on PlaceFrame(image _src, image _dest, point _originPt, value _frameWidth, value _frameHeight, value _angle, value _orientation, value _cropFrame)
+		
+		// _src : source image to copy from
+		// _dest : destination image buffer
+		// _originPt: point in destination buffer where the fframe will be drawn
+		// _frameWidth: width of the output frame
+		// _frameHeight: height of the output frame
+		// _angle: rotation angle of rotated frame, around _originPt
+		// _orientation:  0-3 = destination rectangle corners, 4 = center
+		// _cropFrame:  < 1 decimal value, crops into image similar to action-safe area definition
+	
+	point _srcBox[4], _destBox[4], _rotateCenter;
+	float _FieldOrder;
+
+	_FieldOrder = (fieldNumber - 1 == topfield);	// do this in here for one less thing to worry about
+
+	boundsOf(_src, _srcBox);
+	
+	if (_orientation == 0)	
+		MakeRect(_destBox, _originPt.x,  _originPt.y, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[0];
+
+	else if (_orientation == 1)
+		MakeRect(_destBox, _originPt.x - _frameWidth,  _originPt.y, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[1];
+
+	else if (_orientation == 2)
+		MakeRect(_destBox, _originPt.x - _frameWidth,  _originPt.y - _frameHeight, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[2];
+
+	else if (_orientation == 3)
+		MakeRect(_destBox, _originPt.x,  _originPt.y- _frameHeight, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[3];
+		
+	else if (_orientation == 4)
+		MakeRect(_destBox, _originPt.x - _frameWidth/2,  _originPt.y - _frameHeight/2, _frameWidth, _frameHeight);
+		_rotateCenter = _originPt;
+	end if
+	
+	Rotate(_destBox, _rotateCenter, _angle, aspectOf(_dest));
+	
+	_srcBox *= _cropFrame;			// crop into source frame
+	
+	_rotateCenter = {0, (fieldnumber-1)^_FieldOrder};	// reuse _rotateCenter for _srcBox field-shifting
+	_srcBox += _rotateCenter;		// shift soucebox to compensate for field-based output
+	blitRect(_src, _srcBox, _dest, _destBox);
+	
+end
+
+// END "PlaceFrame.fxscript"
+ 
+
+
+// INCLUDE "ArrayFloatCount.fxscript"  v1.2
+
+on isIndexFloatArray(value _i, float _ar);return(_ar[_i][0] != kundefined); end 	//  checks for the existance of a zeroth index of the passed index
+on isIndexFloat(value _i, float _ar);return(_ar[_i] != kundefined); end 
+on ArrayFloatIndexExists(value _i, float _ar);return(isIndexFloatArray(_i, _ar) || isIndexFloat(_i, _ar)); end 
+
+on ArrayFloatCount(float _ar)
+	float _l, _r, _seed, _step, _counter;
+	_seed = 7; // somewhat arbitrary, chosen after a lot of performance testing
+	_step = _seed;
+	
+	_l = 1 // set this to save a loop checking the zeroth index
+	_r = _l + _seed;
+
+	repeat while true
+		_counter++;
+
+		if (ArrayFloatIndexExists(_l, _ar) && ArrayFloatIndexExists(_r, _ar))	// both values in array
+			_l = _r+1;	// start at _r+1 to prevent double-checking values
+			_r = _l + _step;
+			_step += _seed * _counter;
+
+		else if (!ArrayFloatIndexExists(_l, _ar) && !ArrayFloatIndexExists(_r, _ar))	// no values in array
+				return _l;	// stepped one over _r previously, last index must be _l-1, return _l to compenstate for count vs. index off-by-one
+
+		else 	// bottom value in array, top not. Half top and step bottom
+			_step = _r; // temporary storage of the _r variable
+			_l = _l+1; // increment _l to prevent double-checking values
+			_r = _l + integer((_r - _l)/2);	// half the distance between _l and _r
+			_step -= _r; // difference between old _r and new _r
+
+		end if
+	end repeat;
+end 
+
+// END "ArrayFloatCount.fxscript"
+ 
+ 
+
+
+// INCLUDE "basic math.fxscript"  v1.1
+
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
+
+// END "basic math.fxscript"
+ 
+
+
+
+
+
+
+on ColorCompare(color _c1, color _c2)
+	return abs(_c1.r - _c2.r) + abs(_c1.g - _c2.g) + abs(_c1.b - _c2.b)); 
+end 
+
+
+on CompareFrames(image _img0, image _img1, value _rows, value _cols, value _sensitivity) 
+	// _result is a 2D array
+ 	float _x, _y, _w, _h, _cmin, _cmax;
+ 	color _color0, _color1;
+	float _r0[_rows][_cols], _r1[_rows][_cols];
+	float _g0[_rows][_cols], _g1[_rows][_cols];
+	float _b0[_rows][_cols], _b1[_rows][_cols];
+	//_rows = ArrayFloatCount(_result);
+//	_cols = ArrayFloatCount(_result[0]);
+	
+	dimensionsOf(_img0, _w, _h);
+	
+ 	point _theSpot, _box[4], _samplePoints[_rows * _cols];
+	for _x = 0 to _rows-1;
+		for _y = 0 to _cols -1
+			_theSpot = {(_x/_rows) * _w - _w * 0.5 + _w * 0.5/_rows, (_y/_cols) * _h- _h * 0.5 + _h * 0.5/_cols }
+			_theSpot *= 0.9; // shrink the sample point to ignore edge weirdness
+		
+			ColorOf(_img0, _theSpot, _color0);
+			ColorOf(_img1, _theSpot, _color1);
+
+			_r0[_x][_y] = _color0.r
+			_r1[_x][_y] = _color1.r
+
+			_g0[_x][_y] = _color0.g;
+			_g1[_x][_y] = _color1.g;
+
+			_b0[_x][_y] = _color0.b;
+			_b1[_x][_y] = _color1.b;
+			
+	//		DrawSoftDot(dest, _theSpot, kround, 20, 1, 1, _color0, 1, aspectof(dest));
+	//		DrawSoftDot(dest, _theSpot, kround, 5, 1, 1, _color1, 1, aspectof(dest));
+		next;
+	next;
+
+	ArrayFloatNormalize(_r0);
+	ArrayFloatNormalize(_r1);
+	
+	ArrayFloatNormalize(_g0);
+	ArrayFloatNormalize(_g1);
+	
+	ArrayFloatNormalize(_b0);
+	ArrayFloatNormalize(_b1);
+
+	_r0 -= _r1;
+	_g0 -= _g1;
+	_b0 -= _b1;
+	
+	ArrayFloatAbs(_r0);
+	ArrayFloatAbs(_g0);
+	ArrayFloatAbs(_b0);
+		
+	return (ArrayFloatAverage(_r0) < _sensitivity);
+end 
+ 
+on SampleFrame(image _img0, color _samples, value _rows, value _cols) 
+	// returns a flat array of sampled colors, in sample order
+	float _x, _y, _i, _w, _h;
+ 	color _color0, _color1;
+	dimensionsOf(_img0, _w, _h);
+	_i = 0;
+ 	point _theSpot;
+	for _x = 0 to _rows-1;
+		for _y = 0 to _cols -1
+			_theSpot = {(_x/_rows) * _w - _w * 0.5 + _w * 0.5/_rows, (_y/_cols) * _h- _h * 0.5 + _h * 0.5/_cols }
+			_theSpot *= 0.9; // shrink the sample point to ignore edge weirdness
+		
+			ColorOf(_img0, _theSpot, _samples[_i]);
+			_i++;
+		next;
+	next;
+end 
+
+
+on CompareColors(color _c1, color _c2, value _sensitivity)
+
+	float _x, _y, _i, _length;
+	_length = ArrayFloatCount(_c1.r);
+	float _r0[_length], _r1[_length];
+	float _g0[_length], _g1[_length];
+	float _b0[_length], _b1[_length];
+
+	
+	for _i = 0 to _length-1;
+		_r0[_i] = _c1[_i].r
+		_r1[_i] = _c2[_i].r
+		
+	//	_g0[_i] = _c1[_i].g;
+	//	_g1[_i] = _c2[_i].g;
+		
+	//	_b0[_i] = _c1[_i].b;
+	//	_b1[_i] = _c2[_i].b;
+	next;
+	
+	ArrayFloatNormalize(_r0);
+	ArrayFloatNormalize(_r1);
+	
+	//ArrayFloatNormalize(_g0);
+	//ArrayFloatNormalize(_g1);
+	
+	//ArrayFloatNormalize(_b0);
+	//ArrayFloatNormalize(_b1);
+
+	_r0 -= _r1;
+	//_g0 -= _g1;
+	//_b0 -= _b1;
+	
+	ArrayFloatAbs(_r0);
+	//ArrayFloatAbs(_g0);
+	//ArrayFloatAbs(_b0);
+		
+	return (ArrayFloatAverage(_r0) < _sensitivity);
+
+end 
+
+// INCLUDE "ArrayFloatPrint_r.fxscript"  v1.1
+
+on ArrayFloatPrint_r(float _ar)
+	float _count, _i, _h, _fontsize;
+	string _index;
+	dimensionsOf(dest, _h, _h);
+	_fontsize = 14;
+	_count = ArrayFloatCount(_ar);
+	for _i = 0 to _count-1	
+		NumToString(_i, _index, kInteger);
+		numreporter(dest, _ar[_i], "_ar[" + _index + "]", kfloat2, _i/_count * _h - _h/2 + _fontsize/2, _fontsize, 345);
+	next
+end 
+
+
+// END "ArrayFloatPrint_r.fxscript"
+ 
+ 
+ 
+  
+ on ArrayFloatSort(float _ar)
+	float _len;
+	_len = ArrayFloatCount(_ar);
+	if _len > 8
+		arrayFloatQuickSort(_ar, 0, _len-1);
+	else
+		arrayFloatInsertionSort(_ar, _len-1);
+	end if
+end 
+
+// INCLUDE "ArrayFloatQuickSort.fxscript"  v1.2
+
+// 	FXScript QuickSort by Joe Maller, December 2004
+//	Based on various internet resources, these were most helpful:
+// 	http://www.cs.ubc.ca/spider/harrison/Java/sorting-demo.html
+// 	http://www.csse.monash.edu.au/~lloyd/tildeAlgDS/Sort/
+//	http://en.wikipedia.org/wiki/Sorting_algorithm
+
+on ArrayFloatQuickSort(float _ar, value _lo, value _hi)
+	
+	float _l, _r, _pivot, _temp;
+	
+	if( _hi > _lo )
+		_l = _lo; 
+		_r = _hi;
+		_pivot = integer((_l + _r)/2);	// variable will be recast once value is found
+		
+		// find median of three pivot:		
+		if (_ar[_l] > _ar[_pivot])
+			_temp = _ar[_l]; _ar[_l] = _ar[_pivot]; _ar[_pivot] = _temp;	// swap _l & _pivot
+		end if
+		if (_ar[_l] > _ar[_r])
+			_temp = _ar[_l]; _ar[_l] = _ar[_r]; _ar[_r] = _temp;	// swap _l and _r
+		end if
+		if (_ar[_pivot] > _ar[_r])
+			_temp = _ar[_pivot]; _ar[_pivot] = _ar[_r]; _ar[_r] = _temp;	// swap _pivot & _r
+		end if
+
+		_pivot = _ar[_pivot]; // median of three
+		
+		repeat while (_r >= _l) 	// work through all indices between _l and _r
+
+			repeat while(_ar[_l] < _pivot) // don't move smaller values on left
+				_l++;
+			end repeat
+		
+			repeat while(_ar[_r] > _pivot) // don't move larger values on right
+				_r--;
+			end repeat
+			
+			if(_l > _r) 
+				exit repeat;
+			end if
+			
+			// swap _l and _r:
+			_temp = _ar[_l];
+			_ar[_l] = _ar[_r];
+			_ar[_r] =  _temp;
+			
+			// step index values for next loop:
+			_l++; 
+			_r--;
+		end repeat
+
+		ArrayFloatQuickSort(_ar, _lo, _r); 	// sort smaller partition
+		ArrayFloatQuickSort(_ar, _l,  _hi);	// sort larger partition
+
+	end if
+end 
+
+// END "ArrayFloatQuickSort.fxscript"
+ 
+
+
+// INCLUDE "ArrayFloatInsertionSort.fxscript"  v1.1
+
+// 	FXScript Insertion Sort by Joe Maller, December 2004
+//	Based on various internet resources, these were most helpful:
+// 	http://www.cs.ubc.ca/spider/harrison/Java/sorting-demo.html
+// 	http://www.csse.monash.edu.au/~lloyd/tildeAlgDS/Sort/
+//	http://en.wikipedia.org/wiki/Sorting_algorithm
+
+on ArrayFloatInsertionSort(float _ar, value _arLength)
+	float _i, _j, _q;
+
+	for _i = 1 to _arLength
+		_q = _ar[_i];
+		_j = _i-1;
+
+		repeat while _j < _arLength && _j > -1
+			if ( _ar[_j] > _q )
+				_ar[_j+1] = _ar[_j];	// _ar[_j+1] was initially copied into _q because _j started at _i-1
+				_j--;
+			else
+				exit repeat
+			end if
+		end repeat
+
+		_ar[_j+1] = _q;	// this re-steps _j to compensate for the last step of the prev loop, is there a way around that?
+	next
+end 
+
+// END "ArrayFloatInsertionSort.fxscript"
+ 
+
+on ArrayFloatAverage0(float _ar, value _dropHiLo)
+	// _dropHiLo is the number of values to drop from top and bottom before calculating the average.
+	float _i, _len, _sum;
+	_len = ArrayFloatCount(_ar);
+	if (_dropHiLo > 0); ArrayFloatSort(_ar); end if	// not needed unless we're dropping values
+	for _i = _dropHiLo to _len - 1 - _dropHiLo
+		_sum += _ar[_i];
+	next	
+	return _sum/(_len - 2*_dropHiLo)
+end 
+
+
+on ArrayFloatCountAll(float _ar)
+	float _count;
+	_count = ArrayFloatCount(_ar);
+	if (isIndexFloatArray(0, _ar))
+		return _count * ArrayFloatCountAll(_ar[0])
+	end if
+	return _count;
+end 
+
+on ArrayFloatCountAll2(float _ar)
+	float _i, _count;
+	_count = 0
+	for _i = 0 to ArrayFloatCount(_ar)-1
+		_count += ArrayFloatCount(_ar[_i])
+	next;
+	return _count;
+end 
+
+
+
+
+on ArrayFloatAverage(float _ar)
+	return ArrayFloatSum(_ar)/ArrayFloatCountAll(_ar);
+end 
+
+
+on ArrayFloatSum(float _ar)
+	float _i, _sum;
+	_i = 1;
+	if (isIndexFloatArray(0, _ar))
+		_sum = ArrayFloatSum(_ar[0]); // do this here to save double-checking array-ness of [0]
+		repeat while (isIndexFloatArray(_i, _ar)) 
+			_sum += ArrayFloatSum(_ar[_i]);
+			_i++;
+		end repeat
+	else	// not an array, do normal stepped comparison
+		_sum = _ar[0];
+		_i = 1;
+		repeat while (isIndexFloat(_i, _ar))
+			_sum += _ar[_i];
+			_i++;
+		end repeat
+	end if
+	return _sum;
+end 
+
+// INCLUDE "ArrayFloatMax.fxscript"  v1.1
+
+on ArrayFloatMax(float _ar)
+	float _i, _max;
+	_i = 1;
+	if (isIndexFloatArray(0, _ar))
+		_max = ArrayFloatmax(_ar[0]); // do this here to save double-checking array-ness of [0]
+		repeat while (isIndexFloatArray(_i, _ar)) 
+			_max = max(_max,  ArrayFloatmax(_ar[_i]));
+			_i++;
+		end repeat
+	else	// not an array, do normal stepped comparison
+		_max = _ar[0];
+		repeat while (isIndexFloat(_i, _ar))
+			_max = max(_max, _ar[_i]);
+			_i++;
+		end repeat
+	end if
+	return _max;
+end 
+
+// END "ArrayFloatMax.fxscript"
+ 
+
+// INCLUDE "ArrayFloatMin.fxscript"  v1.1
+
+on ArrayFloatMin(float _ar)
+	float _i, _min;
+	_i = 1;
+	if (isIndexFloatArray(0, _ar))
+		_min = ArrayFloatMin(_ar[0]); // do this here to save double-checking array-ness of [0]
+		repeat while (isIndexFloatArray(_i, _ar)) 
+			_min = min(_min,  ArrayFloatMin(_ar[_i]));
+			_i++;
+		end repeat
+	else	// not an array, do normal stepped comparison
+		_min = _ar[0];
+		repeat while (isIndexFloat(_i, _ar))
+			_min = min(_min, _ar[_i]);
+			_i++;
+		end repeat
+	end if
+	return _min;
+end 
+
+
+// END "ArrayFloatMin.fxscript"
+ 
+
+on ArrayFloatNormalize(float _ar)
+	// remaps the array from zero to one based on current range of values
+	
+	float _min, _max;
+	_min = ArrayFloatMin(_ar);
+	_max = ArrayFloatMax(_ar);
+
+	if (_max - _min > 0)
+		_ar -= _min;
+		_ar /= _max - _min;
+	end if
+end 
+
+on ArrayFloatAbs(float _ar)
+	float _i;
+	_i = 1;
+	if (isIndexFloatArray(0, _ar))
+		ArrayFloatAbs(_ar[0]);
+		repeat while (isIndexFloatArray(_i, _ar)) 
+			ArrayFloatAbs(_ar[_i])
+			_i++;
+		end repeat
+	else	// not an array, do normal stepped comparison
+		_ar[0] *= sign(_ar[0]);
+		repeat while (isIndexFloat(_i, _ar))
+			_ar[_i] *= sign(_ar[_i]);
+			_i++;
+		end repeat
+	end if
+end 
+
+on ArrayFloatFlatten(float _deepArray, float _flatArray)	// flattens a 2D array, make recursive someday
+	float _i, _j, _index;
+	for _i = 0 to ArrayFloatCount(_deepArray)-1	
+		for _j = 0 to ArrayFloatCount(_deepArray[_i])-1
+			_flatArray[_index] = _deepArray[_i][_j];
+			_index++;
+		next
+	next
+end 
+
+
+
+
+
+
+float reversefields
+reversefields = 1;		// is this ok to delete?
+
+
+
+float inRows, inCols, sensitivity; 
+// maxCams = 64;	// THIS MUST EQUAL FIRST DIMENSION OF frameMap[][] DECLARED ABOVE code
+
+inRows = 8;		// these can be fiddled with later to optimize for speed.
+inCols = 6;
+sensitivity = 0.16;
+
+float FieldOrder; FieldOrder = (fieldNumber - 1 == topfield);
+
+
+float w,h,i, j, k, clipOFFSET, clipDUR, Nw, Nh;
+point pt0, pt1, box[4], ptAvg;
+color sampleColor1, sampleColor2;
+
+getLimits(clip1, clipDUR, clipOFFSET);
+getnativesize(clip1, Nw, Nh);
+
+dimensionsOf(dest, w, h);
+image img1[w][h], img2[w/2][h/2]
+
+
+//channelfill(dest, 255, 0, 127, 127);
+
+channelmultiply(src1, dest, 1, 0.7, 1, 1);
+//dest = src1;
+
+
+
+if RESETER // clear all stored values, set everything to kundefined
+	FRAMEMAP *= 0;
+	FRAMEMAP += kUndefined;
+	SORTED = kUndefined;
+end if
+
+if (workflow == 1)
+
+	
+	if true //(multiFrame)
+		drawGridFrames(clip1, w, h, maxCams, integer(frame/(fieldprocessing+1)), 0, 1, 0, 1, 0, 0, 0, 0, 1);
+	end if
+	
+	//		if (docompareFrames)
+	//			point inBox[4], outBox[4]
+	//			float adj[256];
+	//			image img4[w][h], img5[w][h],imgTEMP[w][h], testIMG[Nw][Nh];
+	//		
+	//		
+	//			if false //((fieldnumber-1)^reversefields == 1)
+	//				getField(clip1, -clipOFFSET + integer(frame/2) + integer(stepping/2),  img4,  Nw,  Nh, (stepping&1)^reversefields);
+	//				PlaceFrame(img4, img5, pt0, w, h, 0, 4, 1)
+	//				PlaceFrame(src1, img4, pt0, w, h, 0, 4, 1)
+	//			else
+	//				getField(clip1, -clipOFFSET + integer(frame/2) + integer(stepping/2),  img5,  Nw,  Nh, (stepping&1)^reversefields);
+	//				getField(clip1, -clipOFFSET + integer(frame/2),  img4,  Nw,  Nh, reversefields);
+	//			end if	
+	//		
+	//			boundsOf(img4, inBox);
+	//			inBox *= 0.4;	//  scale the sample box to miss edges, number resulted from testing
+	//		
+	//			pt0 = {-w/4, 0};
+	//			PlaceFrame(img4, dest, pt0, w/2, h/2, 0, 4, 1)
+	//		
+	//			pt0 = {w/4, 0};
+	//			PlaceFrame(img5, dest, pt0, w/2, h/2, 0, 4, 1)
+	//		
+	//	
+	//		//	 float samples[inRows][inCols], averages[inRows];
+	//			numReporter(dest, CompareFrames(img4, img5, inRows, inCols, sensitivity), "all sample average", kfloat4, 30, 40, kcenterjustify);
+	//	
+	//		end if	// end compare frames
+				
+else if (workflow == 2)
+	
+	
+	if(RESETER)
+		numReporter(dest, 0, "Uncheck 'Zero Memory' to process frames", kfloat2, 50, 30, kCenterJustify);
+
+	else // memory is ready to be set
+	
+		float frameMatch, iterations, framesFound;
+		float lastIndex[maxCams+1]; // lastIndex is an array containing the last used index for each camera
+		float prevFrame[2];	// preFrame is used for tracking two-ago indexes for better incremental guessing
+		image newFrame[w][h];	
+		color FrameSamples[maxCams+1][inRows * inCols], newFrameSamples[inRows * inCols];	// store sampled color array here.
+	
+		if (SORTED != true && previewing && fieldnumber ==1)
+	
+			CAMCOUNT = -1; /// the number of cameras
+				
+			for j = 0 to (duration-1)	// j is the field/frame, loop through all
+				frameMatch = false; 	// reset the match variable
+				
+				getField(clip1,  -clipOFFSET  + integer(j/2),  newFrame,  Nw,  Nh, (j&1)^reversefields);	// get field to compare
+				SampleFrame(newFrame, newFrameSamples, inRows, inCols);	// fill newFrameSamples with colors from newFrame
+				
+					for i = 0 to (CAMCOUNT)		//  repeat for every known camera 
+						
+						iterations++;	// DEBUG -- track total iterations
+					
+						if (CAMCOUNT < 2) //(j < 2)			// THIS MIGHT BE A POINT OF FAILURE FOR ACCURACY
+							k = i;
+						else
+							k = (i + prevFrame[1]) % (CAMCOUNT + 1);	/// based on multiplexer's tendency to interleave incremented frames, increasing but not random.
+						end if
+						
+						if (CompareColors(newFrameSamples, FrameSamples[k], sensitivity))
+							FrameSamples[k] = newFrameSamples;	// store sampled color array for future comparisons
+							lastIndex[k]++;	// increment this and use it immediately
+							frameMap[k][lastIndex[k]] = j; // assign the interlaced frame number to the frames array using the next available index
+							frameMatch = true;
+							framesFound++	// DEBUG -- total number of found frames
+		
+							prevFrame[1] = prevFrame[0]
+							prevFrame[0] = k
+							exit for;
+						end if
+					next;
+								
+				if (!frameMatch)	// no matching frame found, add to a new camera, increment cameracount
+					CAMCOUNT = (CAMCOUNT < maxCams) ? CAMCOUNT+1 : CAMCOUNT;
+					FRAMEMAP[CAMCOUNT][0] = j;	// store frame number
+					FrameSamples[CAMCOUNT] = newFrameSamples;	// store color samples
+					lastIndex[CAMCOUNT] = 0;	// initialize lastIndex value
+					framesFound++	// DEBUG LINE -- increment the number of found frames
+		
+					prevFrame[1] = prevFrame[0]
+					prevFrame[0] = CAMCOUNT
+				end if
+			next;
+			
+			SORTED = true;
+		
+			numReporter(dest, iterations, "iterations", kfloat2, 0, 30, krightJustify);
+			numReporter(dest, framesFound, "framesFound", kfloat2, -30, 30, krightJustify);
+			numReporter(dest, duration, "duration", kfloat2, -45, 30, krightJustify);
+			numReporter(dest, CAMCOUNT+1, "CAMCOUNT", kfloat2, 15, 30, krightJustify);
+		
+		end if // end previewing
+		
+	//	ArrayFloatPrint_R(camMap);
+
+	end if
+
+else if (workflow == 3)		// frames should be sorted, play them back now.
+
+	// should move all post-processing of FRAMEMAP into the previous section so all heavy lifting is finished prior to now
+
+
+	float totalFrames;
+	totalFrames = ArrayFloatCountAll2(frameMap);
+
+	if (SORTED != true || totalFrames <= 1)
+		numReporter(dest, 0, "Frames Not Sorted, select 'Sort Frames' before re-ordering", kinteger, 50, 30, kCenterJustify);
+	else
+	
+		if (output == 1)
+			float	 flatMap[totalFrames]
+		
+			ArrayFloatFlatten(frameMap, flatMap);
+		
+			getField(clip1,  -clipOFFSET + integer(flatMap[frame]/2),  dest,  Nw,  Nh, (flatMap[frame]&1)^reversefields);
+			
+		else if (output == 2)
+		
+			float theFrame;
+
+			theFrame = FRAMEMAP[stretchCam-1][integer(ratio*ArrayFloatCount(FRAMEMAP[stretchCam-1]))]
+			getField(clip1, -clipOFFSET + integer(theFrame/2), dest, Nw, Nh, (theFrame&1)^reversefields);
+
+			numReporter(dest, ArrayFloatCount(FRAMEMAP[stretchCam-1]), "Camera Duration (frames)", kfloat2, h/2 - 10, 24, kcenterJustify);
+
+		else if (output == 3)
+		
+			channelfill(dest, 255, 0, 127, 127);
+			
+			float theFrame, cropValue;
+			float bigSquare;
+			string cameraNumber;
+	
+			bigSquare = ceil(Sqrt(CAMCOUNT));
+			cropValue = 0.9;
+			
+			setTextstyle(kplain);
+			setTextjustify(krightJustify);
+			setTextSize(18 * bigSquare);
+			
+			pt0.y = -h/2 + h/(2*bigSquare);
+			
+			for j = 0 to (CAMCOUNT - 1)
+				pt0.x = (j%bigSquare)/bigSquare * w - w/2 + w/2/bigSquare;
+				
+				theFrame = FRAMEMAP[j][integer(ratio*ArrayFloatCount(FRAMEMAP[j]))]
+
+				getField(clip1, -clipOFFSET + integer(theFrame/2), img1, Nw, Nh, (theFrame&1)^reversefields);
+				
+																
+				NumToString(j+1, cameraNumber, kinteger);		
+				DrawString(cameraNumber, w/2*cropValue- 10, h/2*cropValue - 5, 1.5, img1, kwhite, aspectof(dest));
+
+				placeFrame(img1, dest, pt0, w/bigSquare, h/bigSquare, 0, 4, cropValue);
+
+				if (j%bigSquare == bigSquare - 1)
+					pt0.y += h/bigSquare;
+				end if
+			next;
+		end if
+	end if		
+end if
+
+
+
+
+setTextjustify(kcenterJustify);
+setTextSize(24);
+DrawString("Joe's Filters Beta", 0, h/2 - h/8, 1.5, dest, kwhite, aspectof(dest));
