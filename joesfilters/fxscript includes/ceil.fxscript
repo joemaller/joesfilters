@@ -1,0 +1,3 @@
+on ceil(value _x)	// simple function to round towards positive infinity
+	return( ((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x));
+end
