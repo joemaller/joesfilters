@@ -1,24 +1,21 @@
-on mirrorRect(point _srcRect, value _flip)
+on mirrorRect(point _srcRect, value _flipX, value _flipY)
 	// mirror a rectangular area
-	// 1 = flip horizontal
-	// 2 = flip vertical
-	// 3 = flip both
-	// other values return _srcBox unchanged
+	// _flipX and _flipY are booleans
 	
 	float _j;
 	point _rotatetemp[4];
 	
 	_rotatetemp = _srcRect;
 	
-	if (_flip == 1) // flip horizontal
+	if (_flipX && !_flipY) // flipX
 		for _j = 0 to 3
 			_srcRect[_j] = _rotatetemp[_j^1];
 		next;
-	else if (_flip == 2) // flip vertical
+	else if (_flipY && !_flipX) // flip vertical
 		for _j = 0 to 3
 			_srcRect[_j] = _rotatetemp[3-_j];
 		next;
-	else if (_flip == 3) // flip both
+	else if (_flipX && _flipY) // flip both
 		for _j = 0 to 3
 			_srcRect[_j] = _rotatetemp[(_j + 2) % 4];
 		next;
