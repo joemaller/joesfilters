@@ -1,0 +1,155 @@
+filter "Joe's Channel Viewer"
+group "BETA"
+
+
+
+
+//input output, "Output", RadioGroup, 1, "All Channels (4-up)", "Alpha", "Luma (Y) / Red", "Cr (U) / Green", "Cb (V) / Blue";
+// possibly change the controls to be a choice of RGB/YUV grid instead of the color popup?
+
+
+input showcolors, "Show Colors", checkbox, 0;
+input RGBorYUV, "RGB or YUV", popup, 3, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
+
+InformationFlag("YUVaware");
+
+
+code
+
+
+// INCLUDE "ChannelView.fxscript"  v1.7
+
+on ChannelView(image _src, image _dest, value _colorSpace, value _colors)
+
+	// requires PlaceFrame.fxscript
+	// _src, _dest : source and destination image buffers
+	// _colors : boolean switch to show channels in color
+
+	point _dims, _srcBox[4], _destBox[4];
+	dimensionsOf(_dest, _dims.x, _dims.y);
+	image _temp[_dims.x][_dims.y], _temp2[_dims.x][_dims.y];
+	
+	
+	if (getPixelFormat(_src) != _colorSpace)
+		ConvertImage(_src, _temp, _colorSpace);
+		ConvertImage(_temp2, _temp2, _colorSpace);
+		ConvertImage(_dest, _dest, _colorSpace);
+	else
+		_temp = _src;
+	end if
+
+	_colors ^= 1;
+	boundsOf(_src, _srcBox)
+	boundsOf(_dest, _destBox);
+
+	_destBox *= 0.5;
+	
+	if (_colorSpace == kFormatYUV219)
+		channelfill(_temp2, 255, 127, 127, 127);
+
+		channelcopy(_temp, _temp2, knone, kalpha, knone, knone)
+		PlaceFrame(_temp2, _dest, _destBox[0], _destBox[2].x * 2, _destBox[2].y * 2, 0, 4, 1)
+	
+		channelfill(_temp2, 255, 127, 127, 127);
+
+		channelcopy(_temp, _temp2, knone, kred, knone, knone)
+		PlaceFrame(_temp2, _dest, _destBox[1], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4, 1)
+	
+		channelfill(_temp2, 255, 127, 127, 127);
+		
+		if (!_colors)
+			channelcopy(_temp, _temp2, knone, knone, kgreen, knone);
+		else
+			channelcopy(_temp, _temp2, knone, kgreen, knone, knone);
+		end if
+		PlaceFrame(_temp2, _dest, _destBox[3], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4, 1)
+		
+		channelfill(_temp2, 255, 127, 127, 127);
+
+		if (!_colors)
+			channelcopy(_temp, _temp2, knone, knone, knone, kblue);
+		else
+			channelcopy(_temp, _temp2, knone, kblue, knone, knone);
+		end if
+		PlaceFrame(_temp2, _dest, _destBox[2], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4, 1)
+
+	else
+		channelfill(_temp2, 255, 0, 0, 0);
+		channelcopy(_temp, _temp2, knone, kalpha, kalpha, kalpha)
+		PlaceFrame(_temp2, _dest, _destBox[0], _destBox[2].x * 2, _destBox[2].y * 2, 0, 4, 1)
+	
+		channelcopy(_temp, _temp2, knone, kred, kred, kred)
+		channelMultiply(_temp2, _temp2, 1, 1, _colors, _colors);
+		PlaceFrame(_temp2, _dest, _destBox[1], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4, 1)
+		
+		channelcopy(_temp, _temp2, knone, kgreen, kgreen, kgreen);
+		channelMultiply(_temp2, _temp2, 1, _colors, 1, _colors);
+		PlaceFrame(_temp2, _dest, _destBox[3], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4, 1)
+	
+		channelcopy(_temp, _temp2, knone, kblue, kblue, kblue);
+		channelMultiply(_temp2, _temp2, 1, _colors, _colors, 1);
+		PlaceFrame(_temp2, _dest, _destBox[2], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4, 1)
+
+	end if
+end 
+
+// END "ChannelView.fxscript"
+ 
+
+
+// INCLUDE "PlaceFrame.fxscript"  v1.1
+
+on PlaceFrame(image _src, image _dest, point _originPt, value _frameWidth, value _frameHeight, value _angle, value _orientation, value _cropFrame)
+		
+		// _src : source image to copy from
+		// _dest : destination image buffer
+		// _originPt: point in destination buffer where the fframe will be drawn
+		// _frameWidth: width of the output frame
+		// _frameHeight: height of the output frame
+		// _angle: rotation angle of rotated frame, around _originPt
+		// _orientation:  0-3 = destination rectangle corners, 4 = center
+		// _cropFrame:  < 1 decimal value, crops into image similar to action-safe area definition
+	
+	point _srcBox[4], _destBox[4], _rotateCenter;
+	float _FieldOrder;
+
+	_FieldOrder = (fieldNumber - 1 == topfield);	// do this in here for one less thing to worry about
+
+	boundsOf(_src, _srcBox);
+	
+	if (_orientation == 0)	
+		MakeRect(_destBox, _originPt.x,  _originPt.y, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[0];
+
+	else if (_orientation == 1)
+		MakeRect(_destBox, _originPt.x - _frameWidth,  _originPt.y, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[1];
+
+	else if (_orientation == 2)
+		MakeRect(_destBox, _originPt.x - _frameWidth,  _originPt.y - _frameHeight, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[2];
+
+	else if (_orientation == 3)
+		MakeRect(_destBox, _originPt.x,  _originPt.y- _frameHeight, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[3];
+		
+	else if (_orientation == 4)
+		MakeRect(_destBox, _originPt.x - _frameWidth/2,  _originPt.y - _frameHeight/2, _frameWidth, _frameHeight);
+		_rotateCenter = _originPt;
+	end if
+	
+	Rotate(_destBox, _rotateCenter, _angle, aspectOf(_dest));
+	
+	_srcBox *= _cropFrame;			// crop into source frame
+	
+	_rotateCenter = {0, (fieldnumber-1)^_FieldOrder};	// reuse _rotateCenter for _srcBox field-shifting
+	_srcBox += _rotateCenter;		// shift soucebox to compensate for field-based output
+	blitRect(_src, _srcBox, _dest, _destBox);
+	
+end
+
+// END "PlaceFrame.fxscript"
+ 
+
+ChannelView(src1, dest, RGBorYUV, showcolors)
+
