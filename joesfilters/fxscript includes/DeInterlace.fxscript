@@ -7,7 +7,7 @@ on DeInterlace(image _src, image _dest, value _field, value _method)
 	// 3 = field double
 		
 	if (_method == 1)
-		DeInterlaceFast(_src, _dest, _field);
+		DeInterlaceFast(_src, _dest, _field, true);
 	else if (_method == 2)
 		DeInterlaceInterpolate(_src, _dest, _field);
 	else if (_method == 3)
