@@ -18,6 +18,7 @@ group "BETA";
 
 
 
+
 input label0, "De-Interlace", label, "";
 input FieldPicker, "Field", RadioGroup, 1, "First", "Second";
 input fieldDominance, "Field Dominance", popup, 2, "Upper Field First", "Lower Field First";
@@ -34,6 +35,7 @@ input qual, "Difference Quality", checkbox, 1;
 input fdiff, "difference function", checkbox, 1;
 input showchannels, "Show Channels", checkbox, 0;
 input showcolors, "Show Colors", checkbox, 1;
+input fakeBlur, "fakeBlur", checkbox, 0;
 
 input AN, "AN", angle, 0, -360, 360;
 input ORI, "OR", slider, 0, 0, 5;
@@ -54,6 +56,8 @@ input opacity, "Opacity", slider, 100, 0, 100;
 
 input title, "Joe's Filters", Label,"";
 input title1, "www.joesfilters.com", Label,"";
+input Color2, "Color2", color, 255, 0, 0, 125;
+
 
 fullframe
 
@@ -478,7 +482,8 @@ on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _
 		// 		do channelcopy on smaller image 
 		// 		is still faster to down-blit the bigger image first since channelcopy is costly
 		
-		if (_srcBox[2].x * _srcBox[2].y > _destBox[2].x * _destBox[2].y)	// _src is larger than _dest
+		//if (_srcBox[2].x * _srcBox[2].y > _destBox[2].x * _destBox[2].y)	// _src is larger than _dest
+		if (true)
 			image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
 			blitRect(_src, _srcBox, _temp, _destBox);
 			channelCopy(_temp, _dest, _A, _R, _G, _B);
@@ -492,6 +497,7 @@ on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _
 		end if
 	end if
 end
+
 // END "ChannelCopyFit.fxscript"
 
 
@@ -604,6 +610,10 @@ end
 
 on ChannelView(image _src, image _dest, value _colors)
 
+	// requires PlaceFrame.fxscript
+	// _src, _dest : source and destination image buffers
+	// _colors : boolean switch to show channels in color
+
 	point _dims, _srcBox[4], _destBox[4];
 	dimensionsOf(_dest, _dims.x, _dims.y);
 	image _temp[_dims.x][_dims.y];
@@ -648,8 +658,7 @@ on ColorRampImage(image _img, color _fg, color _bg, value _thr, value _steps)
 	image _temp[_w][_h];
 	
 	Desaturate(_img, _img);
-		channelcopy(_img, _img, kgreen, knone, knone, knone)
-	//	channelcopy(_img, _img, kgray, knone, knone, knone)
+	channelcopy(_img, _img, kgreen, knone, knone, knone)
 
 
 	makeThresholdMapBez(_adj, _thr, _steps, 255)	
@@ -770,7 +779,9 @@ image halfbuffer2[w][h/2]		//only used by option 3
 
 
 
-
+DeInterlace(src1, dest, FieldPicker ^ fieldDominance, FieldMethod); // primary deinterlace, 
+		// above might be a possible field selection bug, should use fieldDominance to flip selection? (or did that already happen?)
+	
 
 if (CLIPDUR == kundefined); // check for cached data
 	getLimits(clip1, CLIPDUR, CLIPOFFSET);
@@ -778,6 +789,7 @@ end if;
 
 if (CLIPDUR > 0)
 	
+
 	if (motiondiff ==2)	// single frame, diff fields
 		DeInterlaceFast(src1, xbuffer, 0);
 		DeInterlaceFast(src1, xbuffer2, 1);
@@ -785,11 +797,11 @@ if (CLIPDUR > 0)
 	
 	else if (motiondiff == 3)	// surrounding fields
 		
-		getField(clip1, -CLIPOFFSET + frame + ((fieldPicker ^ fieldDominance) * 2 - 1), halfbuffer, w, h, FieldPicker ^ 1);
-		DeInterlaceFast(src1, halfbuffer2, FieldPicker ^ 1);
-		DeInterlaceFast(src1, dest, FieldPicker);
-		// above might be a possible field selection bug, should use fieldDominance to flip selection? (or did that already happen?)
-	
+		getField(clip1, -CLIPOFFSET + frame + ((fieldPicker ^ fieldDominance) * 2 - 1), halfbuffer, w, h, FieldPicker ^ fieldDominance ^ 1);
+		DeInterlaceFast(src1, halfbuffer2, FieldPicker ^ fieldDominance ^ 1);
+			// above might be a possible field selection bug, should use fieldDominance to flip selection? (or did that already happen?)
+		
+				
 		if (fdiff == 0)
 	
 			DifferenceMask(halfbuffer, halfbuffer2, dest, threshold, steps, soften, showMask, qual);
@@ -797,16 +809,15 @@ if (CLIPDUR > 0)
 		else
 	
 			float _diffmap[256];
-			makeThresholdMapBez(_diffmap, threshold, steps, 255);
+			makeThresholdMapBez(_diffmap, threshold, 1, 255);
 			
 			difference(halfbuffer2, halfbuffer, halfbuffer2, kalpha);
-			BlurChannel(halfbuffer, halfbuffer2, soften, 1,1,1,1, aspectOf(dest));
-			levelmap(halfbuffer2, halfbuffer, linearRamp, linearRamp, _diffmap, linearRamp);
+			BlurChannel(halfbuffer2, halfbuffer, soften, 1,1,1,1, aspectOf(dest));
+			levelmap(halfbuffer, halfbuffer2, linearRamp, linearRamp, _diffmap, linearRamp);
 				
-			channelCopyFit(halfbuffer, dest, kgreen, knone, knone, knone);
+			channelCopyFit(halfbuffer2, dest, kgreen, knone, knone, knone);
 		end if
 		
-		matte(dest, src1, dest, 1, kalpha);
 
 		
 	else if (motiondiff == 4) 	// surrounding frames, double-diff now-prev, now-next
@@ -832,6 +843,14 @@ if (CLIPDUR > 0)
 		end if	
 	
 	end if			
+ 	
+ 	if (opacity < 100)
+ 		//channelmultiply(src1, xbuffer, 1, opacity/100, opacity/100, opacity/100);
+ 		channelmultiply(src1, xbuffer, opacity/100, 1,1,1);
+ 		matte(dest, xbuffer, dest, 1, kalpha);
+	else
+		matte(dest, src1, dest, 1, kalpha);
+ 	end if
 
 end if
 
@@ -859,4 +878,9 @@ end if
 // 
 // end if
 // 	
+
+Color2.a = 0
+ColorRampImage(dest, maskColor, Color2, threshold, steps)
+
+
 
