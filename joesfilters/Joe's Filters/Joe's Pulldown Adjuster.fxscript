@@ -1,0 +1,605 @@
+filter "Joe's Pulldown Adjuster [BETA]"
+group "Joe's NTSC Pulldown Tools"
+
+
+input chooseFields, "Assign Fields", RadioGroup, 1, "Select Pulldown", "Adjust Pulldown";
+
+
+
+input pulldownIN, "Source Pulldown", popup, 11, "None", " --- ", "Standard 3:2 SSwww (1 & 2)", "Standard 3:2 wSSww (2 & 3)", "Standard 3:2 wwSSw (3 & 4)", "Standard 3:2 wwwSS (4 & 5)", "Standard 3:2 SwwwS (1 & 5)", " --- ", "Advanced 3:2 Swwww  (1)", "Advanced 3:2 wSwww  (2)", "Advanced 3:2 wwSww  (3)", "Advanced 3:2 wwwSw  (4)", "Advanced 3:2 wwwwS  (5)";
+input pulldownOUT, "Output Pulldown", popup, 11, "None", " --- ", "Standard 3:2 SSwww (1 & 2)", "Standard 3:2 wSSww (2 & 3)", "Standard 3:2 wwSSw (3 & 4)", "Standard 3:2 wwwSS (4 & 5)", "Standard 3:2 SwwwS (1 & 5)", " --- ", "Advanced 3:2 Swwww  (1)", "Advanced 3:2 wSwww  (2)", "Advanced 3:2 wwSww  (3)", "Advanced 3:2 wwwSw  (4)", "Advanced 3:2 wwwwS  (5)";
+
+input bypass, "bypass", checkbox, 0;
+input fieldCheck, "fieldCheck", checkbox, 0;
+input showtext, "showtext", checkbox, 0;
+
+//InformationFlag("YUVaware"); 	// enable this later on for YUV speed boost, will need to fix all colors first.
+
+code
+
+// INCLUDE "PtReporter.fxscript"  v1.1
+
+on PtReporter(image _destIMG, point _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporterX, reporterY;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.x, reporterX, _numberformat);
+	NumToString(_data.y, reporterY, _numberformat);
+	reporterX = _label + " = {" + reporterX + "," + reporterY + "}";
+	DrawString(reporterX, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "PtReporter.fxscript"
+ 
+
+
+ 
+
+
+// INCLUDE "DeInterlaceFast.fxscript"  v1.6
+
+on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix)
+	
+	// _srcIMG : source image
+	// _destIMG : destination image
+	// _field : 0 = top field, 1 = bottom field
+	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional field-based de-interlace calls
+
+	// this might fail at some future time if the scaling method in FCP changes
+
+	if (_field != 0 && _field != 1)
+		ErrorReporter(dest, "_field must be a boolean");
+		return;
+	end if	
+		
+	float _j;
+	point _r1[4], _r2[4];
+	BoundsOf(_srcIMG, _r1);
+	
+	if (_field) // second field, shift box down
+		_r1[0].y += 1;	// shift top row down
+		_r1[1].y += 1;
+		if ((_r1[3].y - _r1[0].y) & 1) 	// frame height needs to be even
+			_r1[2].y += 1;			// shift bottom down one row
+			_r1[3].y += 1;
+		end if
+
+	else // first field
+		if ((_r1[3].y - _r1[0].y) & 1) // odd frame height
+			_r1[2].y -= 1; // odd frame height, trim one row off of bottom
+			_r1[3].y -= 1;
+		end if
+	end if
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) /2];
+	BoundsOf(_halfIMG, _r2);
+	BlitRect(_srcIMG, _r1, _halfIMG, _r2); // smash blit (isolates fields)
+	
+	if (_bounceFix)
+		makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for  field bouncing
+	end if
+	BoundsOf(_destIMG, _r1);
+	BlitRect(_halfIMG, _r2, _destIMG, _r1);
+
+end
+
+// END "DeInterlaceFast.fxscript"
+ 
+// INCLUDE "getField.fxscript"  v1.5
+
+on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
+	//REQUIRES: 	DeInterlaceFast.fxscript
+	//				ErrorReporter.fxscript
+
+	// getField(clip, frame, dest, 720, 480, 1);
+	// replacement for GetVideo which returns a single field of interlaced video
+	// basic getVideo call plus dinmensions and field selection
+	// field is 0 or 1 to match deinterlace functions
+	
+	// getvideo into half-height buffers appears to return only the upper field (line 0)
+	// that means de-intelacing can be skipped for matching fields to save processing
+	
+	if (_field < 0 || _field > 1)
+		ErrorReporter(dest, "_field value out of range");
+		return;
+	end if
+	
+	
+	if (_field == 0)
+		image _half[_nativeW][_nativeH/2];
+		point _halfBox[4], _destBox[4];
+		boundsOf(_half, _halfBox);
+		boundsOf(_dest, _destBox);
+		
+		if (_halfBox[0] == _destBox[0] && _halfBox[2] == _destBox[2])	// _half is the same size as _dest, skip a blit
+		
+			getVideo(_clip1, _offset, _dest);
+
+		else		// _half and _dest are different sizes, use blitRect
+				
+			getVideo(_clip1, _offset, _half);
+			blitRect(_half, _halfBox, _dest, _destBox);
+		
+		end if
+		
+			
+	else // _field == 1
+		image _full[_nativeW][_nativeH];
+		getVideo(_clip1, _offset, _full);
+		DeInterlaceFast(_full, _dest, _field, false);
+	end if
+	
+end	// end getField
+
+
+// END "getField.fxscript"
+ 
+
+
+
+// INCLUDE "NumReporter.fxscript"  v1.1
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235/fieldNumber,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(dest));
+
+end
+
+
+// END "NumReporter.fxscript"
+ 
+ 
+ 
+ 
+
+// INCLUDE "basic math.fxscript"  v1.1
+
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
+
+// END "basic math.fxscript"
+ 
+
+// INCLUDE "PlaceFrame.fxscript"  vNew
+
+on PlaceFrame(image _src, image _dest, point _originPt, value _frameWidth, value _frameHeight, value _angle, value _orientation)
+		
+		// _src : source image to copy from
+		// _dest : destination image buffer
+		// _originPt: point in destination buffer where the fframe will be drawn
+		// _frameWidth: width of the output frame
+		// _frameHeight: height of the output frame
+		// _angle: rotation angle of rotated frame, around _originPt
+		// _orientation:  0-3 = destination rectangle corners, 4 = center
+		
+	if (_orientation < 0 || _orientation > 4)
+		ErrorReporter(dest, "_orientation value out of range (0-4)");
+		return;
+	end if
+	
+	if (_orientation - integer(_orientation) > 0)
+		ErrorReporter(dest, "_orientation must be an integer");
+		return;
+	end if
+	
+		
+	point _srcBox[4], _destBox[4], _rotateCenter;
+	boundsOf(_src, _srcBox);
+	
+	if (_orientation == 0)	
+		MakeRect(_destBox, _originPt.x,  _originPt.y, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[0];
+
+	else if (_orientation == 1)
+		MakeRect(_destBox, _originPt.x - _frameWidth,  _originPt.y, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[1];
+
+	else if (_orientation == 2)
+		MakeRect(_destBox, _originPt.x - _frameWidth,  _originPt.y - _frameHeight, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[2];
+
+	else if (_orientation == 3)
+		MakeRect(_destBox, _originPt.x,  _originPt.y- _frameHeight, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[3];
+		
+	else if (_orientation == 4)
+		MakeRect(_destBox, _originPt.x - _frameWidth/2,  _originPt.y - _frameHeight/2, _frameWidth, _frameHeight);
+		_rotateCenter = _originPt;
+	end if
+	
+	Rotate(_destBox, _rotateCenter, _angle, aspectOf(_dest));
+	blitRect(_src, _srcBox, _dest, _destBox);
+	
+	// note 7-31-04: may want to add something to report output rectangle for easier tiling...
+
+end
+
+// END "PlaceFrame.fxscript"
+ 
+ 
+//	 	
+//	on get24pADV(value _frame, value _judderPhase)
+//		// always based on 30fps (29.97) NTSC
+//		// translates 24p frame numbers into their 24pAdvanced equivalents
+//		// returns the NTSC equivalent frame based on a 24p frame number
+//		// this can be used to extract 24p frames from 24pA clips
+//		// _judderPhase is a 0-4 integer specifying the NTSC judder frame cadence
+//			
+//		_frame = integer(_frame);
+//		return _frame + integer((_frame + (4-_judderPhase))/4);
+//	end 
+//		
+//		
+//	on get24pSTD(value _frame, value _pulldownIN, value _pulldownOUT)
+//		// input an NTSC frame number, incoming (native) pulldown and output pulldown
+//		// compares pulldown and returns the whole-frame number of the frame to get (often the same)
+//		// will shift wSSww forward one field if the alternate pattern is SSwww
+//		// _judderPhase is a 0-4 integer specifying the NTSC judder frame cadence
+//	
+//	
+//			if (_pulldownIN == 0 && _pulldownOUT == 4)
+//				_pulldownIN = 5;
+//			end if
+//			if (_pulldownIN == 4 && _pulldownOUT == 0)
+//				_pulldownOUT = 5;
+//			end if
+//			
+//			
+//	//		float _TEMPoffset
+//		
+//		
+//		if integer(_frame * 24/60 + pulldownIN/5) == integer(_frame * 24/60 + pulldownOUT/5)
+//			return floor(_frame/2) + 0;
+//		else if integer(_frame * 24/60 + pulldownIN/5) > integer(_frame * 24/60 + pulldownOUT/5)
+//			return floor(_frame/2) - 1;
+//		else if integer(_frame * 24/60 + pulldownIN/5) < integer(_frame * 24/60 + pulldownOUT/5)
+//			return floor(_frame/2) + 1;
+//		end if
+//		
+//	
+//	//	return (floor(_frame/2) + _TEMPoffset);
+//		/// this should output the same kind of frame as input, if it's frame/2 in, it's frame/2 out. Change this...
+//	end  
+//	
+
+
+
+on get24pADV_2  ( value _frame, value _pulldown)
+	// input an NTSC frame number and a pulldown phase (0-4)
+	// returns a 24p number which is used for comparison externally
+	// essentially a 24p decoder for NTSC values
+
+		float _24pFrame
+	 	_24pFrame = floor(_frame/2) - floor(_frame/10);
+	 //	if (_frame%10 == _pulldown%5*2); _24pFrame -=1; end if
+	 //	if (_frame%10 > _pulldown%5*2+1); _24pFrame -=1; end if
+	 	if (_frame%10 == _pulldown*2); _24pFrame -=1; end if
+	 	if (_frame%10 > _pulldown*2+1); _24pFrame -=1; end if
+	 	if (_pulldown == 0); _24pFrame +=1; end if	// shift 0-phase into 5-phase, eliminates the negative value and fixes several bugs.
+
+	 	
+	 	return _24pFrame;
+end 
+
+
+on get24pSTD_2  ( value _frame, value _pulldown)
+	// input an NTSC frame number and a pulldown phase (0-5), 5 being the foward shift of the end phase
+	// returns a 24p number which is used for comparison externally
+	// essentially a 24p decoder for NTSC values
+
+	return integer(_frame * 24/60 + _pulldown/5);
+end 
+
+
+
+float w,h,j, FieldOrder, clipDUR, clipOFFSET, inPulldownSTD, inPulldownADV, outPulldownSTD, outPulldownADV, srcFrame24p, destFrame24p
+point inBox[4], outBox[4], fieldPt;
+
+	float getFrame, judderFrameOut, judderFrameIn; // replace this later by reassigning the input variable 'adv24pFrame'
+	float doFrame
+
+dimensionsof(dest, w, h);
+
+color debugColor;
+FieldOrder = (fieldNumber - 1 == topfield);
+
+
+getLimits(clip1, clipDUR, clipOFFSET);
+
+boundsOf(dest, inBox)
+outBox = inBox;
+//dest = src1;
+image img0[w][h*(fieldProcessing+1)];
+
+
+ if (pulldownIN > 2 && pulldownIN < 8)  // Standard 3:2 pulldown
+ 	inPulldownSTD = true;
+ 	pulldownIN = (pulldownIN + 1 ) % 5;
+ else if (pulldownIN > 8 && pulldownIN < 14)  // Advanced 24p 2:3:3:2 pulldown
+  	inPulldownADV = true;
+ 	pulldownIN = (pulldownIN - 9 );
+end if
+
+if (pulldownOUT > 2 && pulldownOUT < 8)  // Standard 3:2 pulldown
+	pulldownOUT = (pulldownOUT + 1 ) % 5;
+	outPulldownSTD = true;
+else if (pulldownOUT > 8 && pulldownOUT < 14)  // Advanced 24p 2:3:3:2 pulldown
+	pulldownOUT = (pulldownOUT - 9 );
+	outPulldownADV = true;
+end if
+
+
+
+	
+	
+	
+	
+if (chooseFields == 1)
+
+	channelfill(dest, 0, 0, 0, 0);
+	point pt0, pt1;
+	string frameString;
+	image spacer[5][5], spacer2[5][5];
+	image img1[w][h], report[w][h];
+
+
+	pt0 = {(w-50)/5 - (w-50)/2, -h/2}
+	
+	channelfill(report, 0, 0, 0, 0);
+	channelFill(spacer, 0, 0, 0, 0);
+	boundsOf(spacer, outBox);
+	line(outBox[0], outBox[1],spacer,  kblack, 6)
+	BlurChannel(spacer, spacer2, 8, 1, 0, 0, 0, 1);
+	channelmultiply(spacer2, spacer2, 1.5, 0, 0, 0);
+	makeRect(inBox, -w/2, 80, w, 35);
+	blitRect(spacer2, outBox, report, inBox);
+
+	
+	
+	
+	
+	for j = 0 to 4
+		getField(clip1, floor(frame/(fieldProcessing+1) + j) - clipOFFSET, img1, w, h*(fieldProcessing+1), (fieldnumber -1)^fieldOrder)
+			
+		 if (inPulldownSTD) // Standard 3:2 pulldown
+			if floor((frame +j*2  - (fieldnumber - 1)) * 24/60 + pulldownIN/5) == floor((((frame+j*2) - (fieldnumber - 1))^1) * 24/60 + pulldownIN/5)
+				channelmultiply(img1, img1, 1, 0.5, 0.6, 0.5);
+			end if
+								
+		 else if (inPulldownADV) // Advanced 3:2 pulldown
+			if (floor(frame/(fieldProcessing+1)) + j) % 5 != pulldownIN);	
+				channelmultiply(img1, img1, 1, 0.5, 0.6, 0.5);
+			end if
+		end if
+		
+		
+			
+		pt0 = {(j+1)*(w-50)/5 - (w-50)/5 - (w-50)/2, -h/2};
+		placeFrame(img1, dest, pt0, w/5, h, 0, 0);
+		
+		
+			makeRect(inBox, pt0.x + 2, 75, w/5 - 4, 5 * aspectOf(dest));
+
+		
+			if (outPulldownSTD) // Standard 3:2 pulldown
+
+			if floor((frame +j*2  - (fieldnumber - 1)) * 24/60 + pulldownOUT/5) != floor((((frame+j*2) - (fieldnumber - 1))^1) * 24/60 + pulldownOUT/5)
+				//channelmultiply(img1, img1, 1, 0.7, 1, 0.5);
+				fillpoly(inBox, dest, kgreen);
+			end if
+	else if (outPulldownADV) // Advanced 3:2 pulldown
+				if (floor(frame/(fieldProcessing+1)) + j) % 5 == pulldownOUT);	
+			//	channelmultiply(img1, img1, 1, 0.7, 1, 0.5);
+							fillpoly(inBox, dest, kgreen);
+
+			end if
+	end if
+
+		
+		
+		
+		
+		pt1 = {pt0.x + (w-50)/10, 100}		
+		
+			settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(36);
+
+					
+		NumToString(floor(frame/(fieldProcessing+1) + j)%5 + 1, frameString, kinteger);
+		DrawString(frameString, pt1.x, pt1.y, 1,  report, kwhite, aspectof(dest));
+		if floor((frame/(fieldProcessing+1) + j)%5) == 0
+			pt1 = {pt0.x, h/2}
+			line(pt0, pt1, report, kred, 5)
+		end if
+
+	next;	
+
+	matte(report, dest, dest, 1, kalpha)
+
+else
+	
+	
+//		// judder frame detection:
+//		judderFrameOut = floor((frame - (fieldnumber - 1)) * 24/60 + pulldownOUT/5) != floor(((frame - (fieldnumber - 1))^1) * 24/60 + pulldownOUT/5);
+//	
+//		if (inPulldownSTD && outPulldownSTD)	//  3:2 ->  3:2
+//			getFrame = get24pSTD(frame, pulldownIN, pulldownOUT);
+//		//	judderFrameIn = floor((frame - (fieldnumber - 1)) * 24/60 + pulldownIN/5) != floor(((frame - (fieldnumber - 1))^1) * 24/60 + pulldownIN/5);
+//			doFrame = (getFrame != floor(frame/2)) //&& (judderFrameOut != judderFrameIn);
+//			
+//		else if (inPulldownADV && outPulldownSTD)	//  24pA ->  3:2
+//			getFrame = 	get24pADV(floor(frame * 24/60 + pulldownOUT/5), pulldownIN) // converts 24p frame number to 29.97 pulldown equivalent
+//			judderFrameIn = floor(frame/(fieldProcessing+1)) % 5 == pulldownIN;	// 24pa judder is the split frame
+//			doFrame = (getFrame != floor(frame/2)) && (judderFrameOut != judderFrameIn);
+//	
+//		else if (inPulldownADV && outPulldownADV)	//  24pA ->  24pA
+//		
+//			getFrame = 	floor(get24pADV_2(frame, pulldownIN)/2);
+//			doFrame = (getFrame != floor(frame/2));
+//		end if
+
+
+
+
+if (inPulldownADV)		
+	srcFrame24p = get24pADV_2(frame, pulldownIN);
+else if (inPulldownSTD)
+	srcFrame24p = get24pSTD_2(frame, pulldownIN);
+end if
+
+if outPulldownADV		
+	destFrame24p = get24pADV_2(frame, pulldownOUT);
+else if outPulldownSTD		
+	destFrame24p = get24pSTD_2(frame, pulldownOUT);
+end if
+		
+getFrame =  integer(frame/2) + destFrame24p - srcFrame24p;
+
+
+
+	if (destFrame24p != srcFrame24p)
+		if (!bypass)
+			getField(clip1, getFrame - clipOFFSET, dest, w, h * (fieldprocessing +1), (fieldnumber -1)^fieldOrder);
+		else
+			dest = src1;
+		end if
+		
+		debugColor = {255, 0, 0, 255};				
+	
+	else
+		dest = src1;
+		debugColor = {255, 255, 0, 0};				
+	end if
+			
+						
+	if showtext
+	
+		channelmultiply(dest, dest,1, 0.5, 0.5, 0.5);
+
+		float aaa
+		aaa = -h/2 * (frame&1^1)
+
+		
+//			fieldPt = {frame - (fieldnumber - 1), (frame - (fieldnumber - 1))^1}
+//			fieldPt *=  0.5;
+//	//		ptreporter(dest, fieldPt, "Basis NTSC", kfloat2, -75, 32, 1);
+//			
+//			fieldPt = {frame - (fieldnumber - 1), (frame - (fieldnumber - 1))^1}
+//			fieldPt *=  24/60;
+//			fieldPt += pulldownOUT/5;
+//			fieldPt.x = floor(fieldPt.x)
+//			fieldPt.y = floor(fieldPt.y)
+//			fieldPt *=  30/24;
+//			
+//			if ((floor((frame - 1) * 24/60 + pulldownOUT/5)) != (floor(frame * 24/60 + pulldownOUT/5)) && (fieldnumber -1) && (floor(frame/2) + adv24pFrame) % 5 == 0));
+//				fieldPt.y -=1; 
+//			end if;
+//			
+//	//		ptreporter(dest, fieldPt, "pulld NTSC", kfloat2, -60, 32, 1);
+//			
+//			fieldPt = {frame - (fieldnumber - 1), (frame - (fieldnumber - 1))^1}
+//			fieldPt *=  24/60;
+//			fieldPt += pulldownOUT/5;
+//			ptreporter(dest, fieldPt, " 0", kfloat2, -15, 32, 1);
+//				
+//			fieldPt = {frame - (fieldnumber - 1), (frame - (fieldnumber - 1))^1}
+//			fieldPt +=2;
+//			fieldPt *=  24/60;
+//			fieldPt += pulldownOUT/5;
+//			ptreporter(dest, fieldPt, "+1", kfloat2, 0, 32, 1);
+//		
+//			fieldPt = {frame - (fieldnumber - 1), (frame - (fieldnumber - 1))^1}
+//			fieldPt +=4;
+//			fieldPt *=  24/60;
+//			fieldPt += pulldownOUT/5;
+//			ptreporter(dest, fieldPt, "+2", kfloat2, 15, 32, 1);
+//			
+//			fieldPt = {frame - (fieldnumber - 1), (frame - (fieldnumber - 1))^1}
+//			fieldPt +=6;
+//			fieldPt *=  24/60;
+//			fieldPt += pulldownOUT/5;
+//			ptreporter(dest, fieldPt, "+3", kfloat2, 30, 32, 1);
+//			
+//			fieldPt = {frame - (fieldnumber - 1), (frame - (fieldnumber - 1))^1}
+//			fieldPt +=8;
+//			fieldPt *=  24/60;
+//			fieldPt += pulldownOUT/5;
+//			ptreporter(dest, fieldPt, "+4", kfloat2, 45, 32, 1);
+	
+		//numreporter(dest, frame/2, "30p frame", kfloat2, 30 + aaa, 30, 1);
+		//numreporter(dest, floor(frame * 24/60), "24p frame", kfloat2, 40+ aaa, 30, 1);
+		//numreporter(dest, floor((frame + pulldown/10) * 24/60), "24p pulld", kfloat2, 50+ aaa, 30, 1);
+		//numreporter(dest, (floor(frame * 24/60))  * 30/24 +pulldown/10, "recast 30p", kfloat2, 40+ aaa, 30, 1);
+		//numreporter(dest, (floor(frame/2) + adv24pFrame) % 5, "(frame + adv24pFrame) % 5", kfloat2, 60+ aaa, 30, 1);
+
+//		numreporter(dest, get24pADV(floor(frame * 24/60 + pulldownOUT/5), pulldownIN), "get24pADV frame", kfloat2, -90, 30, 1);
+
+	//	numreporter(dest, floor(frame * 24/60 + pulldownOUT/5) * 60/24, "corrected NTSC", kfloat2, -80, 30, 1);
+		numreporter(dest, floor(frame/2), "frame/2", kfloat2, -90, 30, 1);
+		numreporter(dest, frame, "frame", kfloat2, -80, 30, 1);
+		numreporter(dest, getFrame, "getFrame", kfloat2, -100, 30, 1);
+		
+		
+		
+		if inPulldownADV		
+			numreporter(dest, get24pADV_2(frame, pulldownIN), "IN: get24pADV_2()", kfloat2, -60, 30, 1);
+		else if inPulldownSTD
+			numreporter(dest, get24pSTD_2(frame, pulldownIN), "IN: get24pSTD_2()", kfloat2, -60, 30, 1);
+		end if
+		if outPulldownADV		
+			numreporter(dest, get24pADV_2(frame, pulldownOUT), "OUT: get24pADV_2()", kfloat2, -50, 30, 1);
+		else if outPulldownSTD
+			numreporter(dest, get24pSTD_2(frame, pulldownOUT), "OUT: get24pSTD_2()", kfloat2, -50, 30, 1);
+		end if
+
+		numreporter(dest, integer(frame/2) - getFrame, "integer(frame/2) - getFrame", kfloat2, -35, 30, 1);
+
+
+//		numreporter(dest, get24pSTD(frame * 24/60 + pulldownIN/5, pulldownOUT), "get24pSTD", kfloat2, -80, 30, 1);
+	//	numreporter(dest, get24pSTD(frame * 0.4 + pulldownIN/5, pulldownOUT), "get24pSTD", kfloat2, -80, 30, 1);
+
+		numreporter(dest, judderFrameIn, "judderFrameIn", kfloat2, 110, 30, 1);
+		numreporter(dest, judderFrameOut, "judderFrameOut", kfloat2, 100, 30, 1);
+		
+		fieldPt = {floor((frame - (fieldnumber - 1)) * 24/60 + pulldownOUT/5), floor(((frame - (fieldnumber - 1))^1) * 24/60 + pulldownOUT/5)};
+
+		ptreporter(dest, fieldPt, "judder comparison", kfloat2, 65, 32, 1);
+		
+
+		makeRect(inBox, w/2 - 50, h/2 - 50, 50, 50); 
+		fillPoly(inBox, dest, debugColor);	
+	end if
+	
+end if
+			
+		
