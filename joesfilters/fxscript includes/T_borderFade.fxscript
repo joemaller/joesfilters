@@ -1,0 +1,45 @@
+on T_borderFade(image _src1, image _src2, image _dest, point _centerPt, value _w, value _h, value _ratio, value _lineMaxWidth, color _lineColor)
+	// a simple fade transition effect with a time-variable width border
+
+	
+	if (_w > 0 && _h > 0) // width of incoming box has non-zero h/w
+		
+		point _inBox[4], _outBox[4];
+		makeRect(_inBox, floor(_centerPt.x-_w/2), floor(_centerPt.y-_h/2), ceil(_w), ceil(_h));
+
+		if (_ratio <= 0 || _ratio >= 1)	// straight blit
+			_outBox = _inbox;
+			if (_ratio <= 0)
+				blitRect(_src1, _inBox, _dest, _outBox);
+			else if (_ratio >= 1)
+				blitRect(_src2, _inBox, _dest, _outBox);
+			end if
+
+		else	// do transtion effect
+		
+			image _img1[_w][_h], _img2[_w][_h];		// effects are only calculated at output size
+
+			makeRect(_inBox, _centerPt.x-_w/2, _centerPt.y-_h/2, _w, _h);
+
+			boundsOf(_img1, _outBox);
+			blitRect(_src1, _inBox, _img1, _outBox);
+			blitRect(_src2, _inBox, _img2, _outBox);
+			
+			matte(_img2, _img1, _img1, _ratio, kalpha);
+			
+
+			Line(_outBox[0], _outBox[1], _img1, _lineColor, _lineMaxWidth / aspectOf(_dest) * 2);
+			Line(_outBox[3], _outBox[2], _img1, _lineColor, _lineMaxWidth / aspectOf(_dest) * 2);
+			Line(_outBox[0], _outBox[3], _img1, _lineColor, _lineMaxWidth * 2);
+			Line(_outBox[1], _outBox[2], _img1, _lineColor, _lineMaxWidth * 2);
+
+			BlitRect(_img1, _outBox, _dest, _inBox)
+
+// build an aspect correct framePoly replacement, offset end points inwards by width/aspect
+// 	also draw single pixel outline outside box for sharper corners
+//	possible outline poly tool which would adjust all line widths for aspect ratio differences?
+//			framePoly(_inBox, _dest, kblack, easeMiddle(_ratio, -33,3) * _lineMaxWidth);
+			
+		end if
+	end if
+end 
