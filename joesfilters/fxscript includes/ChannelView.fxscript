@@ -22,18 +22,18 @@ on ChannelView(image _src, image _dest, value _colors)
 	
 	
 	channelcopy(_src, _temp, knone, kalpha, kalpha, kalpha)
-	PlaceFrame(_temp, _dest, _destBox[0], _destBox[2].x * 2, _destBox[2].y * 2, 5, 0)
+	PlaceFrame(_temp, _dest, _destBox[0], _destBox[2].x * 2, _destBox[2].y * 2, 4, 0)
 	
 	channelcopy(_src, _temp, knone, kred, kred, kred)
 	channelMultiply(_temp, _temp, 1, 1, _colors, _colors);
-	PlaceFrame(_temp, _dest, _destBox[1], _destBox[2].x * 2, _destBox[2].y * 2,  5, 0)
+	PlaceFrame(_temp, _dest, _destBox[1], _destBox[2].x * 2, _destBox[2].y * 2,  4, 0)
 	
 	channelcopy(_src, _temp, knone, kgreen, kgreen, kgreen);
 	channelMultiply(_temp, _temp, 1, _colors, 1, _colors);
-	PlaceFrame(_temp, _dest, _destBox[3], _destBox[2].x * 2, _destBox[2].y * 2,  5, 0)
+	PlaceFrame(_temp, _dest, _destBox[3], _destBox[2].x * 2, _destBox[2].y * 2,  4, 0)
 	
 	channelcopy(_src, _temp, knone, kblue, kblue, kblue);
 	channelMultiply(_temp, _temp, 1, _colors, _colors, 1);
-	PlaceFrame(_temp, _dest, _destBox[2], _destBox[2].x * 2, _destBox[2].y * 2,  5, 0)
+	PlaceFrame(_temp, _dest, _destBox[2], _destBox[2].x * 2, _destBox[2].y * 2,  4, 0)
 
 end
