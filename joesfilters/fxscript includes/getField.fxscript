@@ -1,4 +1,7 @@
 on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
+	//REQUIRES: 	DeInterlaceFast.fxscript
+	//				ErrorReporter.fxscript
+
 	// getField(clip, frame, dest, 720, 480, 1);
 	// replacement for GetVideo which returns a single field of interlaced video
 	// basic getVideo call plus dinmensions and field selection
