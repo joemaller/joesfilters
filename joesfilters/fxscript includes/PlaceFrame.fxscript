@@ -1,0 +1,48 @@
+on PlaceFrame(image _src, image _dest, point _originPt, value _frameWidth, value _frameHeight, value _angle, value _orientation, value _cropFrame)
+		
+		// _src : source image to copy from
+		// _dest : destination image buffer
+		// _originPt: point in destination buffer where the fframe will be drawn
+		// _frameWidth: width of the output frame
+		// _frameHeight: height of the output frame
+		// _angle: rotation angle of rotated frame, around _originPt
+		// _orientation:  0-3 = destination rectangle corners, 4 = center
+		// _cropFrame:  < 1 decimal value, crops into image similar to action-safe area definition
+	
+	point _srcBox[4], _destBox[4], _rotateCenter;
+	float _FieldOrder;
+
+	_FieldOrder = (fieldNumber - 1 == topfield);	// do this in here for one less thing to worry about
+
+	boundsOf(_src, _srcBox);
+	
+	if (_orientation == 0)	
+		MakeRect(_destBox, _originPt.x,  _originPt.y, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[0];
+
+	else if (_orientation == 1)
+		MakeRect(_destBox, _originPt.x - _frameWidth,  _originPt.y, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[1];
+
+	else if (_orientation == 2)
+		MakeRect(_destBox, _originPt.x - _frameWidth,  _originPt.y - _frameHeight, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[2];
+
+	else if (_orientation == 3)
+		MakeRect(_destBox, _originPt.x,  _originPt.y- _frameHeight, _frameWidth, _frameHeight);
+		_rotateCenter = _destBox[3];
+		
+	else if (_orientation == 4)
+		MakeRect(_destBox, _originPt.x - _frameWidth/2,  _originPt.y - _frameHeight/2, _frameWidth, _frameHeight);
+		_rotateCenter = _originPt;
+	end if
+	
+	Rotate(_destBox, _rotateCenter, _angle, aspectOf(_dest));
+	
+	_srcBox *= _cropFrame;			// crop into source frame
+	
+	_rotateCenter = {0, (fieldnumber-1)^_FieldOrder};	// reuse _rotateCenter for _srcBox field-shifting
+	_srcBox += _rotateCenter;		// shift soucebox to compensate for field-based output
+	blitRect(_src, _srcBox, _dest, _destBox);
+	
+end
