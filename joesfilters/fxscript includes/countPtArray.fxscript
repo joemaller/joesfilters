@@ -7,7 +7,6 @@ on countPtArray(point _ar)
 	 
 	_l = 1 // set this to save a loop checking the zeroth index
 	_r = _l + _seed;
-	 
 
 	repeat while true
 		_counter++;
