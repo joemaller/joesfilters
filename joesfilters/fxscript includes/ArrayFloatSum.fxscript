@@ -1,0 +1,19 @@
+on ArrayFloatSum(float _ar)
+	float _i, _sum;
+	_i = 1;
+	if (isIndexFloatArray(0, _ar))
+		_sum = ArrayFloatSum(_ar[0]); // do this here to save double-checking array-ness of [0]
+		repeat while (isIndexFloatArray(_i, _ar)) 
+			_sum += ArrayFloatSum(_ar[_i]);
+			_i++;
+		end repeat
+	else	// not an array, do normal stepped comparison
+		_sum = _ar[0];
+		_i = 1;
+		repeat while (isIndexFloat(_i, _ar))
+			_sum += _ar[_i];
+			_i++;
+		end repeat
+	end if
+	return _sum;
+end 
