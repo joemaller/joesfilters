@@ -1,4 +1,9 @@
 on easeMiddle(value _r, value _easing, value _method)
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+	
 	if (_method == 1) // easeIn
 		if (_r < 0.5)
 			return easeIn(_r * 2, _easing)
