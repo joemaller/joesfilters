@@ -1,0 +1,20 @@
+on ArrayFloatMax(float _ar)
+	float _i, _max;
+	
+	_i = 0;
+	if (isIndexFloatArray(0, _ar))
+		_max = ArrayFloatmax(_ar[0]); // do this here to save double-checking array-ness of [0]
+		repeat while (isIndexFloatArray(_i, _ar)) 
+			_max = max(_max,  ArrayFloatmax(_ar[_i]));
+			_i++;
+		end repeat
+	else	// not an array, do normal stepped comparison
+		_max = _ar[0];
+		_i = 1;
+		repeat while (isIndexFloat(_i, _ar))
+			_max = max(_max, _ar[_i]);
+			_i++;
+		end repeat
+	end if
+	return _max;
+end 
