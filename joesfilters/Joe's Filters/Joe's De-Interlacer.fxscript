@@ -40,8 +40,6 @@ fullframe
 ProducesAlpha
 InformationFlag("YUVaware");
 
-float CLIPDUR, CLIPOFFSET;
-
 code
 
 
@@ -56,6 +54,7 @@ on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(
 
 // END "basic math.fxscript"
  
+
 
 
 
@@ -133,32 +132,26 @@ end
  
 
 
-// INCLUDE "DeInterlaceFast.fxscript"  v1.6
+// INCLUDE "DeInterlaceFast.fxscript"  v1.9
 
 on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix)
-	
 	// _srcIMG : source image
 	// _destIMG : destination image
 	// _field : 0 = top field, 1 = bottom field
-	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional field-based de-interlace calls
+	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional time-based de-interlace calls
 
 	// this might fail at some future time if the scaling method in FCP changes
 
-	if (_field != 0 && _field != 1)
-		ErrorReporter(dest, "_field must be a boolean");
-		return;
-	end if	
-		
 	float _j;
-	point _r1[4], _r2[4];
+	point _r1[4], _r2[4], _pt;
 	BoundsOf(_srcIMG, _r1);
 	
 	if (_field) // second field, shift box down
-		_r1[0].y += 1;	// shift top row down
-		_r1[1].y += 1;
+		_pt = {0,1};
+		_r1 += _pt;	// shift top row down
 		if ((_r1[3].y - _r1[0].y) & 1) 	// frame height needs to be even
-			_r1[2].y += 1;			// shift bottom down one row
-			_r1[3].y += 1;
+			_r1[2].y -= 1;			// shift bottom down one row
+			_r1[3].y -= 1;
 		end if
 
 	else // first field
@@ -167,16 +160,19 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix
 			_r1[3].y -= 1;
 		end if
 	end if
-	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) /2];
+	
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) / 2];
 	BoundsOf(_halfIMG, _r2);
 	BlitRect(_srcIMG, _r1, _halfIMG, _r2); // smash blit (isolates fields)
 	
-	if (_bounceFix)
-		makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for  field bouncing
-	end if
 	BoundsOf(_destIMG, _r1);
+	
+	if (_bounceFix)
+		_pt = {0,(_field*2-1)/4};	// shift  sampling field up/down 0.25 px
+		_r2 -= _pt;
+	end if
+		
 	BlitRect(_halfIMG, _r2, _destIMG, _r1);
-
 end
 
 // END "DeInterlaceFast.fxscript"
@@ -370,11 +366,10 @@ end
  
 
 
-// INCLUDE "getField.fxscript"  v1.5
+// INCLUDE "getField.fxscript"  v1.8
 
-on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
+on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field, value _bounceFix);
 	//REQUIRES: 	DeInterlaceFast.fxscript
-	//				ErrorReporter.fxscript
 
 	// getField(clip, frame, dest, 720, 480, 1);
 	// replacement for GetVideo which returns a single field of interlaced video
@@ -383,44 +378,35 @@ on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nati
 	
 	// getvideo into half-height buffers appears to return only the upper field (line 0)
 	// that means de-intelacing can be skipped for matching fields to save processing
+	// _bounceFix flips the DeInterlaceFast field boucing switch
+		
 	
-	if (_field < 0 || _field > 1)
-		ErrorReporter(dest, "_field value out of range");
-		return;
-	end if
-	
-	
-	if (_field == 0)
-		image _half[_nativeW][_nativeH/2];
-		point _halfBox[4], _destBox[4];
-		boundsOf(_half, _halfBox);
-		boundsOf(_dest, _destBox);
+	image _half[_nativeW][_nativeH/2], _full[_nativeW][_nativeH];
+	point _halfBox[4], _destBox[4];
+	boundsOf(_half, _halfBox);
+	boundsOf(_dest, _destBox);
 		
-		if (_halfBox[0] == _destBox[0] && _halfBox[2] == _destBox[2])	// _half is the same size as _dest, skip a blit
-		
-			getVideo(_clip1, _offset, _dest);
-
-		else		// _half and _dest are different sizes, use blitRect
-				
-			getVideo(_clip1, _offset, _half);
-			blitRect(_half, _halfBox, _dest, _destBox);
-		
-		end if
-		
-			
-	else // _field == 1
-		image _full[_nativeW][_nativeH];
+	if (_field || fieldnumber -1 || aspectOf(_dest) == 1) // second spatial field
 		getVideo(_clip1, _offset, _full);
-		DeInterlaceFast(_full, _dest, _field, false);
+		DeInterlaceFast(_full, _dest, _field, _bounceFix);		
+	else		// first spatial field, lots of optimization tricks possible
+		if (_halfBox[0].y == _destBox[0].y && _halfBox[2].y == _destBox[2].y)	// _half is the same size as _dest, skip a blit
+			getVideo(_clip1, _offset, _dest);
+		else
+			getVideo(_clip1, _offset, _half);
+			if (_bounceFix)
+				point _pt
+				_pt = {0,-1/4};	// shift  sampling field up 0.25 px (matches DeInterLaceFast)
+				_halfBox -= _pt;
+			end if
+
+			blitRect(_half, _halfBox, _dest, _destBox);
+		end if
 	end if
-	
-end	// end getField
-
-
+end
 
 // END "getField.fxscript"
  
-
 
 
 // INCLUDE "ErrorReporter.fxscript"  v1.1
@@ -454,6 +440,7 @@ end // end ErrorHandler
 
 
 
+
 // INCLUDE "RGBtoYUVcolor.fxscript"  vNew
 
 on RGBtoYUVcolor(color _rgbColor)
@@ -470,9 +457,7 @@ end
 
 
 
-if (CLIPDUR == kundefined || CLIPDUR == 0); // check for cached data
-	getLimits(clip1, CLIPDUR, CLIPOFFSET);
-end if;
+
 
 
 
@@ -481,9 +466,12 @@ exposedbackground = 1;
 fieldPicker -= 1; //make this either 0 or 1
 maskDetail *= -1 // reverse this to make more sense
 
-float h, w, theField, fieldOrder, threshold, soften;
+float h, w, Nw, Nh, theField, fieldOrder, threshold, soften, clipDUR, clipOFFSET;
 
+getnativesize(clip1, Nw, Nh);
+getLimits(clip1, CLIPDUR, CLIPOFFSET);
 dimensionsOf(dest, w, h);
+
 image xbuffer[w][h];				//full size buffer
 image xbuffer2[w][h];				//full size buffer
 
@@ -495,7 +483,7 @@ theField = fieldPicker ^ fieldOrder; // sets the spacial field to retrieve
 
 DeInterlace(src1, dest, theField, FieldMethod); // primary deinterlace, 
 
-if (CLIPDUR > 0)
+if (clipDUR > 0)
 
 	motiondiff += (frame == 0 && motiondiff == 3 && FieldPicker == 0); // catch 0-frame null-map on first-field, surrounding-fields
 	
@@ -509,14 +497,14 @@ if (CLIPDUR > 0)
 	
 	else if (motiondiff == 3)	// surrounding fields
 		
-		getField(clip1, -CLIPOFFSET + frame + ((theField ^ 1) * 2 - 1), halfbuffer, w, h, theField ^ 1);
+		getField(clip1, -clipOFFSET + frame + ((theField ^ 1) * 2 - 1), halfbuffer, Nw, Nh, theField ^ 1, false);
 		DeInterlaceFast(src1, halfbuffer2, theField ^ 1,false);
 
 		DifferenceMask(halfbuffer, halfbuffer2, dest, threshold, 1, soften);
 		
 	else if (motiondiff == 4) 	// surrounding frames, double-diff now-prev, now-next
-		getVideo(clip1, -CLIPOFFSET + frame - 1, xbuffer);
-		getVideo(clip1, -CLIPOFFSET + frame + 1, xbuffer2);
+		getVideo(clip1, -clipOFFSET + frame - 1, xbuffer);
+		getVideo(clip1, -clipOFFSET + frame + 1, xbuffer2);
 		
 		difference(src1, xbuffer, xbuffer, kalpha);
 		difference(src1, xbuffer2, xbuffer2, kalpha);
@@ -524,8 +512,8 @@ if (CLIPDUR > 0)
 		channelcopy(xbuffer, dest, kalpha, knone, knone, knone);
 		
 	else if (motiondiff == 5) 	// surrounding frames, double-diff now-prev, now-next
-		getVideo(clip1, -CLIPOFFSET + frame - 1, xbuffer);
-		getVideo(clip1, -CLIPOFFSET + frame + 1, xbuffer2);
+		getVideo(clip1, -clipOFFSET + frame - 1, xbuffer);
+		getVideo(clip1, -clipOFFSET + frame + 1, xbuffer2);
 		
 		DifferenceMask(src1, xbuffer, xbuffer, threshold, 1, soften);
 		DifferenceMask(src1, xbuffer2, xbuffer2, threshold, 1, soften);
