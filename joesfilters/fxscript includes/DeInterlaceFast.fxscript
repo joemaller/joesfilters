@@ -33,10 +33,10 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix
 	
 	if (_bounceFix)
 		point _pt;
-		_pt = {0,_field}
-		_r1 += _pt;
+		_pt = {0,_field/2}
+		_r2 -= _pt;
 	end if
-	
+		
 	BlitRect(_halfIMG, _r2, _destIMG, _r1);
 
 end
