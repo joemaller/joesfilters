@@ -37,7 +37,7 @@ on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nati
 	else // _field == 1
 		image _full[_nativeW][_nativeH];
 		getVideo(_clip1, _offset, _full);
-		DeInterlaceFast(_full, _dest, _field);
+		DeInterlaceFast(_full, _dest, _field, false);
 	end if
 	
 end	// end getField
