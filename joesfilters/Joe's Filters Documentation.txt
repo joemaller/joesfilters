@@ -1,0 +1,7 @@
+New Filters Documentation
+
+
+Joe's Widescreen Matte RT
+
+This is a renderless matte generator. Choose the shape of the rectangle by selecting the upper left and lower right corners. To just use top and bottom edges, click Top/Bottom Only, the points will are then used to pick the top and bottom of the rectangle.
+s 
