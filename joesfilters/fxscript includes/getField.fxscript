@@ -1,3 +1,5 @@
+// CVS TEST
+
 
 on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
 	// getField(clip, frame, dest, 720, 480, 1);
