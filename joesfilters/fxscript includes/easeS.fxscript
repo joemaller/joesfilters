@@ -1,7 +1,11 @@
 on easeS(value _r, value _easing)
 	// modifies a 0-1 value towards an S-curve
 	// easing should be a value between -100 and 100
-	
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
 	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
 
 	if (_r < 0.5)
@@ -9,5 +13,5 @@ on easeS(value _r, value _easing)
 	else			
 		return ((-power(-2 * _r + 2, _easing))/2 + 1);  // half inverted gamma curve (second half S)	
 	end if
-end
+end 
 
