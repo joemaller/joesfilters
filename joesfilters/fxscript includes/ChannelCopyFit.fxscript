@@ -14,9 +14,23 @@ on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _
 
 	else	// sizes are unequal, do blit then channel
 		
-		image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
-		blitRect(_src, _srcBox, _temp, _destBox);
-		channelCopy(_temp, _dest, _A, _R, _G, _B);
+		
+		//		check for size differences
+		// 		do channelcopy on smaller image 
+		
+		if (_src[2].x * _src[2].y > _dest[2].x * _dest[2].y)	// _src is larger than _dest
+		
+			image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
+			blitRect(_src, _srcBox, _temp, _destBox);
+			channelCopy(_temp, _dest, _A, _R, _G, _B);
+		
+		else // _dest is larger than _src
+			
+			image _temp[_srcBox[1].x - _srcBox[0].x][_srcBox[3].y - _srcBox[0].y]; // create second dest-sized image buffer
+			channelCopy(_src, _temp, _A, _R, _G, _B);
+			blitRect(_temp, _srcBox, _temp, _destBox);
+		
+		end if
 	end if
 end
 
