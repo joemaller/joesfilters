@@ -1,8 +1,7 @@
 on YUVtoRGBcolor(color _yuvColor)
 	color _temp;
-	_temp = _rgbColor
-      _rgbColor.r = _temp.r + (1.4075 * (_temp.b - 128));
-      _rgbColor.g = _temp.r - (0.3455 * (_temp.g - 128) - (0.7169 * (_temp.b - 128));
-      _rgbColor.b = _temp.r + (1.7790 * (_temp.g - 128);
+	_temp = _yuvColor
+      _yuvColor.r = _temp.r + (1.4075 * (_temp.b - 128));
+      _yuvColor.g = _temp.r - (0.3455 * (_temp.g - 128) - (0.7169 * (_temp.b - 128));
+      _yuvColor.b = _temp.r + (1.7790 * (_temp.g - 128);
 end
-
