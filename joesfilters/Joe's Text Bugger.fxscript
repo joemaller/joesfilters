@@ -1,0 +1,81 @@
+// rename WhatType() to prevent possible conflicts:
+// INCLUDE "whattype.fxscript" vNo
+
+on BUGwhatType(); return (aspectOf(src1) > 0) + (aspectOf(src2) >0); end 	// generator:0, filter:1, transition:2
+
+// END "whattype.fxscript"
+
+
+
+on addWatermark(string _line1, string _line2)
+
+	float _w, _h, _clipFPS, _bugRatio, _bugDuration;
+	color _fill;
+	
+	_clipFPS = (fieldProcessing+1) * fps;	// corrects FPS value to match duration
+	
+	if (BUGwhatType == 0) // generator
+	
+		_bugDuration = (duration/6 + _clipFPS);
+		if (duration >= 3 * _clipFPS);	// do nothing unless clip length is >= 3 seconds
+			_bugRatio = (_bugDuration - frame) / _bugDuration;
+			_bugRatio *= _bugDuration/ _clipFPS * 2;
+		end if
+	
+	else if (BUGwhatType == 1)		// filter
+	
+		_bugDuration = (duration/6 + _clipFPS);
+		if (duration >= 3 * _clipFPS);	// do nothing unless clip length is >= 3 seconds
+			_bugRatio = (frame - (duration - _bugDuration)) / _bugDuration;
+			_bugRatio *= _bugDuration/ _clipFPS * 2;
+		end if
+		
+	else 	// transition
+		if (duration >= _clipFPS/2)	// do nothing on transition shorter than 1/2 of a second.
+			_bugDuration = duration/2;
+			_bugRatio = (ratio < 0.5) ? ratio : 1 - ratio;
+			_bugRatio *= (_bugDuration < _clipFPS) ? _clipFPS/_bugDuration : 2
+		end if
+	end if
+	
+	
+	if (_bugRatio > 0)
+		dimensionsOf(dest, _w, _h);
+		image _buf[_w][_h], _text[_w][_h * integer(aspectOf(dest))];
+		point _shift, _inBox[4], _outBox[4];
+				
+		if (GetPixelFormat(dest) == kFormatYUV219) 
+			_fill = {255, 235, 127.5, 127.5};
+		else
+			_fill = {255, 235, 235, 235};
+		end if
+
+		channelfill(_text, 0, _fill.r, _fill.g, _fill.b);
+		
+		if (GetPixelFormat(dest) == kFormatYUV219) 	// correct for DrawString YUV color bug
+			_fill.g = 235;
+			_fill.b = 235;
+		end if
+		
+		settextfont("Helvetica Nueue"); setTextstyle(kbold); setTextjustify(kcenterjustify); setTextSize(0.07 * _h * integer(aspectOf(dest)));
+		DrawString(_line1, 0, 0.3 * _h * integer(aspectOf(dest)), 2, _text, _fill, 1);
+		
+		settextfont("Helvetica Nueue"); setTextstyle(kplain); setTextjustify(kcenterjustify); setTextSize(0.05* _h  * integer(aspectOf(dest)));
+		DrawString(_line2, 0, 0.36 * _h * integer(aspectOf(dest)), 2, _text, _fill, 1);
+		
+		boundsOf(_text, _inBox);
+		boundsOf(dest, _outBox);
+		_shift = {0, fieldnumber -1};
+		_inBox -= _shift;
+		
+		blitRect(_text, _inbox, _buf, _outBox);
+		
+		matte(_buf, dest, dest, _bugRatio * 0.75, kalpha);
+
+	end if
+
+end
+
+addWatermark("Joe’s Filters Demo", "www.joesfilters.com");
+
+
