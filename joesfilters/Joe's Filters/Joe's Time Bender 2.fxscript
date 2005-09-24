@@ -14,8 +14,9 @@ input easing, "Easing", slider, -50, -100, 100;
 //input easeMethod, "Easing Method", popup, 3,  "Ease In", "Ease Out", "S-Curve";
 //input easeMethod, "Easing Method", popup, 2,  "Ease In", "Ease Out", "S-Curve",  "Reverse Ease In", "Reverse Ease Out", "Reverse S-Curve";
 input doSlowShutter, "Slow Shutter", checkbox, 1;
+input forceProgressive, "Force Progressive", checkbox, 0;
 
-input label1, "Motion Difference", label, "";
+input label1, "Motion Difference (Interlaced Only)", label, "";
 input doMotionDiff, "Motion Differencing", checkbox, 0;
 input maskDetail, "Mask Detail", slider, 0, -10, 10;
 
@@ -23,12 +24,13 @@ input label2, "Mask Check", label, "";
 input showMask, "View", popup, 1, "Merged Output", "Motion Mask", "Colorize Motion", "Motion Only";
 input maskcolor, "Mask Color", color, 255, 128, 0, 255;
 input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
-input masksteps, "Mask Steps", slider, 1, 0, 40;
+//input masksteps, "Mask Steps", slider, 1, 0, 40;
 
 input label3, "Debug", label, "";
 input debug, "Debug", checkbox, 0;
 input showEasing, "Show Easing Graph", checkbox, 1;
 input graphSize, "Graph Size", slider, 220, 50, 400
+
 
 
 ProducesAlpha
@@ -355,56 +357,85 @@ end
 // 2. grab correct background image
 
 
-on getBlendedFrame(clip _srcClip, value _getFrame, image _dest, value _nativeW, value _nativeH, value _showMask)
+on getBlendedFrame(clip _srcClip, image _dest, value _getFrame, value _nativeW, value _nativeH, value _isInterlaced, value _doMotionDiff, value _maskDetail, value _showMask)
 
-// FIX THIS: is currently pulling in a few global variables: doMotionDiff, threshold, maskSteps, Soften
+	float _w, _h, _blendVal, _threshold, _soften;
+	dimensionsOf(_dest, _w, _h);
 
-	float _w, _h, _blendVal, _fieldOrder;
-	dimensionsOf(_dest, _w, _h)
-	_fieldOrder = (fieldNumber - 1 == topfield)
+	image _frame0[_w][_nativeH];	// full-height frame
+	image _frame1[_w][_nativeH];	// if needed second full-height frame
 
-	image _frame0[_w][_nativeH];	// full height frame
-	image _frame1[_w][_nativeH];	// full height frame
+	_blendVal = _getFrame - integer(_getFrame);
+
+if (!_isInterlaced) // progressive
+
+	getVideo(_srcClip, integer(_getFrame), _frame0);		//this frame:
+	getVideo(_srcClip, integer(_getFrame)+1, _frame1);		// next frame
+	matte(_frame1, _frame0, _dest, _blendVal, kalpha);
+
+else
+
+	float _fieldOrder;
+	_fieldOrder = (fieldNumber - 1 == topfield);
+
 	image _f1[_w][_h];	// first field, this frame
 	image _f2[_w][_h];	// second field, this frame
 	image _f3[_w][_h];	// second field, prev frame
 	image _f4[_w][_h]; 	// first field, next frame
 
-	_blendVal = _getFrame - integer(_getFrame);
 
-	getVideo(_srcClip, integer(_getFrame + ceil(_blendVal)), _frame0);		//first get whole frame:
+	_getFrame -= 1; // fix for misaligned start and end frames.
+
+	// needs an exception to prevent fetching frames when the frame to fetch is the current frame
+	getVideo(_srcClip, integer(_getFrame), _frame0);		//first get whole frame:
+	
+	
+
+	
+	
+	// add _isProgressive checks
+	// remove ceil(_blendVal) from getVideo above, may cause +1 adjustment to be redundant...
+	// remove all global variables (threshold, soften, etc)
+	
+	
+	
+	
+	
+	
 	
 	deinterlaceFast(_frame0, _f1, _fieldOrder, true);
 	deinterlaceFast(_frame0, _f2, _fieldOrder^1, true);
-
-//	channelfill(_f3, 255, 0, 0, 255);	// DEBUG TO BE SURE THE FRAME DOESN"T SHOW UP LATER
 	
 		if (_blendVal < -0.5)
 			matte(_f1, _f2, _dest, (_blendVal + 0.5)* -2, kalpha);
 		else 
-			getVideo(_srcClip, integer(_getFrame + ceil(_blendVal)) + 1, _frame1);		//first get whole frame:
+			getVideo(_srcClip, integer(_getFrame) + 1, _frame1);		//next get whole frame:
 			deinterlaceFast(_frame1, _f3, _fieldOrder, true);
 			matte(_f2, _f3, _dest, _blendVal*-2, kalpha); 
 		end if
 
-		if (doMotionDiff)
-			if (_blendVal >= -0.75 && _blendVal < -0.25)
+		if (_isInterlaced && doMotionDiff) 
+			// only perform motion differencing on interlaced clips since it is for isolating field motion before deinterlacing
+			
+			// translate motion differencing values (why isn't this rolled into the DifferenceMask function?)
+			_threshold = _maskDetail * 0.4 + 8;
+			_soften = _threshold/4;
 
+			if (_blendVal >= -0.75 && _blendVal < -0.25)
 				if _blendVal < -0.5	// _f3 doesn't exist between -0.75 and -0.5
-					getVideo(_srcClip, integer(_getFrame + ceil(_blendVal)) + 1, _frame1);	
+					getVideo(_srcClip, integer(_getFrame) + 1, _frame1);	
 					deinterlaceFast(_frame1, _f3, _fieldOrder, true);
 				end if
 
-				DifferenceMask(_f1, _f3, _dest, threshold, maskSteps, Soften)
+				DifferenceMask(_f1, _f3, _dest, _threshold, 1, _soften)
 			else
 				if (_blendVal < -0.75)	// diff prev.B, B
-					getField(_srcClip, integer(_getFrame + ceil(_blendVal)) - 1, _f4, _nativeW, _nativeH, fieldOrder^1, true);	// prev first field
+					getField(_srcClip, integer(_getFrame) - 1, _f4, _nativeW, _nativeH, fieldOrder^1, true);	// prev first field
 				else if (_blendVal >= -0.25)	// diff field1 with next.field1
 					deinterlaceFast(_frame1, _f4, _fieldOrder^1, true);
 				end if
-				DifferenceMask(_f2, _f4, _dest, threshold, maskSteps, Soften)	;
+				DifferenceMask(_f2, _f4, _dest, _threshold, 1, _soften)	;
 			end if
-	
 				
 			if (_showMask == 2) // show mask channel
 				if (GetPixelFormat(_dest) == kFormatYUV219)
@@ -446,6 +477,10 @@ on getBlendedFrame(clip _srcClip, value _getFrame, image _dest, value _nativeW, 
 				end if
 		end if
 	end if	
+	end if
+//	numreporter(dest,  _getFrame - integer(_getFrame), "_getFrame - integer(_getFrame)", kfloat4,0.86  * h - h/2, 30, kcenterJustify);
+//	numreporter(dest,  _blendVal, "_blendVal", kfloat4, 0.9 * h - h/2, 30, kcenterJustify);
+
 end
 
 
@@ -490,7 +525,7 @@ end
 
  
 
-float h, w, Nw, Nh, theField, fieldOrder, threshold, soften, clipDUR, clipOFFSET, getFrame, j;
+float h, w, Nw, Nh, theField, fieldOrder, threshold, soften, clipDUR, clipOFFSET, getFrame, j, hasFields;
 
 getnativesize(clip1, Nw, Nh);
 getLimits(clip1, CLIPDUR, CLIPOFFSET);
@@ -499,11 +534,6 @@ dimensionsOf(dest, w, h);
 fieldOrder = (fieldNumber - 1 == topfield)
 
 channelfill(dest, 255, 255, 200, 200) 
-
-// translate maskDetail values
-threshold = maskDetail * 0.4 + 8;
-soften = threshold/4
-
 
 float durationArray[duration];
 point pt0, pt1, ctlPt0, ctlPt1, startPt, endPt;
@@ -525,42 +555,42 @@ ctlPt1.x = 1- 0.5 * (1 - easing);
 ctlPt1.y = ctlPt1.x/tan(45)};
 
 
-image img0[w][h];
+hasFields = (forceProgressive) ? 0 : fieldProcessing;
+
 
 BezToLevelMap(durationArray, pt0, ctlPt0, ctlPt1, pt1, 0, duration-1, TRUE);
 
-getFrame =   durationArray[frame] *  duration/2 - 1; // minus one for startOffset
+getFrame =   durationArray[frame] * (duration-1)/(hasFields+1);
 	
-getBlendedFrame(clip1, -CLIPOFFSET + getFrame, dest, Nw, Nh, showMask)
+getBlendedFrame(clip1, dest, -CLIPOFFSET + getFrame, Nw, Nh, hasFields, doMotionDiff, maskDetail, showMask);
 
 if (doSlowShutter)
-if frame >= 1
-if (abs(durationArray[frame] * duration - durationArray[frame-1] * duration) > 1)
-	 // do loop backwards...
+	if (abs(durationArray[(frame==0) ? frame+1 : frame] * duration - durationArray[(frame==0) ? 0 : frame-1] * duration) > 1) // at least two frames between frames
+		image img0[w][h]; 		// initialize the extra image buffer
+		// do loop backwards...
+		for j = 2 to abs(durationArray[(frame==0) ? frame+1 : frame] * duration - durationArray[(frame==0) ? 0 : frame-1] * duration)
+			getBlendedFrame(clip1, img0, -CLIPOFFSET + durationArray[frame] * (duration-1)/(hasFields+1) + j, Nw, Nh, hasFields, doMotionDiff, maskDetail, showMask);
+//			numreporter(dest,  j, "j", kfloat2,  h/j - h/2, 100/j, kcenterJustify);
 	
-	for j = 2 to abs(durationArray[frame] * duration - durationArray[(frame != 0) ? frame-1 : frame] * duration)
-		getBlendedFrame(clip1, -CLIPOFFSET + durationArray[frame-1] * duration/2 - 1 + j, img0, Nw, Nh, showMask)
-		//	numreporter(dest,  j, "j", kfloat2,  h/j - h/2, 36/j, kcenterJustify);
-
-		matte(img0, dest, dest, 1/j, kalpha);
-
-	next
-
-end if
-end if
+			matte(img0, dest, dest, 1/j, kalpha);
+		next
+	end if
 end if
 
-
+ 
 
 
 if debug
 //	if frame != 0 && frame < duration -1
 //		numreporter(dest,   abs(durationArray[frame + 1] * duration - durationArray[frame] * duration), "next frame distance (+)", kfloat2,  20, 36, kcenterJustify);
-		numreporter(dest,   durationArray[frame] * duration - durationArray[(frame != 0) ? frame-1 : frame] * duration, "prev frame distance (-)", kfloat2,  40, 36, kcenterJustify);
+		numreporter(dest,   durationArray[frame] * duration - durationArray[(frame != 0) ? frame-1 : frame] * duration, "prev frame distance (-)", kfloat2,  0.4  * h - h/2, 36, kcenterJustify);
 //	end if
 
-	numreporter(dest,   durationArray[frame], " durationArray[frame]", kfloat2,  60, 36, kcenterJustify);
-	numreporter(dest,  getFrame, "getFrame", kfloat4, 80, 32, kcenterJustify);
+		numreporter(dest,   hasFields, "hasFields", kfloat2,  0.2 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   duration, " duration", kfloat2,  0.5 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   frame, " frame", kfloat2,  0.55 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   durationArray[frame], " durationArray[frame]", kfloat2,  0.6  * h - h/2, 36, kcenterJustify);
+	numreporter(dest,  getFrame, "getFrame", kfloat4,0.8  * h - h/2, 32, kcenterJustify);
 end if
 
 
