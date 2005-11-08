@@ -1,18 +1,11 @@
-filter "Joe's Channel Viewer"
-group "BETA"
+filter "Joe's Channel Viewer";
+group "Joe's Filters [BETA]";
 
-
-
-
-//input output, "Output", RadioGroup, 1, "All Channels (4-up)", "Alpha", "Luma (Y) / Red", "Cr (U) / Green", "Cb (V) / Blue";
-// possibly change the controls to be a choice of RGB/YUV grid instead of the color popup?
-
-
+input output, "Output", RadioGroup, 1, "All Channels (4-up)", "Alpha", "Luma (Y) / Red", "Cr (U) / Green", "Cb (V) / Blue";
 input showcolors, "Show Colors", checkbox, 0;
 input RGBorYUV, "RGB or YUV", popup, 3, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
 
 InformationFlag("YUVaware");
-
 
 code
 
@@ -38,7 +31,6 @@ on ChannelView(image _src, image _dest, value _colorSpace, value _colors)
 		_temp = _src;
 	end if
 
-	_colors ^= 1;
 	boundsOf(_src, _srcBox)
 	boundsOf(_dest, _destBox);
 
@@ -57,7 +49,7 @@ on ChannelView(image _src, image _dest, value _colorSpace, value _colors)
 	
 		channelfill(_temp2, 255, 127, 127, 127);
 		
-		if (!_colors)
+		if (_colors)
 			channelcopy(_temp, _temp2, knone, knone, kgreen, knone);
 		else
 			channelcopy(_temp, _temp2, knone, kgreen, knone, knone);
@@ -66,7 +58,7 @@ on ChannelView(image _src, image _dest, value _colorSpace, value _colors)
 		
 		channelfill(_temp2, 255, 127, 127, 127);
 
-		if (!_colors)
+		if (_colors)
 			channelcopy(_temp, _temp2, knone, knone, knone, kblue);
 		else
 			channelcopy(_temp, _temp2, knone, kblue, knone, knone);
@@ -74,6 +66,7 @@ on ChannelView(image _src, image _dest, value _colorSpace, value _colors)
 		PlaceFrame(_temp2, _dest, _destBox[2], _destBox[2].x * 2, _destBox[2].y * 2,  0, 4, 1)
 
 	else
+		_colors ^= 1;			// flip this for simpler use in the channelMultiply statements
 		channelfill(_temp2, 255, 0, 0, 0);
 		channelcopy(_temp, _temp2, knone, kalpha, kalpha, kalpha)
 		PlaceFrame(_temp2, _dest, _destBox[0], _destBox[2].x * 2, _destBox[2].y * 2, 0, 4, 1)
@@ -150,6 +143,66 @@ end
 
 // END "PlaceFrame.fxscript"
  
+ 
+ 
+ 
+ 
+if (output == 1)
+	ChannelView(src1, dest, RGBorYUV, showcolors);
+else // show individual colors
 
-ChannelView(src1, dest, RGBorYUV, showcolors)
+	showcolors ^= 1;
+	point dims, srcBox[4], destBox[4];
 
+	dimensionsOf(dest, dims.x, dims.y);
+	image temp[dims.x][dims.y], temp2[dims.x][dims.y];
+
+	if (getPixelFormat(src1) != RGBorYUV)
+		ConvertImage(src1, temp, RGBorYUV);
+		ConvertImage(temp2,temp2, RGBorYUV);
+		ConvertImage(dest, dest, RGBorYUV);
+	else
+		temp = src1;
+	end if
+
+	boundsOf(src1, srcBox);
+	boundsOf(dest, destBox);
+
+	if (output == 2) // alpha
+		channelcopy(temp, temp2, knone, kalpha, knone, knone)
+	else
+		if (RGBorYUV == kFormatYUV219)
+			channelfill(temp2, 255, 127, 127, 127);	
+			if (output == 3) // Y
+				channelcopy(temp, temp2, knone, kred, knone, knone)
+			else if (output == 4) // U
+				if (!showcolors)
+					channelcopy(temp, temp2, knone, knone, kgreen, knone);
+				else
+					channelcopy(temp, temp2, knone, kgreen, knone, knone);
+				end if
+			else if (output == 5) // V
+				if (!showcolors)
+					channelcopy(temp, temp2, knone, knone, knone, kblue);
+				else
+					channelcopy(temp, temp2, knone, kblue, knone, knone);
+				end if
+			end if
+		else
+			channelfill(temp2, 255, 0, 0, 0);
+			if (output == 3) // R
+				channelcopy(temp, temp2, knone, kred, kred, kred);
+				channelMultiply(temp2, temp2, 1, 1, showcolors, showcolors);
+			else if (output == 4) // G
+				channelcopy(temp, temp2, knone, kgreen, kgreen, kgreen);
+				channelMultiply(temp2, temp2, 1, showcolors, 1, showcolors);
+			else if (output == 5) // B
+				channelcopy(temp, temp2, knone, kblue, kblue, kblue);
+				channelMultiply(temp2, temp2, 1, showcolors, showcolors, 1);
+			end if
+		end if
+	end if
+	
+	PlaceFrame(temp2, dest, destBox[0], destBox[2].x * 2, destBox[2].y * 2, 0, 0, 1)
+
+end if
