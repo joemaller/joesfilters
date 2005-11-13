@@ -1,11 +1,11 @@
-generator "Joe's Widescreen Matte RT [BETA]"
-group "Joe's Generators"
+generator "Joe's Widescreen Matte RT"
+group "Joe's Generators [BETA]"
 
 input l0, "Matte Settings", label, "";
 
 input p1, "Top Left Corner", point, -0.5, -0.27366666666666667
 input p2, "Bottom Right Corner", point, 0.5, 0.27366666666666667;
-input sides, "Top/Bottom Only", checkbox, 0;
+input sides, "Top/Bottom Only", checkbox, 1;
 input mattecolor, "Matte Color", color, 255, 0, 0, 0;
 input matteopacity, "Matte Opacity", slider, 100, 0, 100;
 
@@ -45,14 +45,18 @@ point outrect[4];
 DimensionsOf(dest, w, h)
 image blank[2][2];
 
-RGBtoYUVcolor(mattecolor);
+
+if (getPixelFormat(dest) == kFormatYUV219)
+	RGBtoYUVcolor(mattecolor);
+end if
+
 channelFill(blank, 0, mattecolor.r, mattecolor.g, mattecolor.b);
 channelFill(dest, matteopacity/100 * 255, mattecolor.r, mattecolor.g, mattecolor.b);
 
 if (!sides)
 	makeRect(outrect, p1.x * w, p1.y * h, p2.x * w - p1.x * w, p2.y * h - p1.y * h);
 else
-	makeRect(outrect, -w/2 - 25, p1.y * h, w + 50, p2.y * h - p1.y * h);
+	makeRect(outrect, -w/2 - 25, p1.y * h, w + 100, p2.y * h - p1.y * h);
 end if
 
 BlitRect(blank, outrect, dest, outrect);
@@ -61,6 +65,12 @@ BlitRect(blank, outrect, dest, outrect);
 if framer
 	framePoly(outrect, dest, framecolor, framewidth);
 end if
+
+
+
+
+
+
 
 
 
