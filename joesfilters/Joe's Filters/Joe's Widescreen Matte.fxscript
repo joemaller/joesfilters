@@ -56,7 +56,7 @@ channelFill(dest, matteopacity/100 * 255, mattecolor.r, mattecolor.g, mattecolor
 if (!sides)
 	makeRect(outrect, p1.x * w, p1.y * h, p2.x * w - p1.x * w, p2.y * h - p1.y * h);
 else
-	makeRect(outrect, -w/2 - 25, p1.y * h, w + 100, p2.y * h - p1.y * h);
+	makeRect(outrect, -w/2 - 50, p1.y * h, w + 100, p2.y * h - p1.y * h);
 end if
 
 BlitRect(blank, outrect, dest, outrect);
