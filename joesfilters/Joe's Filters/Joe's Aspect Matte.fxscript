@@ -1,0 +1,224 @@
+generator "Joe's Aspect Matte RT [BETA]";
+group "Joe's Generators [BETA]";
+
+input l0, "Matte Settings", label, "";
+input srcFAR, "Frame Aspect Ratio", popup, 6, "1:1", "1.33:1 (4:3)", "1.55:1 (14:9)", "1.66:1 (5:3)", "1.78:1 (16:9)", "1.85:1 (37:20)", "2:1", "2.20:1 (11:5)", "2.35:1 (47:20)", "2.40:1 (12:5)", "2.55:1 (51:20)", "0.5625:1 (9:16)";
+input shifter, "Pan & Scan", slider, 0, -100,  100 label "%";
+input mattecolor, "Matte Color", color, 255, 0, 0, 0;
+input matteopacity, "Matte Opacity", slider, 100, 0, 100;
+
+input l1, "Border Settings", label, "";
+input framer, "Border On/Off", checkbox, 0;
+input framecolor, "Border Color", color, 255, 160, 160, 200;
+input framewidth, "Border Width", slider, 2, 1, 20;
+
+ProducesAlpha;
+AlphaType(kalpha);
+InformationFlag("YUVaware");
+
+code
+
+exposedbackground = 1;
+
+
+// INCLUDE "RGBtoYUVcolor.fxscript"  vNew
+
+on RGBtoYUVcolor(color _rgbColor)
+	color _temp;
+	_temp = _rgbColor
+	_rgbColor.r = _temp.r * 0.299 + _temp.g * 0.587 + _temp.b * 0.114 
+	_rgbColor.g = _temp.r * -0.169 + _temp.g * -0.332 + _temp.b * 0.500 + 128; 
+	_rgbColor.b = _temp.r* 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
+end 
+// END "RGBtoYUVcolor.fxscript"
+ 
+
+// INCLUDE "fitPoly.fxscript" v1.1
+
+on fitPoly(point _srcPoly, value _srcPolyPts, point _frameRect, point _destRect, value _hshift, value _vshift)
+
+	// a pan/scan tool used to place a multi-sided poly inside frame rectangle with offset
+	// fitting values are -100 - 100 percentage values used to place _srcRect when sizes differ
+	// the new rectangle is placed in _destRect
+	// source rectangles are moved around until they align with the dest frame's edges 
+		
+	point _box, _frame;
+	float _j;
+
+	DimensionsOfPoly(_srcPoly, _srcPolyPts, _box);
+	DimensionsOfPoly(_frameRect, 4, _frame);
+
+	_hshift /= (_box.x > _frame.x) ? 100 : -100;		//adjust perceived direction shifts
+	_vshift /= (_box.y > _frame.y) ? 100 : -100;
+
+	_hshift = ((_box.x - _frame.x) * _hshift)/2;
+	_vshift = ((_box.y - _frame.y) * _vshift)/2;
+
+	///MakeRect(_destRect, _box.h/-2 + _hshift, _box.v/-2 + _vshift, _box.h, _box.v)
+	
+	_destRect = _srcPoly;
+	for _j = 0 to 3
+		_destRect[_j].x += _hshift;
+		_destRect[_j].y += _vshift;
+	next;
+	
+
+end
+
+// END "fitPoly.fxscript"
+
+
+// INCLUDE "scaleToFit.fxscript" v1.1
+
+on scaleToFit(point _srcRect, point _frameRect, point _destRect, value _scaler, value _fitMethod)
+	// scales the original frame by 1 of 3 scaling ranges
+
+	// _srcRect		: 	Original Frame Box
+	// _frameRect	:	destination frame box
+	// _destRect	: 	destination for scaled box results
+	
+	// 1 = Fit width <-> height
+	// 2 = Fit width <-> original
+	// 3 = Fit height <-> original
+	
+	point _fit
+
+	DimensionsOfPoly(_srcRect,  4,  _fit)
+			
+	_fit.x = (_frameRect[1].x - _frameRect[0].x)/_fit.x;
+	_fit.y = (_frameRect[3].y - _frameRect[0].y)/_fit.y;
+		
+	
+	if 		(_fitMethod == 1); 	_scaler = _scaler * (_fit.y - _fit.x) + _fit.x;		// W H
+	else if 	(_fitMethod == 2);	_scaler = _scaler * (1 - _fit.x) + _fit.x;		// W O
+	else if 	(_fitMethod == 3);	_scaler = _scaler * (1 - _fit.y) + _fit.y;		// H O
+	end if
+
+	_destRect = _srcRect;
+	_destRect *= _scaler;
+		
+end
+
+
+
+// END "scaleToFit.fxscript"
+
+
+// INCLUDE "DimensionsOfPoly.fxscript"  v1.1
+
+on DimensionsOfPoly(point _srcPoly, value _srcPolyPts, point _WH)
+	
+	// returns the maximum  Width/Height of n-sided polys 	
+	
+	// _srcPoly 		: 		polygon to fit inside _destRect
+	// _srcPolyPts 		: 		number of points in _srcPoly, because it can't be programatically determined
+	// _WH			:		a single point used to return two float values, x = Width, y = Height
+
+	float _j;
+	point _topLeft, _bottomRight;
+	
+	_topLeft = _srcPoly[0];
+	_bottomRight = _srcPoly[2];
+	
+	repeat with _j = 0 to ( _srcPolyPts -1)
+	
+		if (_srcPoly[_j].x < _topLeft.x)
+			_topLeft.x = _srcPoly[_j].x;
+		else if (_srcPoly[_j].x > _bottomRight.x)
+			_bottomRight.x = _srcPoly[_j].x;
+		end if
+
+		if (_srcPoly[_j].y < _topLeft.y)				
+			_topLeft.y = _srcPoly[_j].y;
+		else if (_srcPoly[_j].y > _bottomRight.y)
+			_bottomRight.y = _srcPoly[_j].y;
+		end if
+
+	end repeat
+
+	_WH.x = abs(_topLeft.x) + abs(_bottomRight.x);
+	_WH.x = _bottomRight.x - _topleft.x;
+	_WH.y = _bottomRight.y - _topleft.y;
+
+//	NumReporter(dest, _WH.x, "_polyW", kfloat2, destH/2 * -0.2, 32, 1);
+//	NumReporter(dest, _WH.y, "_polyH", kfloat2, destH/2 * -0.3, 32, 1);
+	
+end	
+
+
+
+// END "DimensionsOfPoly.fxscript"
+ 
+
+
+
+
+float w,h;
+DimensionsOf(dest, w, h);
+image blank[2][2];	// very small buffer to blit from
+point ybox[4], srcbox[4];
+
+if (srcFAR == 2); srcFAR = 4/3;	// leave off srcFAR == 1 since 1/1 = 1;
+else if (srcFAR == 3); srcFAR = 14/9;
+else if (srcFAR == 4); srcFAR = 5/3;
+else if (srcFAR == 5); srcFAR = 16/9;
+else if (srcFAR == 6); srcFAR = 37/20;
+else if (srcFAR == 7); srcFAR = 2;
+else if (srcFAR == 8); srcFAR = 11/5;
+else if (srcFAR == 9); srcFAR = 47/20;
+else if (srcFAR == 10); srcFAR = 12/5;
+else if (srcFAR == 11); srcFAR = 51/20;
+else if (srcFAR == 12); srcFAR = 9/16;
+end if
+
+srcFAR *= aspectOf(dest);
+
+boundsOf(dest, srcbox);
+
+makeRect(ybox, w/-2, w/srcFAR/-2, w, w/srcFAR); 
+
+if (getPixelFormat(dest) == kFormatYUV219)
+	RGBtoYUVcolor(mattecolor);
+end if
+
+channelFill(blank, 0, mattecolor.r, mattecolor.g, mattecolor.b);
+channelFill(dest, matteopacity/100 * 255, mattecolor.r, mattecolor.g, mattecolor.b);
+
+if (framer)	// adjust source frame for border width
+	if (srcFAR < w/h)
+		srcbox[0].x -= framewidth/2;
+		srcbox[1].x += framewidth/2;
+		srcbox[2].x += framewidth/2;
+		srcbox[3].x -= framewidth/2;
+	end if
+	if (srcFAR > w/h)
+		srcbox[0].y -= framewidth/2;
+		srcbox[1].y	 -= framewidth/2;
+		srcbox[2].y += framewidth/2;
+		srcbox[3].y += framewidth/2;
+	end if
+end if
+
+scaleToFit(ybox, srcbox, ybox, ((srcFAR > w/h) ? 0 : 1), 1);
+fitPoly(ybox, 4, srcbox, ybox, shifter, shifter);
+
+// extend sides of ybox so there's no drawing into the frame along unseen edges:
+if (srcFAR > w/h)
+	ybox[0].x -= 50;
+	ybox[1].x += 50;
+	ybox[2].x += 50;
+	ybox[3].x -= 50;
+end if
+if (srcFAR < w/h)
+	ybox[0].y -= 50;
+	ybox[1].y -= 50;
+	ybox[2].y += 50;
+	ybox[3].y += 50;
+end if
+
+BlitRect(blank, ybox, dest, ybox);
+
+if (framer)
+	framePoly(ybox, dest, framecolor, framewidth);
+end if
+
