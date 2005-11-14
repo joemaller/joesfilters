@@ -15,7 +15,7 @@ on ease(value _r, value _easing, value _method)
 	else if (_method == 3)
 		return easeS(_r, _easing);
 	else if (_method == 4)
-		return _easing;
+		return (_easing + 100)/200;
 	end if
 end
 
