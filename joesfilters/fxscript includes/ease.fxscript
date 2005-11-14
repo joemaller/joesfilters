@@ -6,13 +6,16 @@ on ease(value _r, value _easing, value _method)
 	// required inputs:
 	// input easing, "Easing", slider, 0, -100, 100;
 	// input easeMethod, "Easing Method", popup, 3,  "Ease In", "Ease Out", "S-Curve";
+	// optional easeMethod value:  4 = none
 
 	if (_method == 1)
-		return easeIn(_r, _easing)
+		return easeIn(_r, _easing);
 	else if (_method == 2)
-		return easeOut(_r, _easing)
+		return easeOut(_r, _easing);
 	else if (_method == 3)
-		return easeS(_r, _easing)
+		return easeS(_r, _easing);
+	else if (_method == 4)
+		return _easing;
 	end if
 end
 
@@ -61,7 +64,3 @@ on easeS(value _r, value _easing)
 		return ((-power(-2 * _r + 2, _easing))/2 + 1);  // half inverted gamma curve (second half S)	
 	end if
 end  
-
-
-// END "easeS.fxscript"
- 
