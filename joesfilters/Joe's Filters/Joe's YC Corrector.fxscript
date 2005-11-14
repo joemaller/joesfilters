@@ -1,0 +1,50 @@
+filter "Joe's Y/C Corrector";
+group "BETA";
+
+input target, "Shift", radiogroup, 3, "Both", "Luma (Y)", "Chroma (C)";
+input hshift, "Horizontal", slider, -2, -10, 10;
+input vshift, "Vertical", slider, 0, -10, 10;
+
+InformationFlag("YUVaware")
+ProducesAlpha;
+fullframe; // this doesn't need fields at all, so it should be ok to go fullframe
+
+code
+
+
+exposedbackground = 1;
+
+point dims, srcRect[4], destRect1[4], destRect2[4];
+dimensionsOf(dest, dims.x, dims.y);
+image img0[dims.x][dims.y];
+
+if (getPixelFormat(dest) != kFormatYUV219)
+	ConvertImage(src1, dest, kFormatYUV219);
+else
+	dest = src1;
+end if
+
+if (hshift != 0 || vshift != 0)
+
+	boundsOf(dest, srcRect);
+	destRect1 = srcRect;
+	destRect2 = srcRect;
+	
+	dims = {hshift/((target == 1) ? 2 : 1), vshift/((target == 1) ? 2 : 1)}
+	destRect1 += dims;
+	destRect2 -= dims;
+	
+	ChannelFill(img0, 0, 0, 127, 127);	
+	BlitRect(dest, srcRect, img0, destRect1)		//  full image
+	
+	if (target == 1)
+		ChannelCopy(img0, dest, knone, kred, knone, knone);		// move offset luma back into dest
+		BlitRect(dest, srcRect, img0, destRect2)					// Chroma
+		ChannelCopy(img0, dest, knone, knone, kgreen, kblue);	// move offset chroma back into dest
+	else if (target == 2)
+		ChannelCopy(img0, dest, knone, kred, knone, knone);		// move offset luma back onto original chroma
+	else if (target == 3)
+		ChannelCopy(img0, dest, knone, knone, kgreen, kblue);		// move original luma onto offset chroma
+	end if
+
+end if
