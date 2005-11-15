@@ -367,44 +367,38 @@ on getBlendedFrame(clip _srcClip, image _dest, value _getFrame, value _nativeW, 
 
 	_blendVal = _getFrame - integer(_getFrame);
 
-if (!_isInterlaced) // progressive
-
-	getVideo(_srcClip, integer(_getFrame), _frame0);		//this frame:
-	getVideo(_srcClip, integer(_getFrame)+1, _frame1);		// next frame
-	matte(_frame1, _frame0, _dest, _blendVal, kalpha);
-
-else
-
-	float _fieldOrder;
-	_fieldOrder = (fieldNumber - 1 == topfield);
-
-	image _f1[_w][_h];	// first field, this frame
-	image _f2[_w][_h];	// second field, this frame
-	image _f3[_w][_h];	// second field, prev frame
-	image _f4[_w][_h]; 	// first field, next frame
-
-
-	_getFrame -= 1; // fix for misaligned start and end frames.
-
-	// needs an exception to prevent fetching frames when the frame to fetch is the current frame
-	getVideo(_srcClip, integer(_getFrame), _frame0);		//first get whole frame:
+	if (!_isInterlaced) // progressive
+	
+		getVideo(_srcClip, integer(_getFrame), _frame0);		//this frame:
+		getVideo(_srcClip, integer(_getFrame)+1, _frame1);		// next frame
+		matte(_frame1, _frame0, _frame0, _blendVal, kalpha);
+		channelcopyfit(_frame0, _dest, kalpha, kred, kgreen, kblue);
+	
+	else
+	
+		float _fieldOrder;
+		_fieldOrder = (fieldNumber - 1 == topfield);
+	
+		image _f1[_w][_h];	// first field, this frame
+		image _f2[_w][_h];	// second field, this frame
+		image _f3[_w][_h];	// second field, prev frame
+		image _f4[_w][_h]; 	// first field, next frame
 	
 	
-
+		_getFrame -= 1; // fix for misaligned start and end frames.
 	
-	
-	// add _isProgressive checks
-	// remove ceil(_blendVal) from getVideo above, may cause +1 adjustment to be redundant...
-	// remove all global variables (threshold, soften, etc)
-	
-	
-	
-	
-	
-	
-	
-	deinterlaceFast(_frame0, _f1, _fieldOrder, true);
-	deinterlaceFast(_frame0, _f2, _fieldOrder^1, true);
+		// needs an exception to prevent fetching frames when the frame to fetch is the current frame
+		getVideo(_srcClip, integer(_getFrame), _frame0);		//first get whole frame:
+		
+		
+		
+		// add _isProgressive checks
+		// remove ceil(_blendVal) from getVideo above, may cause +1 adjustment to be redundant...
+		// remove all global variables (threshold, soften, etc)
+		
+		
+		deinterlaceFast(_frame0, _f1, _fieldOrder, true);
+		deinterlaceFast(_frame0, _f2, _fieldOrder^1, true);
 	
 		if (_blendVal < -0.5)
 			matte(_f1, _f2, _dest, (_blendVal + 0.5)* -2, kalpha);
@@ -475,8 +469,8 @@ else
 				if (_showMask != 4)
 					matte(_dest, _f1, _dest, 1, kalpha);	
 				end if
-		end if
-	end if	
+			end if
+		end if	
 	end if
 //	numreporter(dest,  _getFrame - integer(_getFrame), "_getFrame - integer(_getFrame)", kfloat4,0.86  * h - h/2, 30, kcenterJustify);
 //	numreporter(dest,  _blendVal, "_blendVal", kfloat4, 0.9 * h - h/2, 30, kcenterJustify);
@@ -525,13 +519,16 @@ end
 
  
 
-float h, w, Nw, Nh, theField, fieldOrder, threshold, soften, clipDUR, clipOFFSET, getFrame, j, hasFields;
+float h, w, Nw, Nh, theField, fieldOrder, threshold, soften, clipDUR, clipOFFSET, getFrame, j, hasFields, dur;
 
 getnativesize(clip1, Nw, Nh);
 getLimits(clip1, CLIPDUR, CLIPOFFSET);
 dimensionsOf(dest, w, h);
 
 fieldOrder = (fieldNumber - 1 == topfield)
+
+hasFields = (forceProgressive) ? 0 : fieldProcessing;
+dur = duration/((hasFields^1) + 1);
 
 channelfill(dest, 255, 255, 200, 200) 
 
@@ -555,7 +552,6 @@ ctlPt1.x = 1- 0.5 * (1 - easing);
 ctlPt1.y = ctlPt1.x/tan(45)};
 
 
-hasFields = (forceProgressive) ? 0 : fieldProcessing;
 
 
 BezToLevelMap(durationArray, pt0, ctlPt0, ctlPt1, pt1, 0, duration-1, TRUE);
@@ -578,20 +574,6 @@ if (doSlowShutter)
 end if
 
  
-
-
-if debug
-//	if frame != 0 && frame < duration -1
-//		numreporter(dest,   abs(durationArray[frame + 1] * duration - durationArray[frame] * duration), "next frame distance (+)", kfloat2,  20, 36, kcenterJustify);
-		numreporter(dest,   durationArray[frame] * duration - durationArray[(frame != 0) ? frame-1 : frame] * duration, "prev frame distance (-)", kfloat2,  0.4  * h - h/2, 36, kcenterJustify);
-//	end if
-
-		numreporter(dest,   hasFields, "hasFields", kfloat2,  0.2 * h - h/2, 36, kcenterJustify);
-	numreporter(dest,   duration, " duration", kfloat2,  0.5 * h - h/2, 36, kcenterJustify);
-	numreporter(dest,   frame, " frame", kfloat2,  0.55 * h - h/2, 36, kcenterJustify);
-	numreporter(dest,   durationArray[frame], " durationArray[frame]", kfloat2,  0.6  * h - h/2, 36, kcenterJustify);
-	numreporter(dest,  getFrame, "getFrame", kfloat4,0.8  * h - h/2, 32, kcenterJustify);
-end if
 
 
 
@@ -623,4 +605,20 @@ if (showEasing)
 	
 	pt0 = {(frame/(duration-1) * graphSize - graphSize/2)*aspectOf(dest), durationArray[frame] * -graphSize + graphSize/2};
 	DrawSoftDot(dest, pt0, kRound, 6, 1, 1, kyellow, 1, aspectof(dest));
+end if
+
+
+
+if debug
+//	if frame != 0 && frame < duration -1
+//		numreporter(dest,   abs(durationArray[frame + 1] * duration - durationArray[frame] * duration), "next frame distance (+)", kfloat2,  20, 36, kcenterJustify);
+		numreporter(dest,   durationArray[frame] * duration - durationArray[(frame != 0) ? frame-1 : frame] * duration, "prev frame distance (-)", kfloat2,  0.4  * h - h/2, 36, kcenterJustify);
+//	end if
+
+		numreporter(dest,   hasFields, "hasFields", kfloat2,  0.2 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   duration, " duration", kfloat2,  0.45 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   dur, "dur", kfloat2,  0.5 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   frame, " frame", kfloat2,  0.55 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   durationArray[frame], " durationArray[frame]", kfloat2,  0.6  * h - h/2, 36, kcenterJustify);
+	numreporter(dest,  getFrame, "getFrame", kfloat4,0.8  * h - h/2, 32, kcenterJustify);
 end if
