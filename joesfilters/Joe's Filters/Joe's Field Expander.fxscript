@@ -1,21 +1,9 @@
-filter "Joe's Field Expander [BETA]"
-Group "BETA"
+filter "Joe's Field Expander"
+group "Joe's Filters [BETA]";
 
-input fieldLength, "Fields Last", slider, 1, 1, 10 label "Frames"
-
-// input fieldBlending, "Field Blending", checkbox, 0
-
+input fieldLength, "Fields Last", slider, 2, 1, 10 label "Fields";
 
 input BounceFix, "Align Fields", checkbox, 1;
-
-
-//input fieldCycle, "Field Cycle", slider, 6, 2, 32;
-
-input FieldOrder, "Field Dominance", popup, 2, "Upper Field First", "Lower Field First";
-
-//input label0, "Visible clip length will be determined by the length of displayed fields.", label, "";
-
-// field blending will combine the last outgoing and first incoming fields if selected.
 
 input label1, "Motion Differencing", label, "";
 input motiondiff, "Mask Sources", popup, 3, "None", "Single Frame", "Surrounding Fields", "Surrounding Frames", "Surrounding Frames (doubleDiff)";
@@ -27,130 +15,67 @@ input maskcolor, "Mask Color", color, 255, 128, 0, 255;
 input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
 
 
-
-fullframe
 ProducesAlpha
 
 InformationFlag("YUVaware");
-
-//float CLIPDUR, CLIPOFFSET;
-
 
 code	
 
 
 
-// INCLUDE "NumReporter.fxscript"  v1.1
-
-on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
-	
-	float rw, rh, ra, rd, rzoom;
-	string reporter;
-	color fontcolor;
-	
-	DimensionsOf(_destIMG, rw, rh);
-	rzoom = rw/720;
-	
-	fontcolor = {255,235,235,235};
-	settextfont("verdana");
-	setTextstyle(kbold);
-	setTextjustify(_justification);
-	setTextSize(_fontsize * rzoom);
-													
-	NumToString(_data, reporter, _numberformat);
-	reporter = _label + " = " + reporter;
-	DrawString(reporter, 0, _h, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
-
-end
-
-// END "NumReporter.fxscript"
- 
-
-
-// INCLUDE "basic math.fxscript"  v1.1
+// INCLUDE "basic math.fxscript" v1.1
 
 on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
 on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
 on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
 on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
 
-
 // END "basic math.fxscript"
- 
 
 
-// INCLUDE "ErrorReporter.fxscript"  v1.1
 
-on ErrorReporter(image _dest, string _errorMsg)
-	float _w, _h;
+// INCLUDE "ChannelCopyFit.fxscript" v1.5
+
+on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _B)
+	// a combination of channelcopy and blitrect, scales any specified channel to fit the target
+	// specifically for cases where a channel source is not the same size as the channel destination
+	// _A, _R, _G & _B work just like Channelcopy and are of the set {kalpha, kred, kgreen, kblue}
+	// This is meant to be a more versatile drop-in replacement for ChannelCopy
 	
-	dimensionsOf(dest, _w, _h);
-	
-	settextfont("verdana");
-	setTextstyle(kbold);
-	setTextjustify(kcenterjustify);
-	setTextSize(_w * 0.05);
-	
-	channelfill(_dest, 255, 255, 125, 0);
-	DrawString(_errorMsg, 0, 0, 1.25, _dest, kwhite, aspectof(_dest));
-
-	
-	setTextjustify(krightJustify);
-	setTextSize(_w * 0.025);
-	DrawString("FXScriptReference.org", 0.4 * _w, 0.4 * _h, 1.25, _dest, kwhite, aspectof(_dest));
-
-end // end ErrorHandler
-
-
-// END "ErrorReporter.fxscript"
- 
-
-
-
-
-// INCLUDE "getField.fxscript"  v1.7
-
-on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field, value _bounceFix);
-	//REQUIRES: 	DeInterlaceFast.fxscript
-
-	// getField(clip, frame, dest, 720, 480, 1);
-	// replacement for GetVideo which returns a single field of interlaced video
-	// basic getVideo call plus dinmensions and field selection
-	// field is 0 or 1 to match deinterlace functions
-	
-	// getvideo into half-height buffers appears to return only the upper field (line 0)
-	// that means de-intelacing can be skipped for matching fields to save processing
-	// _bounceFix flips the DeInterlaceFast field boucing switch
-		
-	
-	image _half[_nativeW][_nativeH/2], _full[_nativeW][_nativeH];
-	point _halfBox[4], _destBox[4];
-	boundsOf(_half, _halfBox);
+	point _srcBox[4], _destBox[4];
+	boundsOf(_src, _srcBox);
 	boundsOf(_dest, _destBox);
-		
-	if (_field || fieldnumber -1 || aspectOf(_dest) == 1) // second spatial field
-		getVideo(_clip1, _offset, _full);
-		DeInterlaceFast(_full, _dest, _field, _bounceFix);		
-	else		// first spatial field, lots of optimization tricks possible
-		if (_halfBox[0].y == _destBox[0].y && _halfBox[2].y == _destBox[2].y)	// _half is the same size as _dest, skip a blit
-			getVideo(_clip1, _offset, _dest);
-		else
-			getVideo(_clip1, _offset, _half);
-			if (_bounceFix)
-				point _pt
-				_pt = {0,-1/4};	// shift  sampling field up 0.25 px (matches DeInterLaceFast)
-				_halfBox -= _pt;
-			end if
 
-			blitRect(_half, _halfBox, _dest, _destBox);
+	if (_srcBox[2] == _destBox[2])
+		// sizes are equal, normal channelcopy...
+		channelCopy(_src, _dest, _A, _R, _G, _B);
+
+	else	// sizes are unequal, do blit then channel
+		
+		
+		//		check for size differences
+		// 		do channelcopy on larger image to preserve resolution 
+				
+		if (_srcBox[2].x * _srcBox[2].y < _destBox[2].x * _destBox[2].y)	// _src is smaller than _dest
+			image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
+			blitRect(_src, _srcBox, _temp, _destBox);
+			channelCopy(_temp, _dest, _A, _R, _G, _B);
+		
+		else // _src is larger than _dest
+			image _temp[_srcBox[1].x - _srcBox[0].x][_srcBox[3].y - _srcBox[0].y]; // create second src-sized image buffer
+			blitRect(_dest, _destBox, _temp, _srcBox);
+			channelCopy(_src, _temp, _A, _R, _G, _B);
+			blitRect(_temp, _srcBox, _dest, _destBox);
+		
 		end if
 	end if
-end 
+end
 
-// END "getField.fxscript"
+// END "ChannelCopyFit.fxscript"
  
 
-// INCLUDE "DeInterlaceFast.fxscript"  v1.9
+
+// INCLUDE "DeInterlaceFast.fxscript" v1.9
 
 on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix)
 	// _srcIMG : source image
@@ -191,47 +116,13 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix
 	end if
 		
 	BlitRect(_halfIMG, _r2, _destIMG, _r1);
-end 
+end
 
 // END "DeInterlaceFast.fxscript"
  
 
 
-
-// INCLUDE "makeThresholdMapBez.fxscript"  v1.1
-
-on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
-		// a fast thresholding function using BezToLevelMap instead of for:next loops
-		// _th is the point to thrreshold around, _steps are the number of grays around _th
-		// mapLength is 255 for 8-bit maps
-		
-	point _p1, _p2;
-	
-	float _top, _bottom;
-	
-	if (_th - _steps/2 < 0)
-		_steps = _th * 2;
-	else if (_th + _steps/2 > _mapLength)
-		_steps = (_mapLength - _th) * 2;
-	end if
-	
-	if (_th & 1 == 0)	// even
-		_p1 = {floor(_th - _steps/2)/_mapLength, 0};		
-		_p2 = {floor(_th + _steps/2)/_mapLength, 1};		
-	else // _th is odd
-		_p1 = {ceil(_th - _steps/2)/_mapLength, 0};		
-		_p2 = {ceil(_th + _steps/2)/_mapLength, 1};		
-	end if
-
-	BezToLevelMap(_lmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
-
-end
-
-// END "makeThresholdMapBez.fxscript"
- 
-
-
-// INCLUDE "DifferenceMask.fxscript"  v1.2
+// INCLUDE "DifferenceMask.fxscript" v1.2
 
 on DifferenceMask(image _src1, image _src2, image _dest, value _threshold, value _steps, value _softness)
 	
@@ -293,47 +184,83 @@ end
  
 
 
-// INCLUDE "ChannelCopyFit.fxscript"  v1.5
+// INCLUDE "getField.fxscript" v1.8
 
-on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _B)
-	// a combination of channelcopy and blitrect, scales any specified channel to fit the target
-	// specifically for cases where a channel source is not the same size as the channel destination
-	// _A, _R, _G & _B work just like Channelcopy and are of the set {kalpha, kred, kgreen, kblue}
-	// This is meant to be a more versatile drop-in replacement for ChannelCopy
+on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field, value _bounceFix);
+	//REQUIRES: 	DeInterlaceFast.fxscript
+
+	// getField(clip, frame, dest, 720, 480, 1);
+	// replacement for GetVideo which returns a single field of interlaced video
+	// basic getVideo call plus dinmensions and field selection
+	// field is 0 or 1 to match deinterlace functions
 	
-	point _srcBox[4], _destBox[4];
-	boundsOf(_src, _srcBox);
+	// getvideo into half-height buffers appears to return only the upper field (line 0)
+	// that means de-intelacing can be skipped for matching fields to save processing
+	// _bounceFix flips the DeInterlaceFast field boucing switch
+		
+	
+	image _half[_nativeW][_nativeH/2], _full[_nativeW][_nativeH];
+	point _halfBox[4], _destBox[4];
+	boundsOf(_half, _halfBox);
 	boundsOf(_dest, _destBox);
+		
+	if (_field || fieldnumber -1 || aspectOf(_dest) == 1) // second spatial field
+		getVideo(_clip1, _offset, _full);
+		DeInterlaceFast(_full, _dest, _field, _bounceFix);		
+	else		// first spatial field, lots of optimization tricks possible
+		if (_halfBox[0].y == _destBox[0].y && _halfBox[2].y == _destBox[2].y)	// _half is the same size as _dest, skip a blit
+			getVideo(_clip1, _offset, _dest);
+		else
+			getVideo(_clip1, _offset, _half);
+			if (_bounceFix)
+				point _pt
+				_pt = {0,-1/4};	// shift  sampling field up 0.25 px (matches DeInterLaceFast)
+				_halfBox -= _pt;
+			end if
 
-	if (_srcBox[2] == _destBox[2])
-		// sizes are equal, normal channelcopy...
-		channelCopy(_src, _dest, _A, _R, _G, _B);
-
-	else	// sizes are unequal, do blit then channel
-		
-		
-		//		check for size differences
-		// 		do channelcopy on larger image to preserve resolution 
-				
-		if (_srcBox[2].x * _srcBox[2].y < _destBox[2].x * _destBox[2].y)	// _src is smaller than _dest
-			image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
-			blitRect(_src, _srcBox, _temp, _destBox);
-			channelCopy(_temp, _dest, _A, _R, _G, _B);
-		
-		else // _src is larger than _dest
-			image _temp[_srcBox[1].x - _srcBox[0].x][_srcBox[3].y - _srcBox[0].y]; // create second src-sized image buffer
-			blitRect(_dest, _destBox, _temp, _srcBox);
-			channelCopy(_src, _temp, _A, _R, _G, _B);
-			blitRect(_temp, _srcBox, _dest, _destBox);
-		
+			blitRect(_half, _halfBox, _dest, _destBox);
 		end if
 	end if
 end
 
-// END "ChannelCopyFit.fxscript"
+// END "getField.fxscript"
  
 
-// INCLUDE "RGBtoYUVcolor.fxscript"  vNew
+
+// INCLUDE "makeThresholdMapBez.fxscript" v1.1
+
+on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
+		// a fast thresholding function using BezToLevelMap instead of for:next loops
+		// _th is the point to thrreshold around, _steps are the number of grays around _th
+		// mapLength is 255 for 8-bit maps
+		
+	point _p1, _p2;
+	
+	float _top, _bottom;
+	
+	if (_th - _steps/2 < 0)
+		_steps = _th * 2;
+	else if (_th + _steps/2 > _mapLength)
+		_steps = (_mapLength - _th) * 2;
+	end if
+	
+	if (_th & 1 == 0)	// even
+		_p1 = {floor(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {floor(_th + _steps/2)/_mapLength, 1};		
+	else // _th is odd
+		_p1 = {ceil(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {ceil(_th + _steps/2)/_mapLength, 1};		
+	end if
+
+	BezToLevelMap(_lmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
+
+end
+
+// END "makeThresholdMapBez.fxscript"
+ 
+
+
+// INCLUDE "RGBtoYUVcolor.fxscript" vNew
 
 on RGBtoYUVcolor(color _rgbColor)
 	color _temp;
@@ -343,32 +270,54 @@ on RGBtoYUVcolor(color _rgbColor)
 	_rgbColor.b = _temp.r* 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
 end 
 // END "RGBtoYUVcolor.fxscript"
- 
 
 
 
 
-float w,h, Nw, Nh, theField, clipDUR, clipOFFSET, threshold, soften;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+float w,h, Nw, Nh, getFrame, theField, clipDUR, clipOFFSET, threshold, soften, FieldOrder;
 getnativesize(clip1, Nw, Nh);
 getLimits(clip1, CLIPDUR, CLIPOFFSET);
 dimensionsOf(dest, w, h);
 
-image xbuffer[w][h];				//full size buffer
-image xbuffer2[w][h];				//full size buffer
-image xbuffer3[w][h];				//full size buffer
+FieldOrder = (fieldNumber - 1 == topfield);
 
-image halfbuffer[w][h/2];
-image halfbuffer2[w][h/2];	
+image xbuffer[w][Nh];				//full size buffer
+image xbuffer2[w][Nh];				//full size buffer
+image xbuffer3[w][Nh];				//full size buffer
 
-theField = (frame/fieldLength - integer(frame/fieldLength)) < 0.5) ;
-theField ^= FieldOrder&1 ; 
+image halfbuffer[w][h];
+image halfbuffer2[w][h];	
 
 
-if true //(clipDUR > 0)
+getFrame = floor(frame/fieldLength);
+theField = (getFrame & 1)^FieldOrder; // theField based on whether getFrame is even or odd
+getFrame = integer(getFrame/(fieldprocessing +1));
 	
-//	getField(clip1, -CLIPOFFSET + floor(frame/fieldLength), dest, Nw, Nh, theField, BounceFix);
-
-	getVideo(clip1, -CLIPOFFSET + floor(frame/fieldLength), xbuffer);
+	getVideo(clip1, -CLIPOFFSET + getFrame, xbuffer);
 	DeInterlaceFast(xbuffer, dest, theField, BounceFix);
 	
 	motiondiff += (frame == 0 && motiondiff == 3 && theField == 0); // catch 0-frame null-map on first-field, surrounding-fields
@@ -377,34 +326,34 @@ if true //(clipDUR > 0)
 	threshold = maskDetail * 0.4 + 8;
 	soften = threshold/4
 	
-	if (motiondiff ==2)	// single frame, diff fields
+	if (motiondiff == 2)	// single frame, diff fields
 		DeInterlaceFast(xbuffer, halfbuffer, theField ^ 1, BounceFix);	
 		DifferenceMask(xbuffer, halfbuffer, dest, threshold, 1, soften );	//  reuses pre-deinterlaced field
 	
 	else if (motiondiff == 3)	// surrounding fields
 		
-		getField(clip1, -CLIPOFFSET + floor(frame/fieldLength) + ((theField ^ 1) * 2 - 1), halfbuffer, Nw, Nh, theField ^ 1, false);
+		getField(clip1, -CLIPOFFSET + getFrame	 + ((theField ^ 1) * 2 - 1), halfbuffer, Nw, Nh, theField ^ 1, false);
 		DeInterlaceFast(xbuffer, halfbuffer2, theField ^ 1,false);
 
 		DifferenceMask(halfbuffer, halfbuffer2, dest, threshold, 1, soften);
 		
-	else if (motiondiff == 4) 	// surrounding frames, double-diff now-prev, now-next
-		getVideo(clip1, -CLIPOFFSET + floor(frame/fieldLength) - 1, xbuffer2);
-		getVideo(clip1, -CLIPOFFSET + floor(frame/fieldLength) + 1, xbuffer3);
+	else if (motiondiff == 4) 	// surrounding frames
+		getVideo(clip1, -CLIPOFFSET + getFrame - 1, xbuffer2);
+		getVideo(clip1, -CLIPOFFSET + getFrame + 1, xbuffer3);
 		
 		difference(xbuffer, xbuffer2, xbuffer2, kalpha);
 		difference(xbuffer, xbuffer3, xbuffer3, kalpha);
 		DifferenceMask(xbuffer2, xbuffer3, xbuffer2, threshold, 1, soften);
-		channelcopy(xbuffer2, dest, kalpha, knone, knone, knone);
+		channelcopyfit(xbuffer2, dest, kalpha, knone, knone, knone);
 		
 	else if (motiondiff == 5) 	// surrounding frames, double-diff now-prev, now-next
-		getVideo(clip1, -CLIPOFFSET + floor(frame/fieldLength) - 1, xbuffer2);
-		getVideo(clip1, -CLIPOFFSET + floor(frame/fieldLength) + 1, xbuffer3);
+		getVideo(clip1, -CLIPOFFSET + getFrame - 1, xbuffer2);
+		getVideo(clip1, -CLIPOFFSET + getFrame + 1, xbuffer3);
 		
 		DifferenceMask(xbuffer, xbuffer2, xbuffer2, threshold, 1, soften);
 		DifferenceMask(xbuffer, xbuffer3, xbuffer3, threshold, 1, soften);
 		add(xbuffer2, xbuffer3, xbuffer2, 1, kalpha)
-		channelcopy(xbuffer2, dest, kalpha, knone, knone, knone);
+		channelcopyfit(xbuffer2, dest, kalpha, knone, knone, knone);
 	end if			
 
  	if (motiondiff != 1)	// if there's no motion differencing, we're done...
@@ -422,19 +371,22 @@ if true //(clipDUR > 0)
 				if (GetPixelFormat(dest) == kFormatYUV219)
 					RGBtoYUVcolor(maskColor);
 				end if
-				xbuffer2 = dest;
-				channelfill(xbuffer2,-1, maskcolor.r, maskcolor.g, maskcolor.b);
-				channelfill(dest,255, -1,-1,-1);
-				matte(xbuffer2, dest, dest, maskopacity/100, kalpha);
+				halfbuffer = dest;
+				channelfill(halfbuffer,-1, maskcolor.r, maskcolor.g, maskcolor.b);
+				matte(halfbuffer, dest, dest, maskopacity/100, kalpha);
 			end if
 			
-			if (showMask != 4)
-				matte(dest, xbuffer, dest, 1, kalpha);
+			if (showMask != 4)	// use for showmask == 1 or 3
+				if (theField == (fieldNumber-1))
+					if (motiondiff != 3) // surrounding fields already did this step;
+						DeInterlaceFast(xbuffer, halfbuffer2, theField ^ 1,false);
+					end if
+					matte(dest, halfbuffer2, dest, 1, kalpha);
+				end if
+
+				channelfill(dest, 255, -1, -1, -1);
 			end if
 		end if
 	end if
-end if
-
-
 
 
