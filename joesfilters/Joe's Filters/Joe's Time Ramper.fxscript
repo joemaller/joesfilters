@@ -1,0 +1,624 @@
+filter "Joe's Time Ramper";
+group "Joe's Filters [BETA]";
+
+
+input startOffset, "Starting Frame Offset", slider, -240, -600, 600 label "Frames" detent 0;
+input endOffset, "Ending Frame Offset", slider, 0, -600, 600 label "Frames" detent 0;
+//input easeRateOrFrames, "Frames from:", radiogroup, 1, "Rate", "Frames";
+
+
+//input curveBiasH, "Horizontal Control", slider, 0.5, 0, 1;
+//input curveBiasV, "Vertical Control", slider, 0.5, 0, 1;
+
+input easing, "Easing", slider, -50, -100, 100;
+//input easeMethod, "Easing Method", popup, 3,  "Ease In", "Ease Out", "S-Curve";
+//input easeMethod, "Easing Method", popup, 2,  "Ease In", "Ease Out", "S-Curve",  "Reverse Ease In", "Reverse Ease Out", "Reverse S-Curve";
+input doSlowShutter, "Slow Shutter", checkbox, 1;
+input forceProgressive, "Force Progressive", checkbox, 0;
+
+input label1, "Motion Difference (Interlaced Only)", label, "";
+input doMotionDiff, "Motion Differencing", checkbox, 0;
+input maskDetail, "Mask Detail", slider, 0, -10, 10;
+
+input label2, "Mask Check", label, "";
+input showMask, "View", popup, 1, "Merged Output", "Motion Mask", "Colorize Motion", "Motion Only";
+input maskcolor, "Mask Color", color, 255, 128, 0, 255;
+input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
+//input masksteps, "Mask Steps", slider, 1, 0, 40;
+
+input label3, "Debug", label, "";
+input debug, "Debug", checkbox, 0;
+input showEasing, "Show Easing Graph", checkbox, 1;
+input graphSize, "Graph Size", slider, 220, 50, 400
+
+
+
+ProducesAlpha
+InformationFlag("YUVaware");
+
+code
+
+exposedbackground = 1;
+
+
+
+
+
+// INCLUDE "NumReporter.fxscript" v1.1
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+if (!topField)
+	fontcolor = {255,235,235,235};
+else
+	fontcolor = {255,0,0,0};
+end if
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0+ topfield * 10, _h + topfield * 10, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "NumReporter.fxscript"
+
+// INCLUDE "absNoInt.fxscript" vNew
+
+on absNoInt(value _num)	// returns the absolute floating point value of a number
+	return (_num != 0) ? _num * sign(_num) : 0
+end
+
+// END "absNoInt.fxscript"
+
+
+
+
+
+// INCLUDE "basic math.fxscript" v1.1
+
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
+
+// END "basic math.fxscript"
+
+
+
+
+
+
+// INCLUDE "DeInterlaceFast.fxscript" v1.9
+
+on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix)
+	// _srcIMG : source image
+	// _destIMG : destination image
+	// _field : 0 = top field, 1 = bottom field
+	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional time-based de-interlace calls
+
+	// this might fail at some future time if the scaling method in FCP changes
+
+	float _j;
+	point _r1[4], _r2[4], _pt;
+	BoundsOf(_srcIMG, _r1);
+	
+	if (_field) // second field, shift box down
+		_pt = {0,1};
+		_r1 += _pt;	// shift top row down
+		if ((_r1[3].y - _r1[0].y) & 1) 	// frame height needs to be even
+			_r1[2].y -= 1;			// shift bottom down one row
+			_r1[3].y -= 1;
+		end if
+
+	else // first field
+		if ((_r1[3].y - _r1[0].y) & 1) // odd frame height
+			_r1[2].y -= 1; // odd frame height, trim one row off of bottom
+			_r1[3].y -= 1;
+		end if
+	end if
+	
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) / 2];
+	BoundsOf(_halfIMG, _r2);
+	BlitRect(_srcIMG, _r1, _halfIMG, _r2); // smash blit (isolates fields)
+	
+	BoundsOf(_destIMG, _r1);
+	
+	if (_bounceFix)
+		_pt = {0,(_field*2-1)/4};	// shift  sampling field up/down 0.25 px
+		_r2 -= _pt;
+	end if
+		
+	BlitRect(_halfIMG, _r2, _destIMG, _r1);
+end 
+// END "DeInterlaceFast.fxscript"
+
+
+
+
+
+// INCLUDE "DifferenceMask.fxscript" v1.2
+
+on DifferenceMask(image _src1, image _src2, image _dest, value _threshold, value _steps, value _softness)
+	
+	// dependencies:
+	//			makeThresholdMapBez
+	//			channelcopyfit
+
+	// _src1, src2 : images to compare
+	// _dest : destination image buffer, results will replace this image's alpha channel
+	// _threshold : Threshold break for difference mask
+	// _steps : number of steps around threshold point
+	// _softness : spread of the difference mask before thresholding.
+	
+	// compares two images and generates a mask based on differences between the two
+	// the resulting mask will replace whatever alpha channel is in _dest
+		
+	float _diffmap[256];
+	makeThresholdMapBez(_diffmap, _threshold, _steps, 255)	
+
+	point _src1Box[4], _src2Box[4];
+	boundsOf(_src1, _src1Box);
+	boundsOf(_src2, _src2Box);
+	
+	if (_src1Box[2].x * _src1Box[2].y == _src2Box[2].x * _src2Box[2].y)	// _src1 and _src2 should be the same size, should be most common
+
+		image _temp1[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y],  _temp2[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y];
+		
+		_temp1 = _src1;
+		_temp2 = _src2;
+		
+	else if (_src1Box[2].x * _src1Box[2].y > _src2Box[2].x * _src2Box[2].y)	// _src1 has more pixels, scale _src1 down to match _src2 (bias for speed)
+		image _temp1[_src2Box[1].x - _src2Box[0].x][_src2Box[3].y - _src2Box[0].y],  _temp2[_src2Box[1].x - _src2Box[0].x][_src2Box[3].y - _src2Box[0].y];
+
+		_temp2 = _src2;
+		blitRect(_src1, _src1Box, _temp1, _src2Box);
+
+	else	// _src1 has fewer pixels than _src2, scale _src2 down to match
+
+		image _temp1[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y],  _temp2[_src1Box[1].x - _src1Box[0].x][_src1Box[3].y - _src1Box[0].y];
+	
+		_temp1 = _src1;
+		blitRect(_src2, _src2Box, _temp2, _src1Box);
+
+	end if
+	
+	Difference(_temp1, _temp2, _temp1, kalpha);	// setting targets up beforehand is faster
+	BlurChannel(_temp1, _temp2, _softness, 1,1,1,1, aspectOf(_dest));
+	
+	if (GetPixelFormat(dest) == kFormatYUV219)
+		LevelMap(_temp2, _temp2, linearRamp, _diffmap, linearRamp, linearRamp);
+		channelcopyfit(_temp2, _dest, kred, knone, knone, knone);
+	else
+		LevelMap(_temp2, _temp2, linearRamp, linearRamp, _diffmap, linearRamp);
+		channelcopyfit(_temp2, _dest, kgreen, knone, knone, knone);
+	end if
+end
+
+// END "DifferenceMask.fxscript"
+
+
+// INCLUDE "ChannelCopyFit.fxscript" v1.5
+
+on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _B)
+	// a combination of channelcopy and blitrect, scales any specified channel to fit the target
+	// specifically for cases where a channel source is not the same size as the channel destination
+	// _A, _R, _G & _B work just like Channelcopy and are of the set {kalpha, kred, kgreen, kblue}
+	// This is meant to be a more versatile drop-in replacement for ChannelCopy
+	
+	point _srcBox[4], _destBox[4];
+	boundsOf(_src, _srcBox);
+	boundsOf(_dest, _destBox);
+
+	if (_srcBox[2] == _destBox[2])
+		// sizes are equal, normal channelcopy...
+		channelCopy(_src, _dest, _A, _R, _G, _B);
+
+	else	// sizes are unequal, do blit then channel
+		
+		//		check for size differences
+		// 		do channelcopy on larger image to preserve resolution 
+				
+		if (_srcBox[2].x * _srcBox[2].y < _destBox[2].x * _destBox[2].y)	// _src is smaller than _dest
+			image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
+			blitRect(_src, _srcBox, _temp, _destBox);
+			channelCopy(_temp, _dest, _A, _R, _G, _B);
+		
+		else // _src is larger than _dest
+			image _temp[_srcBox[1].x - _srcBox[0].x][_srcBox[3].y - _srcBox[0].y]; // create second src-sized image buffer
+			blitRect(_dest, _destBox, _temp, _srcBox);
+			channelCopy(_src, _temp, _A, _R, _G, _B);
+			blitRect(_temp, _srcBox, _dest, _destBox);
+		
+		end if
+	end if
+end
+// END "ChannelCopyFit.fxscript"
+
+
+
+// INCLUDE "makeThresholdMapBez.fxscript" v1.1
+
+on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
+		// a fast thresholding function using BezToLevelMap instead of for:next loops
+		// _th is the point to thrreshold around, _steps are the number of grays around _th
+		// mapLength is 255 for 8-bit maps
+		
+	point _p1, _p2;
+	
+	float _top, _bottom;
+	
+	if (_th - _steps/2 < 0)
+		_steps = _th * 2;
+	else if (_th + _steps/2 > _mapLength)
+		_steps = (_mapLength - _th) * 2;
+	end if
+	
+	if (_th & 1 == 0)	// even
+		_p1 = {floor(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {floor(_th + _steps/2)/_mapLength, 1};		
+	else // _th is odd
+		_p1 = {ceil(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {ceil(_th + _steps/2)/_mapLength, 1};		
+	end if
+
+	BezToLevelMap(_lmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
+
+end
+
+
+// END "makeThresholdMapBez.fxscript"
+
+
+
+
+
+
+
+
+// INCLUDE "getField.fxscript" v1.8
+
+on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field, value _bounceFix);
+	//REQUIRES: 	DeInterlaceFast.fxscript
+
+	// getField(clip, frame, dest, 720, 480, 1);
+	// replacement for GetVideo which returns a single field of interlaced video
+	// basic getVideo call plus dinmensions and field selection
+	// field is 0 or 1 to match deinterlace functions
+	
+	// getvideo into half-height buffers appears to return only the upper field (line 0)
+	// that means de-intelacing can be skipped for matching fields to save processing
+	// _bounceFix flips the DeInterlaceFast field boucing switch
+		
+	
+	image _half[_nativeW][_nativeH/2], _full[_nativeW][_nativeH];
+	point _halfBox[4], _destBox[4];
+	boundsOf(_half, _halfBox);
+	boundsOf(_dest, _destBox);
+		
+	if (_field || fieldnumber -1 || aspectOf(_dest) == 1) // second spatial field
+		getVideo(_clip1, _offset, _full);
+		DeInterlaceFast(_full, _dest, _field, _bounceFix);		
+	else		// first spatial field, lots of optimization tricks possible
+		if (_halfBox[0].y == _destBox[0].y && _halfBox[2].y == _destBox[2].y)	// _half is the same size as _dest, skip a blit
+			getVideo(_clip1, _offset, _dest);
+		else
+			getVideo(_clip1, _offset, _half);
+			if (_bounceFix)
+				point _pt
+				_pt = {0,1/4};	// shift  sampling field up 0.25 px (matches DeInterLaceFast)
+				_halfBox -= _pt;
+			end if
+
+			blitRect(_half, _halfBox, _dest, _destBox);
+		end if
+	end if
+end 
+
+// END "getField.fxscript"
+
+
+// INCLUDE "RGBtoYUVcolor.fxscript" vNew
+
+on RGBtoYUVcolor(color _rgbColor)
+	color _temp;
+	_temp = _rgbColor
+	_rgbColor.r = _temp.r * 0.299 + _temp.g * 0.587 + _temp.b * 0.114 
+	_rgbColor.g = _temp.r * -0.169 + _temp.g * -0.332 + _temp.b * 0.500 + 128; 
+	_rgbColor.b = _temp.r* 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
+end 
+// END "RGBtoYUVcolor.fxscript"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// 1. show moving areas only
+// 2. grab correct background image
+
+
+on getBlendedFrame(clip _srcClip, image _dest, value _getFrame, value _nativeW, value _nativeH, value _isInterlaced, value _doMotionDiff, value _maskDetail, value _showMask)
+
+	float _w, _h, _blendVal, _threshold, _soften;
+	dimensionsOf(_dest, _w, _h);
+
+	image _frame0[_w][_nativeH];	// full-height frame
+	image _frame1[_w][_nativeH];	// if needed second full-height frame
+
+	_blendVal = _getFrame - integer(_getFrame);
+
+	if (!_isInterlaced) // progressive
+	
+		getVideo(_srcClip, integer(_getFrame), _frame0);		//this frame:
+		getVideo(_srcClip, integer(_getFrame)+1, _frame1);		// next frame
+		matte(_frame1, _frame0, _frame0, _blendVal, kalpha);
+		channelcopyfit(_frame0, _dest, kalpha, kred, kgreen, kblue);
+	
+	else
+	
+		float _fieldOrder;
+		_fieldOrder = (fieldNumber - 1 == topfield);
+	
+		image _f1[_w][_h];	// first field, this frame
+		image _f2[_w][_h];	// second field, this frame
+		image _f3[_w][_h];	// second field, prev frame
+		image _f4[_w][_h]; 	// first field, next frame
+	
+	
+		_getFrame -= 1; // fix for misaligned start and end frames.
+	
+		// needs an exception to prevent fetching frames when the frame to fetch is the current frame
+		getVideo(_srcClip, integer(_getFrame), _frame0);		//first get whole frame:
+		
+		
+		
+		// add _isProgressive checks
+		// remove ceil(_blendVal) from getVideo above, may cause +1 adjustment to be redundant...
+		// remove all global variables (threshold, soften, etc)
+		
+		
+		deinterlaceFast(_frame0, _f1, _fieldOrder, true);
+		deinterlaceFast(_frame0, _f2, _fieldOrder^1, true);
+	
+		if (_blendVal < -0.5)
+			matte(_f1, _f2, _dest, (_blendVal + 0.5)* -2, kalpha);
+		else 
+			getVideo(_srcClip, integer(_getFrame) + 1, _frame1);		//next get whole frame:
+			deinterlaceFast(_frame1, _f3, _fieldOrder, true);
+			matte(_f2, _f3, _dest, _blendVal*-2, kalpha); 
+		end if
+
+		if (_isInterlaced && doMotionDiff) 
+			// only perform motion differencing on interlaced clips since it is for isolating field motion before deinterlacing
+			
+			// translate motion differencing values (why isn't this rolled into the DifferenceMask function?)
+			_threshold = _maskDetail * 0.4 + 8;
+			_soften = _threshold/4;
+
+			if (_blendVal >= -0.75 && _blendVal < -0.25)
+				if _blendVal < -0.5	// _f3 doesn't exist between -0.75 and -0.5
+					getVideo(_srcClip, integer(_getFrame) + 1, _frame1);	
+					deinterlaceFast(_frame1, _f3, _fieldOrder, true);
+				end if
+
+				DifferenceMask(_f1, _f3, _dest, _threshold, 1, _soften)
+			else
+				if (_blendVal < -0.75)	// diff prev.B, B
+					getField(_srcClip, integer(_getFrame) - 1, _f4, _nativeW, _nativeH, fieldOrder^1, true);	// prev first field
+				else if (_blendVal >= -0.25)	// diff field1 with next.field1
+					deinterlaceFast(_frame1, _f4, _fieldOrder^1, true);
+				end if
+				DifferenceMask(_f2, _f4, _dest, _threshold, 1, _soften)	;
+			end if
+				
+			if (_showMask == 2) // show mask channel
+				if (GetPixelFormat(_dest) == kFormatYUV219)
+					channelcopy(_dest, _dest, knone, kalpha, knone, knone);
+					channelfill(_dest, 255, -1, 127, 127);
+				else
+					channelcopy(_dest, _dest, knone, kalpha, kalpha, kalpha);
+					channelfill(_dest, 255, -1, -1, -1);
+				end if
+				
+			else // standard or highlight motion
+	
+				// use _f1 for whatever correct output field is needed
+				if (fieldNumber == 1)
+					if (_blendVal < -0.5)
+						deinterlaceFast(_frame0, _f1, _fieldOrder, false); // re-get current field A
+					else
+						deinterlaceFast(_frame1, _f1, _fieldOrder, false); // re-get next frame field A
+						_f1 = _f3
+					end if
+				else
+					deinterlaceFast(_frame0, _f1, _fieldOrder^1, false);
+				end if
+	
+	
+				if (_showMask == 3)
+					if (GetPixelFormat(_dest) == kFormatYUV219)
+						RGBtoYUVcolor(maskColor);
+					end if
+	
+					_f2 = _dest;
+					channelfill(_f2,-1, maskcolor.r, maskcolor.g, maskcolor.b);
+					channelfill(_dest,255, -1,-1,-1);
+					matte(_f2, _dest, _dest, maskopacity/100, kalpha);
+				end if
+				
+				if (_showMask != 4)
+					matte(_dest, _f1, _dest, 1, kalpha);	
+				end if
+			end if
+		end if	
+	end if
+//	numreporter(dest,  _getFrame - integer(_getFrame), "_getFrame - integer(_getFrame)", kfloat4,0.86  * h - h/2, 30, kcenterJustify);
+//	numreporter(dest,  _blendVal, "_blendVal", kfloat4, 0.9 * h - h/2, 30, kcenterJustify);
+
+end
+
+
+
+
+on easeGraph(value _easing, value _method)
+ 	float _w, _h, _x, _size, _resolution ;
+ 	point _pt0, _pt1, _box[4], _box2[4];
+ 	color _aGrey, _orange;
+ 	
+ 	
+ 	// add YUV aware check here...
+ 	
+ 	_aGrey = {255, 25, 25, 25};
+ 	_orange = {255, 250, 150, 75};
+ 	dimensionsOf(dest, _w, _h);
+ 	
+ 	image _img[_w][_h * aspectOf(dest)];
+ 	_size = 200;
+ 	_resolution = 60;
+
+	channelfill(_img, 0, _aGrey.r, _aGrey.g, _aGrey.b);
+ 	
+ 	makeRect(_box, 0, -_size, _size, _size);
+ 	
+ 	framePoly(_box, _img, _aGrey, 25);
+ 	fillPoly(_box, _img, _aGrey);
+ 	
+ 	framePoly(_box, _img, kwhite, 1);
+ 	for _x = 0 to _resolution
+ 		_pt0 = {_x/_resolution * _size, -ease(_x/_resolution, _easing, _method) * _size};
+ 		Line(_pt0, _pt1, _img, _orange, 1);
+ 		_pt1 = _pt0;
+ 	next
+
+	boundsOf(dest, _box)
+	boundsOf(_img, _box2);
+	Blit(_img, _box2, dest, _box, 0.75)
+
+end
+
+
+ 
+
+float h, w, Nw, Nh, theField, fieldOrder, threshold, soften, clipDUR, clipOFFSET, getFrame, j, hasFields, dur;
+
+getnativesize(clip1, Nw, Nh);
+getLimits(clip1, CLIPDUR, CLIPOFFSET);
+dimensionsOf(dest, w, h);
+
+fieldOrder = (fieldNumber - 1 == topfield)
+
+hasFields = (forceProgressive) ? 0 : fieldProcessing;
+dur = duration/((hasFields^1) + 1);
+
+channelfill(dest, 255, 255, 200, 200) 
+
+float durationArray[duration];
+point pt0, pt1, ctlPt0, ctlPt1, startPt, endPt;
+
+pt0 = {0, 1- (duration - startOffset)/duration};
+pt1 = {1, (duration + endOffset)/duration};
+
+// set vertical points for shorter than duration adjustments
+// set horizontal points for longer than duration adjustments
+
+
+easing *= 0.98;	// adjust for a possible bug (or my bad math) in BezToLevelMap
+easing += 100;
+easing /= 200;
+
+ctlPt0.y =  0.5 * easing;
+ctlPt0.x = ctlPt0.y/tan(45);
+ctlPt1.x = 1- 0.5 * (1 - easing);
+ctlPt1.y = ctlPt1.x/tan(45)};
+
+
+
+
+BezToLevelMap(durationArray, pt0, ctlPt0, ctlPt1, pt1, 0, duration-1, TRUE);
+
+getFrame =   durationArray[frame] * (duration-1)/(hasFields+1);
+	
+getBlendedFrame(clip1, dest, -CLIPOFFSET + getFrame, Nw, Nh, hasFields, doMotionDiff, maskDetail, showMask);
+
+if (doSlowShutter)
+	if (abs(durationArray[(frame==0) ? frame+1 : frame] * duration - durationArray[(frame==0) ? 0 : frame-1] * duration) > 1) // at least two frames between frames
+		image img0[w][h]; 		// initialize the extra image buffer
+		// do loop backwards...
+		for j = 2 to abs(durationArray[(frame==0) ? frame+1 : frame] * duration - durationArray[(frame==0) ? 0 : frame-1] * duration)
+			getBlendedFrame(clip1, img0, -CLIPOFFSET + durationArray[frame] * (duration-1)/(hasFields+1) + j, Nw, Nh, hasFields, doMotionDiff, maskDetail, showMask);
+//			numreporter(dest,  j, "j", kfloat2,  h/j - h/2, 100/j, kcenterJustify);
+	
+			matte(img0, dest, dest, 1/j, kalpha);
+		next
+	end if
+end if
+
+ 
+
+
+
+if (showEasing)
+	//	easeGraph(easing, easemethod);
+	
+	ctlPt0 = {(ctlPt0.x * graphSize -graphSize/2)*aspectOf(dest), ctlPt0.y * -graphSize + graphSize/2};
+	ctlPt1 = {(ctlPt1.x * graphSize -graphSize/2)*aspectOf(dest),  ctlPt1.y * -graphSize + graphSize/2};
+	
+	Pt0 = {(Pt0.x * graphSize -graphSize/2)*aspectOf(dest), Pt0.y * -graphSize + graphSize/2};
+	Pt1 = {(Pt1.x * graphSize -graphSize/2)*aspectOf(dest), Pt1.y * -graphSize + graphSize/2};
+	
+	line(pt1, ctlpt1,dest, kgreen, 0);
+	line(pt0, ctlpt0,dest, kcyan, 0);
+	DrawSoftDot(dest, ctlPt0, ksquare, 4, 1, 1, kcyan, 1, aspectof(dest));
+	DrawSoftDot(dest, ctlPt1, ksquare, 4, 1, 1, kgreen, 1, aspectof(dest));
+	
+	pt0 = {-graphSize/2*aspectOf(dest), graphSize/2};
+	pt1 = {graphSize/2*aspectOf(dest), -graphSize/2};
+	line(pt0, pt1,dest, kblue, 1);
+	
+	for j = 0 to duration-1 step 3
+
+		pt0 = {(j/(duration-1) * graphSize - graphSize/2)*aspectOf(dest), durationArray[j] * -graphSize  + graphSize/2};
+		if j == 0; pt1 = pt0; end if;
+		Line(pt0, pt1, dest, kred, 0.5)
+		pt1 = pt0;
+	next
+	
+	pt0 = {(frame/(duration-1) * graphSize - graphSize/2)*aspectOf(dest), durationArray[frame] * -graphSize + graphSize/2};
+	DrawSoftDot(dest, pt0, kRound, 6, 1, 1, kyellow, 1, aspectof(dest));
+end if
+
+
+
+if debug
+//	if frame != 0 && frame < duration -1
+//		numreporter(dest,   abs(durationArray[frame + 1] * duration - durationArray[frame] * duration), "next frame distance (+)", kfloat2,  20, 36, kcenterJustify);
+		numreporter(dest,   durationArray[frame] * duration - durationArray[(frame != 0) ? frame-1 : frame] * duration, "prev frame distance (-)", kfloat2,  0.4  * h - h/2, 36, kcenterJustify);
+//	end if
+
+		numreporter(dest,   hasFields, "hasFields", kfloat2,  0.2 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   duration, " duration", kfloat2,  0.45 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   dur, "dur", kfloat2,  0.5 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   frame, " frame", kfloat2,  0.55 * h - h/2, 36, kcenterJustify);
+	numreporter(dest,   durationArray[frame], " durationArray[frame]", kfloat2,  0.6  * h - h/2, 36, kcenterJustify);
+	numreporter(dest,  getFrame, "getFrame", kfloat4,0.8  * h - h/2, 32, kcenterJustify);
+end if
