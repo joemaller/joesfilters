@@ -1,5 +1,5 @@
-filter "Joe's Pulldown Adjuster [BETA]"
-group "Joe's NTSC Pulldown Tools"
+filter "Joe's Pulldown Adjuster";
+group "Joe's Filters [BETA]";
 
 
 input chooseFields, "Assign Fields", RadioGroup, 1, "Select Pulldown", "Adjust Pulldown";
@@ -13,7 +13,11 @@ input pulldownOUT, "Output Pulldown", popup, 11, "None", " --- ", "Standard 3:2 
 // input fieldCheck, "fieldCheck", checkbox, 0;
 // input showtext, "showtext", checkbox, 0;
 
-//InformationFlag("YUVaware"); 	// enable this later on for YUV speed boost, will need to fix all colors first.
+
+input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
+
+InformationFlag("YUVaware"); 	// enable this later on for YUV speed boost, will need to fix all colors first.
 
 code
 
@@ -180,7 +184,31 @@ end
 // END "NumReporter.fxscript"
  
  
- 
+ // INCLUDE "ChannelMultiplyYUV.fxscript" v1.1
+
+on ChannelMultiplyYUV(image _src, image _dest, value _a, value _y, value _u, value _v)
+
+	// this is significantly slower than the RGB equivalent, but works.
+	// probably possible to replace the levelmaps with a combination of multiply and add
+
+	float _ukey[256], _vkey[256]
+
+	_ukey = linearRamp;
+	_vkey = linearRamp;
+	_ukey *= _u;
+	_vkey *= _v;
+	_ukey += (1-_u)/2;
+	_vkey += (1-_v)/2;
+
+	levelmap(_src, _dest, linearRamp, linearRAmp, _ukey, _vkey);
+	channelMultiply(_dest, _dest, _a, _y, 1, 1);
+end
+
+// END "ChannelMultiplyYUV.fxscript"
+
+
+
+
  
 
 // INCLUDE "basic math.fxscript"  v1.1
@@ -328,8 +356,8 @@ end
 float w,h,j, FieldOrder, clipDUR, clipOFFSET, inPulldownSTD, inPulldownADV, outPulldownSTD, outPulldownADV, srcFrame24p, destFrame24p
 point inBox[4], outBox[4], fieldPt;
 
-	float getFrame, judderFrameOut, judderFrameIn; // replace this later by reassigning the input variable 'adv24pFrame'
-	float doFrame
+float getFrame, judderFrameOut, judderFrameIn; // replace this later by reassigning the input variable 'adv24pFrame'
+float doFrame
 
 dimensionsof(dest, w, h);
 
@@ -341,16 +369,14 @@ getLimits(clip1, clipDUR, clipOFFSET);
 
 boundsOf(dest, inBox)
 outBox = inBox;
-//dest = src1;
-image img0[w][h*(fieldProcessing+1)];
 
 
- if (pulldownIN > 2 && pulldownIN < 8)  // Standard 3:2 pulldown
- 	inPulldownSTD = true;
- 	pulldownIN = (pulldownIN + 1 ) % 5;
- else if (pulldownIN > 8 && pulldownIN < 14)  // Advanced 24p 2:3:3:2 pulldown
-  	inPulldownADV = true;
- 	pulldownIN = (pulldownIN - 9 );
+if (pulldownIN > 2 && pulldownIN < 8)  // Standard 3:2 pulldown
+	inPulldownSTD = true;
+	pulldownIN = (pulldownIN + 1 ) % 5;
+else if (pulldownIN > 8 && pulldownIN < 14)  // Advanced 24p 2:3:3:2 pulldown
+	inPulldownADV = true;
+	pulldownIN = (pulldownIN - 9 );
 end if
 
 if (pulldownOUT > 2 && pulldownOUT < 8)  // Standard 3:2 pulldown
@@ -362,82 +388,81 @@ else if (pulldownOUT > 8 && pulldownOUT < 14)  // Advanced 24p 2:3:3:2 pulldown
 end if
 
 
+if GetPixelFormat(dest) != kFormatYUV219
+	convertImage(dest, dest, kFormatYUV219);
+end if
+	
+	
+	
+	dest = src1
 
-	
-	
-	
 	
 if (chooseFields == 1)
-
-	channelfill(dest, 0, 0, 0, 0);
+	
+//	channelfill(dest, 0, 0, 127, 127); // blank out background for visible edges
 	point pt0, pt1;
 	string frameString;
-	image spacer[5][5], spacer2[5][5];
-	image img1[w][h], report[w][h];
-
+	image spacer[5][5], spacer2[5][5], img1[w][h], report[w][h];
+	
+	ConvertImage(dest, dest, kFormatYUV219);
+	ConvertImage(spacer, spacer, kFormatYUV219);
+	ConvertImage(spacer2, spacer2, kFormatYUV219);
+	ConvertImage(img1, img1, kFormatYUV219);
+	ConvertImage(report, report, kFormatYUV219);
 
 	pt0 = {(w-50)/5 - (w-50)/2, -h/2}
 	
-	channelfill(report, 0, 0, 0, 0);
-	channelFill(spacer, 0, 0, 0, 0);
+	channelfill(report, 0, 0, 127, 127);
+	channelFill(spacer, 30, 0, 127, 127);
+	channelFill(spacer2, 255, 255, 127, 127);
 	boundsOf(spacer, outBox);
-	line(outBox[0], outBox[1],spacer,  kblack, 6)
-	BlurChannel(spacer, spacer2, 8, 1, 0, 0, 0, 1);
-	channelmultiply(spacer2, spacer2, 1.5, 0, 0, 0);
+	line(outBox[0], outBox[1], spacer, kblack, 8)
+	BlurChannel(spacer, spacer2, 5, 1, 1, 1, 1, 1);
 	makeRect(inBox, -w/2, 80, w, 35);
 	blitRect(spacer2, outBox, report, inBox);
 
-	
-	
-	
-	
 	for j = 0 to 4
 		getField(clip1, floor(frame/(fieldProcessing+1) + j) - clipOFFSET, img1, w, h*(fieldProcessing+1), (fieldnumber -1)^fieldOrder)
 			
-		 if (inPulldownSTD) // Standard 3:2 pulldown
+		if (inPulldownSTD) // Standard 3:2 pulldown
 			if floor((frame +j*2  - (fieldnumber - 1)) * 24/60 + pulldownIN/5) == floor((((frame+j*2) - (fieldnumber - 1))^1) * 24/60 + pulldownIN/5)
-				channelmultiply(img1, img1, 1, 0.5, 0.6, 0.5);
+				channelmultiplyYUV(img1, img1, 1, 0.4, 0.3, 0.3);
 			end if
-								
-		 else if (inPulldownADV) // Advanced 3:2 pulldown
+						
+		else if (inPulldownADV) // Advanced 3:2 pulldown
 			if (floor(frame/(fieldProcessing+1)) + j) % 5 != pulldownIN);	
-				channelmultiply(img1, img1, 1, 0.5, 0.6, 0.5);
+				channelmultiplyYUV(img1, img1, 1, 0.4, 0.3, 0.3); 
 			end if
 		end if
-		
-		
-			
+	
 		pt0 = {(j+1)*(w-50)/5 - (w-50)/5 - (w-50)/2, -h/2};
 		placeFrame(img1, dest, pt0, w/5, h, 0, 0);
 		
 		
-			makeRect(inBox, pt0.x + 2, 75, w/5 - 4, 5 * aspectOf(dest));
+		makeRect(inBox, pt0.x + 2, 80, w/5 - 4, -5);
 
 		
-			if (outPulldownSTD) // Standard 3:2 pulldown
+		if (outPulldownSTD) // Standard 3:2 pulldown
 
 			if floor((frame +j*2  - (fieldnumber - 1)) * 24/60 + pulldownOUT/5) != floor((((frame+j*2) - (fieldnumber - 1))^1) * 24/60 + pulldownOUT/5)
 				//channelmultiply(img1, img1, 1, 0.7, 1, 0.5);
-				fillpoly(inBox, dest, kgreen);
+				fillpoly(inBox, dest, kblue);
 			end if
-	else if (outPulldownADV) // Advanced 3:2 pulldown
-				if (floor(frame/(fieldProcessing+1)) + j) % 5 == pulldownOUT);	
+		else if (outPulldownADV) // Advanced 3:2 pulldown
+			if (floor(frame/(fieldProcessing+1)) + j) % 5 == pulldownOUT);	
 			//	channelmultiply(img1, img1, 1, 0.7, 1, 0.5);
-							fillpoly(inBox, dest, kgreen);
+				fillpoly(inBox, dest, kgreen);
 
 			end if
-	end if
+		end if
 
-		
-		
-		
 		
 		pt1 = {pt0.x + (w-50)/10, 100}		
 		
-			settextfont("verdana");
-	setTextstyle(kbold);
-	setTextjustify(kcenterjustify);
-	setTextSize(36);
+		settextfont("verdana");
+		setTextstyle(kbold);
+		setTextjustify(kcenterjustify);
+		setTextSize(36);
 
 					
 		NumToString(floor(frame/(fieldProcessing+1) + j)%5 + 1, frameString, kinteger);
@@ -448,7 +473,6 @@ if (chooseFields == 1)
 		end if
 
 	next;	
-
 	matte(report, dest, dest, 1, kalpha)
 
 else
@@ -608,3 +632,9 @@ getFrame =  integer(frame/2) + destFrame24p - srcFrame24p;
 end if
 			
 		
+
+
+
+
+
+
