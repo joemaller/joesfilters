@@ -1,0 +1,17 @@
+on ChannelMultiplyYUV(image _src, image _dest, value _a, value _y, value _u, value _v)
+
+	// this is significantly slower than the RGB equivalent, but works.
+	// probably possible to replace the levelmaps with a combination of multiply and add
+
+	float _ukey[256], _vkey[256]
+
+	_ukey = linearRamp;
+	_vkey = linearRamp;
+	_ukey *= _u;
+	_vkey *= _v;
+	_ukey += (1-_u)/2;
+	_vkey += (1-_v)/2;
+
+	levelmap(_src, _dest, linearRamp, linearRAmp, _ukey, _vkey);
+	channelMultiply(_dest, _dest, _a, _y, 1, 1);
+end
