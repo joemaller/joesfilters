@@ -1,20 +1,5 @@
-//                       v5.0 
-//	                  
-//	     wvwwvwvww    
-//	     \                /  
-//	       \______/  
-//	                          	
-//       Joe's Filters     
-//	 www.joesfilters.com
-
-
-// (C) 2001-2005 Joe Maller
-// http://www.joesfilters.com
-// http://www.fxscriptreference.org
-
-
-filter "Joe's De-Interlacer [BETA]";
-group "Joe's Video Tools";
+filter "Joe's De-Interlacer";
+group "Joe's Filters [BETA]";
 
 input label0, "De-Interlace", label, "";
 input FieldPicker, "Field", RadioGroup, 1, "First", "Second";
@@ -32,8 +17,8 @@ input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
 input label3, "Fade With Original", label, "";
 input opacity, "Opacity", slider, 100, 0, 100;
 
-input title, "©ÊJoe's Filters", Label,"";
-input title1, "www.joesfilters.com", Label,"";
+input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
 
 
 fullframe
@@ -548,4 +533,9 @@ if (clipDUR > 0)
 		end if
 	end if
 end if
+
+
+
+
+
 
