@@ -1,11 +1,14 @@
 transition "Joe's Film Dissolve"
-group "BETA"
+group "Joe's Transitions [BETA]";
 
 input fade1, "Fast Fade Source 1", checkbox, 0;
 //input doGamma, "do Gamma", checkbox, 0;
  input newCenter, "Centering", slider, 50, 0, 100;
 // input easing, "Easing", slider, 50, -100, 100;
 // input easeMethod, "Easing Method", popup, 2,  "Ease In", "Ease Out", "S-Curve", "None";
+
+input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
 
 InformationFlag("YUVaware");
 code

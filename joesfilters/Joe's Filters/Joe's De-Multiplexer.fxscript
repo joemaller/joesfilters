@@ -1,5 +1,5 @@
-filter "Joe's De-Multiplexer"
-group "BETA"
+filter "Joe's De-Multiplexer";
+group "Joe's Filters [BETA]";
 
 
 input RESETER, "Zero Memory", checkbox, 1;
@@ -11,8 +11,8 @@ input output, "Output", popup, 3, "Show all Cameras in order", "TimeStretch Came
 input stretchCam, "Timestretch Camera #", slider, 1, 1, 64;
 //input sampleoffset, "sampleoffset", slider, 0.4, 0.33, 0.9;
 
-input title, "Joe's Filters", Label,"";
-input title1, "www.joesfilters.com", Label,"";
+input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
 
 
 //input docompareFrames, "compareFrames", checkbox, 0;
@@ -745,28 +745,26 @@ on ArrayFloatAverage0(float _ar, value _dropHiLo)
 end 
 
 
-on ArrayFloatCountAll(float _ar)
-	float _count;
-	_count = ArrayFloatCount(_ar);
-	if (isIndexFloatArray(0, _ar))
-		return _count * ArrayFloatCountAll(_ar[0])
-	end if
-	return _count;
-end 
 
-on ArrayFloatCountAll2(float _ar)
+// INCLUDE "ArrayFloatCountAll.fxscript"  v1.2
+
+on ArrayFloatCountAll(float _ar)
+	// returns the total number of non-null (!= kundefined items) in a 1D or 2D array
+	
 	float _i, _count;
-	_count = 0
+	_count = 0;
 	for _i = 0 to ArrayFloatCount(_ar)-1
-		_count += ArrayFloatCount(_ar[_i])
+		_count += ArrayFloatCount(_ar[_i]);
 	next;
 	return _count;
 end 
+// END "ArrayFloatCountAll.fxscript"
+ 
 
 
 
 
-on ArrayFloatAverage(float _ar)
+on ArrayFloatAverage(float _ar)	// returns the average value of a 1D or 2D array, requires ArrayFloatSum and ArrayFloatCountAll
 	return ArrayFloatSum(_ar)/ArrayFloatCountAll(_ar);
 end 
 
@@ -840,8 +838,12 @@ end
 // END "ArrayFloatMin.fxscript"
  
 
+
+// INCLUDE "ArrayFloatNormalize.fxscript"  vNew
+
 on ArrayFloatNormalize(float _ar)
 	// remaps the array from zero to one based on current range of values
+	// requires ArrayFloatMin and ArrayFloatMax
 	
 	float _min, _max;
 	_min = ArrayFloatMin(_ar);
@@ -853,7 +855,17 @@ on ArrayFloatNormalize(float _ar)
 	end if
 end 
 
+// END "ArrayFloatNormalize.fxscript"
+ 
+
+
+// INCLUDE "ArrayFloatAbs.fxscript"  vNo
+
 on ArrayFloatAbs(float _ar)
+	// replaces all values of an array with their absolute floating-point values	
+	// works on 1 and 2 dimensional arrays
+	// requires: isIndexFloat, isIndexFloatArray
+	
 	float _i;
 	_i = 1;
 	if (isIndexFloatArray(0, _ar))
@@ -871,7 +883,17 @@ on ArrayFloatAbs(float _ar)
 	end if
 end 
 
-on ArrayFloatFlatten(float _deepArray, float _flatArray)	// flattens a 2D array, make recursive someday
+// END "ArrayFloatAbs.fxscript"
+ 
+
+
+// INCLUDE "ArrayFloatFlatten.fxscript"  vNo
+
+on ArrayFloatFlatten(float _deepArray, float _flatArray)	
+	// flattens a 2D array into 1D array
+	// _flatArray can have more indexes than _deepArray
+	// requires: ArrayFloatCount
+	
 	float _i, _j, _index;
 	for _i = 0 to ArrayFloatCount(_deepArray)-1	
 		for _j = 0 to ArrayFloatCount(_deepArray[_i])-1
@@ -880,6 +902,9 @@ on ArrayFloatFlatten(float _deepArray, float _flatArray)	// flattens a 2D array,
 		next
 	next
 end 
+
+// END "ArrayFloatFlatten.fxscript"
+ 
 
 
 
@@ -1040,7 +1065,7 @@ else if (workflow == 3)		// frames should be sorted, play them back now.
 
 
 	float totalFrames;
-	totalFrames = ArrayFloatCountAll2(frameMap);
+	totalFrames = ArrayFloatCountAll(frameMap);
 
 	if (SORTED != true || totalFrames <= 1)
 		numReporter(dest, 0, "Frames Not Sorted, select 'Sort Frames' before re-ordering", kinteger, 50, 30, kCenterJustify);
@@ -1103,6 +1128,7 @@ end if
 
 
 
-setTextjustify(kcenterJustify);
-setTextSize(24);
-DrawString("Joe's Filters Beta", 0, h/2 - h/8, 1.5, dest, kwhite, aspectof(dest));
+
+
+
+

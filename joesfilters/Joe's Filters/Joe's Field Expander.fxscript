@@ -1,7 +1,7 @@
 filter "Joe's Field Expander"
 group "Joe's Filters [BETA]";
 
-input fieldLength, "Fields Last", slider, 2, 1, 10 label "Fields";
+input fieldLength, "Field Duration", slider, 2, 1, 10 label "Fields";
 
 input BounceFix, "Align Fields", checkbox, 1;
 
@@ -14,6 +14,9 @@ input showMask, "View", popup, 1, "Merged Output", "Motion Mask", "Colorize Moti
 input maskcolor, "Mask Color", color, 255, 128, 0, 255;
 input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
 
+
+input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
 
 ProducesAlpha
 
@@ -323,7 +326,7 @@ getFrame = integer(getFrame/(fieldprocessing +1));
 	motiondiff += (frame == 0 && motiondiff == 3 && theField == 0); // catch 0-frame null-map on first-field, surrounding-fields
 	
 	// translate maskDetail values
-	threshold = maskDetail * 0.4 + 8;
+	threshold = -maskDetail * 0.4 + 8;
 	soften = threshold/4
 	
 	if (motiondiff == 2)	// single frame, diff fields

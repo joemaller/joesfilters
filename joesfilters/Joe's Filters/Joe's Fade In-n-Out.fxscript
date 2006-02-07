@@ -1,0 +1,181 @@
+filter "Joe's Fade In-n-Out";
+group "Joe's Filters [BETA]";
+
+
+input fadeInTime, "Fade In", slider, 20, 0, 360 ramp 80 label "Frames";
+input fadeOutTime, "Fade Out", slider, 30, 0, 360 ramp 80 label "Frames";
+
+input easing, "Easing", slider, -66, -100, 100;
+input easeMethod, "Easing Method", popup, 3,  "Ease In", "Ease Out", "S-Curve";
+
+input showEasing, "Show Easing", checkbox, 0;
+
+input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
+
+InformationFlag("YUVaware");
+
+InvalEntireItem
+producesAlpha
+
+
+
+code
+
+
+// INCLUDE "ease.fxscript" v1.3
+
+
+on ease(value _r, value _easing, value _method)
+	
+	// a single placeholder easing tool for easier use, 
+	
+	// required inputs:
+	// input easing, "Easing", slider, 0, -100, 100;
+	// input easeMethod, "Easing Method", popup, 3,  "Ease In", "Ease Out", "S-Curve";
+	// optional easeMethod value:  4 = none
+
+	if (_method == 1)
+		return easeIn(_r, _easing);
+	else if (_method == 2)
+		return easeOut(_r, _easing);
+	else if (_method == 3)
+		return easeS(_r, _easing);
+	else if (_method == 4)
+		return _easing;
+	end if
+end
+
+
+on easeIn(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+	
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return power(_r, _easing);
+
+end
+
+on easeOut(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return 1 - power(1 - _r, _easing);
+end
+
+
+on easeS(value _r, value _easing)
+	// modifies a 0-1 value towards an S-curve
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	if (_r < 0.5)
+		return (power(2 * _r, _easing)/2);	// half simple gamma curve (first half S)
+	else			
+		return ((-power(-2 * _r + 2, _easing))/2 + 1);  // half inverted gamma curve (second half S)	
+	end if
+end  
+
+// END "ease.fxscript"
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+ on easeGraph(value _easing, value _method)
+	float _w, _h, _x, _size, _resolution ;
+	point _pt0, _pt1, _box[4], _box2[4];
+	color _aGrey, _orange, _blue;
+	
+	
+	// add YUV aware check here...
+	
+	_aGrey = {255, 25, 25, 25};
+	_orange = {255, 250, 150, 75};
+	_blue = {255, 25, 25, 225};
+	dimensionsOf(dest, _w, _h);
+	
+	image _img[_w][_h * aspectOf(dest)];
+	_size = 200;
+	_resolution = 60;
+	
+	channelfill(_img, 0, _aGrey.r, _aGrey.g, _aGrey.b);
+	
+	makeRect(_box, 0, -_size, _size, _size);
+	
+	framePoly(_box, _img, _aGrey, 25);
+	fillPoly(_box, _img, _aGrey);
+	_pt1 = _box[3]
+	framePoly(_box, _img, kwhite, 1);
+	for _x = 0 to _resolution
+		_pt0 = {_x/_resolution * _size, -ease(_x/_resolution, _easing, _method) * _size};
+		Line(_pt0, _pt1, _img, _orange, 1);
+		_pt1 = _pt0;
+	next
+	
+	// draw the following backwards
+	_pt1 = _box[2]
+	
+	for _x = 0 to _resolution
+		_pt0 = {_size - _x/_resolution * _size, -ease(_x/_resolution, _easing, _method) * _size};
+		Line(_pt0, _pt1, _img, _blue, 1);
+		_pt1 = _pt0;
+	next
+	
+	boundsOf(dest, _box)
+	boundsOf(_img, _box2);
+	Blit(_img, _box2, dest, _box, 0.75)
+	
+end
+
+ 
+ 
+ 
+ 
+ 
+ 
+
+exposedbackground=1;
+
+float xRatio;
+ 
+ 
+if (frame/(fieldprocessing +1) < fadeInTime)
+	xRatio = ease(frame/(fieldProcessing + 1) / fadeInTime, easing, easemethod);
+
+else if (frame/(fieldprocessing +1) > fadeOutTime)
+	xRatio = ease((duration - frame)/(fieldProcessing + 1) / fadeOutTime, easing, easemethod);
+ 
+else 
+	xRatio = 1;
+
+end if
+
+
+channelmultiply(src1, dest, xRatio, 1, 1, 1);
+
+if (showEasing)
+	easeGraph(easing, easemethod);
+end if

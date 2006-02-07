@@ -1,9 +1,12 @@
 filter "Joe's Y/C Corrector";
-group "BETA";
+group "Joe's Filters [BETA]";
 
 input target, "Shift", radiogroup, 3, "Both", "Luma (Y)", "Chroma (C)";
 input hshift, "Horizontal", slider, -2, -10, 10;
 input vshift, "Vertical", slider, 0, -10, 10;
+
+input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
 
 InformationFlag("YUVaware")
 ProducesAlpha;

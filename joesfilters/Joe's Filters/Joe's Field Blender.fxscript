@@ -1,20 +1,5 @@
-//                       v5.0 
-//	                  
-//	     wvwwvwvww    
-//	     \                /  
-//	       \______/  
-//	                          	
-//       Joe's Filters     
-//	 www.joesfilters.com
-
-
-// (C) 2001-2005 Joe Maller
-// http://www.joesfilters.com
-// http://www.fxscriptreference.org
-
-
-filter "Joe's Field Blender [BETA]";
-group "Joe's Video Tools";
+filter "Joe's Field Blender";
+group "Joe's Filters [BETA]";
 
 
 input FieldBlender, "Blend Fields", slider, 60, 0, 100;
@@ -34,8 +19,8 @@ input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
 input label3, "Fade With Original", label, "";
 input opacity, "Opacity", slider, 100, 0, 100;
 
-input title, "©ÊJoe's Filters", Label,"";
-input title1, "www.joesfilters.com", Label,"";
+input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
 
 
 fullframe
@@ -471,8 +456,6 @@ dimensionsOf(dest, w, h);
 
 exposedbackground = 1;
 
-maskDetail *= -1 // reverse this to make more sense
-
 
 dimensionsOf(dest, w, h);
 image field0[w][h];				//full size buffer
@@ -498,7 +481,7 @@ if  true //(CLIPDUR > 0)
 	motiondiff += (frame == 0 && motiondiff == 3); // catch 0-frame null-map on first-field, surrounding-fields
 	
 	// translate maskDetail values
-	threshold = maskDetail * 0.4 + 8;
+	threshold = -maskDetail * 0.4 + 8;
 	soften = threshold/4
 	
 	if (motiondiff ==2)	// single frame, diff fields
@@ -562,4 +545,11 @@ if  true //(CLIPDUR > 0)
 		end if
 	end if
 end if
+
+
+
+
+
+
+
 
