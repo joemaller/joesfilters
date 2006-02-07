@@ -1,0 +1,4 @@
+on sumNaturals(value _n)
+	// returns the additive sum of all natural numbers from 0 through _n
+	return _n * (_n+1)/2;
+end

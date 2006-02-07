@@ -1,0 +1,27 @@
+on ColorRampImage(image _img, color _fg, color _bg, value _thr, value _steps)
+
+		// can convert an image into a two-color ramp in place with thresholding
+		
+
+	float _w, _h, _adj[256];
+	dimensionsOf(_img, _w, _h);
+	
+	image _temp[_w][_h];
+	
+	Desaturate(_img, _img);
+	channelcopy(_img, _img, kgreen, knone, knone, knone)
+
+
+	makeThresholdMapBez(_adj, _thr, _steps, 255)	
+	LevelMap(_img, _temp, _adj, linearRamp, linearRamp, linearRamp);
+	
+	channelfill(_img, _bg.a, _bg.r, _bg.g, _bg.b);
+	channelfill(_temp, -1, _fg.r, _fg.g, _fg.b);
+	matte(_temp, _img, _img, 1, kalpha);
+	
+	
+	// may want to make this a source-dest function?
+	// can be used with PlaceFrame to build a new Pixelizer
+	
+
+end

@@ -1,0 +1,14 @@
+on ArrayPointReverse(point _ar)
+
+	float _x, _arLength;
+	_arLength = ArrayPointCount(_ar);
+	point _temp[_arLength];
+	
+	_temp = _ar;
+	
+	for _x = 0 to _arLength - 1
+		_ar[_x] = _temp[_arLength - 1 - _x];
+	next
+end
+
+

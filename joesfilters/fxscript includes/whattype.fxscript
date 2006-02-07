@@ -1,0 +1,1 @@
+on whatType(); return (aspectOf(src1) > 0) + (aspectOf(src2) >0); end 	// generator:0, filter:1, transition:2

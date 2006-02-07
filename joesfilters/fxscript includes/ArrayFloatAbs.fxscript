@@ -1,0 +1,21 @@
+on ArrayFloatAbs(float _ar)
+	// replaces all values of an array with their absolute floating-point values	
+	// works on 1 and 2 dimensional arrays
+	// requires: isIndexFloat, isIndexFloatArray
+	
+	float _i;
+	_i = 1;
+	if (isIndexFloatArray(0, _ar))
+		ArrayFloatAbs(_ar[0]);
+		repeat while (isIndexFloatArray(_i, _ar)) 
+			ArrayFloatAbs(_ar[_i])
+			_i++;
+		end repeat
+	else	// not an array, do normal stepped comparison
+		_ar[0] *= sign(_ar[0]);
+		repeat while (isIndexFloat(_i, _ar))
+			_ar[_i] *= sign(_ar[_i]);
+			_i++;
+		end repeat
+	end if
+end 

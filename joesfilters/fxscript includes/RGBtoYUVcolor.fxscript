@@ -1,0 +1,7 @@
+on RGBtoYUVcolor(color _rgbColor)
+	color _temp;
+	_temp = _rgbColor
+	_rgbColor.r = _temp.r * 0.299 + _temp.g * 0.587 + _temp.b * 0.114 
+	_rgbColor.g = _temp.r * -0.169 + _temp.g * -0.332 + _temp.b * 0.500 + 128; 
+	_rgbColor.b = _temp.r* 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
+end 

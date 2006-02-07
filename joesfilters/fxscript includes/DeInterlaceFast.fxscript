@@ -37,4 +37,4 @@ on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix
 	end if
 		
 	BlitRect(_halfIMG, _r2, _destIMG, _r1);
-end
+end 

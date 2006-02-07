@@ -1,0 +1,13 @@
+on ArrayFloatNormalize(float _ar)
+	// remaps the array from zero to one based on current range of values
+	// requires ArrayFloatMin and ArrayFloatMax
+	
+	float _min, _max;
+	_min = ArrayFloatMin(_ar);
+	_max = ArrayFloatMax(_ar);
+
+	if (_max - _min > 0)
+		_ar -= _min;
+		_ar /= _max - _min;
+	end if
+end 

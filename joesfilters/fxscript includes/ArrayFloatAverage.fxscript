@@ -1,0 +1,6 @@
+on ArrayFloatAverage(float _ar)	
+	// 	returns the average value of a 1D or 2D array
+	//	requires ArrayFloatSum and ArrayFloatCountAll
+	
+	return ArrayFloatSum(_ar)/ArrayFloatCountAll(_ar);
+end 

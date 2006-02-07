@@ -1,4 +1,4 @@
-on Pt3dReporter(image _destIMG, point3d _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+on Pt3dReporter(image _destIMG, point3d _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
 	
 	float rw, rh, ra, rd, rzoom;
 	string reporterX, reporterY, reporterZ;
@@ -10,13 +10,13 @@ on Pt3dReporter(image _destIMG, point3d _data, string _label, value _numberforma
 	fontcolor = {255,235,235,235};
 	settextfont("verdana");
 	setTextstyle(kbold);
-	setTextjustify(kcenterjustify);
+	setTextjustify(_justification);
 	setTextSize(_fontsize * rzoom);
 													
 	NumToString(_data.x, reporterX, _numberformat);
 	NumToString(_data.y, reporterY, _numberformat);
 	NumToString(_data.z, reporterZ, _numberformat);
 	reporterX = _label + " = {" + reporterX + "," + reporterY + "," + reporterZ + "}";
-	DrawString(reporterX, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+	DrawString(reporterX, 0, _h, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
 
 end 

@@ -1,4 +1,4 @@
-on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
 	
 	float rw, rh, ra, rd, rzoom;
 	string reporter;
@@ -10,11 +10,11 @@ on NumReporter(image _destIMG, value _data, string _label, value _numberformat, 
 	fontcolor = {255,235,235,235};
 	settextfont("verdana");
 	setTextstyle(kbold);
-	setTextjustify(kcenterjustify);
+	setTextjustify(_justification);
 	setTextSize(_fontsize * rzoom);
 													
 	NumToString(_data, reporter, _numberformat);
 	reporter = _label + " = " + reporter;
-	DrawString(reporter, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+	DrawString(reporter, 0, _h, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
 
 end

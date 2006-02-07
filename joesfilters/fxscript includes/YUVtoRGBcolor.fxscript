@@ -5,3 +5,16 @@ on YUVtoRGBcolor(color _yuvColor)
       _yuvColor.g = _temp.r - (0.3455 * (_temp.g - 128) - (0.7169 * (_temp.b - 128)));
       _yuvColor.b = _temp.r + (1.7790 * (_temp.g - 128);
 end
+
+
+// alternate conversion matrix, possibly for JPEG?:
+// R = Y + 1.40200 * (Cr - 128.0)
+// G = Y - 0.34414 * (Cb - 128.0) - 0.71414 * (Cr - 128.0)
+// B = Y + 1.77200 * (Cb - 128.0)
+
+
+// here's another:
+//	B = 1.164(Y - 16.0) + 2.018(U - 128.0)
+//	G = 1.164(Y - 16.0) - 0.813(V - 128.0) - 0.391(U - 128.0)
+//	R = 1.164(Y - 16.0) + 1.596(V - 128.0)
+

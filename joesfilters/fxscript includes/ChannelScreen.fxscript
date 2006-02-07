@@ -1,0 +1,5 @@
+on ChannelScreen(image _src1, image _dest, value _doAlpha, value _doRed, value _doGreen, value _doBlue)
+	invert(_src1, _dest);
+	channelMultiply(_dest, _dest, 1-_doAlpha, 1-_doRed, 1-_doGreen, 1-_doBlue);
+	invert(_dest, _dest);
+end 

@@ -1,0 +1,23 @@
+on PointInPoly(point _pt, point _poly)
+
+	// thanks in part to several online examples including: 
+	//		http://www.ecse.rpi.edu/Homepages/wrf/research/geom/pnpoly.html
+	//		http://astronomy.swin.edu.au/~pbourke/geometry/insidepoly/
+	// 		http://www.acm.org/pubs/tog/editors/erich/ptinpoly/
+	// 		http://www.ics.uci.edu/~eppstein/161/960307.html
+
+    float _i, _j, _c, _arLength;
+	_arLength = arrayPointCount(_poly);
+	_c = 0;
+    _j = _arLength - 1;
+    _i = 0;
+    repeat while (_i < _arLength)
+		if (((_poly[_i].y<=_pt.y) && (_pt.y<_poly[_j].y)) || ((_poly[_j].y<=_pt.y) && (_pt.y<_poly[_i].y)))
+        	if (_pt.x < (_poly[_j].x - _poly[_i].x) * (_pt.y - _poly[_i].y) / (_poly[_j].y - _poly[_i].y) + _poly[_i].x)
+				_c ^= 1;
+			end if
+		end if
+		_j = _i++;
+	end repeat;
+	return _c;
+end

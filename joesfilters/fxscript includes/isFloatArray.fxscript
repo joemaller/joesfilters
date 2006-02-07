@@ -1,0 +1,1 @@
+on isFloatArray(float _ar); return(1 + _ar) == _ar); end 	// return bails out on an error, returning whatever has been passed so far, if _ar is an array, it returns 1 since it can't do the math; this fails catastrophically when passed non-extant array values. For testing unknown array indices, use isIndexFloatArray() instead.

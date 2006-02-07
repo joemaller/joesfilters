@@ -1,0 +1,3 @@
+on floor(value _x)	// simple function to round towards negative infinity
+	return( ((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x));
+end

@@ -1,0 +1,3 @@
+on absNoInt(value _num)	// returns the absolute floating point value of a number
+	return _num * sign(_num);
+end

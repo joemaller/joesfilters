@@ -1,4 +1,7 @@
 on ArrayFloatSum(float _ar)
+	// returns the sum of all values in a 1D or 2D array
+	// requires isIndexFloatArray, isIndexFloat
+
 	float _i, _sum;
 	_i = 1;
 	if (isIndexFloatArray(0, _ar))

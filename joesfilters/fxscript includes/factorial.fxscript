@@ -1,0 +1,10 @@
+on factorial(value _n)
+	// returns the factorial of _n
+	if (_n < 0)
+		  return -1;
+	   else if (_n < 2)
+		  return 1;
+	   else
+		  return _n * factorial(_n - 1);
+	end if 
+end

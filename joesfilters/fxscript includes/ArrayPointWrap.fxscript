@@ -1,5 +1,6 @@
 on ArrayPointWrap(point _ar, value _offset)
-
+	// a simple subroutine for wrapping an array, ie moving the first value to the end, etc.
+	
 	if (_offset != 0)
 		float _x, _arLength;
 		

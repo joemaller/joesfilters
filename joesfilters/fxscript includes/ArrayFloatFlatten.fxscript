@@ -1,0 +1,13 @@
+on ArrayFloatFlatten(float _deepArray, float _flatArray)	
+	// flattens a 2D array into 1D array
+	// _flatArray can have more indexes than _deepArray
+	// requires: ArrayFloatCount
+	
+	float _i, _j, _index;
+	for _i = 0 to ArrayFloatCount(_deepArray)-1	
+		for _j = 0 to ArrayFloatCount(_deepArray[_i])-1
+			_flatArray[_index] = _deepArray[_i][_j];
+			_index++;
+		next
+	next
+end 
