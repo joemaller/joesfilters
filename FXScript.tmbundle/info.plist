@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string>FXScript</string>
+	<key>ordering</key>
+	<array>
+		<string>ECFC659F-D039-46A2-B237-27A3769CDE7A</string>
+		<string>A03B190B-E834-4502-856C-43545F86A5CC</string>
+		<string>32D9C004-FBB8-4A95-81A4-503E45F46530</string>
+		<string>700E5067-6AF4-4A03-9387-4BEFA4B55BCA</string>
+		<string>3FDDEFD4-6C98-402F-8FBE-C40E69651052</string>
+		<string>45428D9B-CD3E-432C-A421-6C0A7019C806</string>
+		<string>37F2F4D3-9853-4961-8F7A-AABB0300D0FC</string>
+		<string>BACEFAAC-7D6D-49FA-A2E2-5AF305F0BB7F</string>
+		<string>4CF35F63-CD67-4021-A04F-ADC21EDFA378</string>
+		<string>2F1E3D94-3F4C-4001-8529-0DBDA797EABD</string>
+		<string>435E0864-5903-4A80-BB9D-FA47A6AF1FDD</string>
+		<string>B733EA72-CDAD-48B9-84B1-4696C65F2914</string>
+		<string>43751327-3FD1-4BE7-AD05-136FC552BABA</string>
+		<string>30F79A23-EF2C-4DEB-93D1-69547C894B7B</string>
+		<string>051C9F35-F904-4082-A164-0841A260208E</string>
+	</array>
+	<key>uuid</key>
+	<string>26237CF9-8224-4B72-B8CF-37D54BD9551F</string>
+</dict>
+</plist>

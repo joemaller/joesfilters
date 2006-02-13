@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>beforeRunningCommand</key>
+	<string>nop</string>
+	<key>command</key>
+	<string>includePath="/Users/joe/SVNTEST/tempDir2/joesfilters/fxscript includes/"
+
+includeFiles=$(osascript 	&lt;&lt; END
+set includePath to POSIX file "$includePath"
+set includePath to alias includePath
+tell application "Finder" to copy name of every file of includePath as list to includeList
+
+tell app "SystemUIServer"
+activate
+set includeFiles to choose from list includeList with prompt "Choose FXScript function to include:" OK button name "Insert" with multiple selections allowed
+end tell
+if includeFiles is false then return -- quit on cancel
+--set text item delimiters of AppleScript to "\n"
+return includeFiles --as text
+
+END)
+
+dumper=""
+spacer=""
+
+includeFiles=`echo -e "$includeFiles" | perl -e '$a=&lt;STDIN&gt;;$a =~ s/, /\n/g; print $a;'`
+
+for i in $includeFiles
+	do
+		vers=`/usr/local/bin/./svn log "$includePath$i" | grep -m1 -er[0-9] | awk '{print $1}'`
+		dumper=$dumper$spacer
+		dumper=$dumper`echo -e "\n// INCLUDE \"$i\" $vers"`"\n\n"
+		dumper=$dumper`/usr/local/bin/./svn cat "$includePath$i"`
+		dumper=$dumper`echo -e "\n\n// END \"$i\""`
+		spacer="\n\n\n"
+	done
+
+echo -e "$dumper"
+
+osascript -e 'tell app "TextMate" to activate' &amp;&gt;/dev/null &amp;
+</string>
+	<key>fallbackInput</key>
+	<string>none</string>
+	<key>input</key>
+	<string>selection</string>
+	<key>keyEquivalent</key>
+	<string>~F</string>
+	<key>name</key>
+	<string>Insert Include</string>
+	<key>output</key>
+	<string>replaceSelectedText</string>
+	<key>scope</key>
+	<string>source.fxscript</string>
+	<key>uuid</key>
+	<string>ECFC659F-D039-46A2-B237-27A3769CDE7A</string>
+</dict>
+</plist>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>content</key>
+	<string>input ${1:varname}, "${2:text label}", YUVColor, ${3:A}, ${4:Y}, ${5:U}, ${6:V};</string>
+	<key>name</key>
+	<string>YUVColor</string>
+	<key>scope</key>
+	<string></string>
+	<key>tabTrigger</key>
+	<string>input</string>
+	<key>uuid</key>
+	<string>BACEFAAC-7D6D-49FA-A2E2-5AF305F0BB7F</string>
+</dict>
+</plist>
