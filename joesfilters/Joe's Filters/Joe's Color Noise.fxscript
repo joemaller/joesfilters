@@ -6,7 +6,7 @@ input _r2, "_r2", Slider, 0, -1, 1;
 input noiseFPS, "Noise FPS", slider, 24, 0, 60;
 
 
-input NoiseAmount, "Amount", slider, 30, 0.1, 400 ramp 80;
+input NoiseAmount, "Amount", slider, 400, 0.1, 400 ramp 80;
 input ScatterDance, "Fixed Noise", checkbox, 0
 
 input noiseScale, "Scale Noise", slider, 200, 100, 1000 label "%";
@@ -16,10 +16,15 @@ input noiseAspect, "Noise Aspect", Slider, 1, 0, 2 detent 1;
 
 input note1, "Color Mix:", Label,"";
 input monochrome, "Monochrome", checkbox, 0;
-input rFloor, "Red/Gray Floor", Slider, 0, 0, 255;
-input r, "Red/Gray", Slider, 0, -1, 1;
-input g, "Green", Slider, 255, 0, 255;
-input b, "Blue", Slider, 0, -1, 1;
+
+input r, "Red/Gray", Slider, 127, 0, 255 detent 127;
+input rRange, "R/Y Value Range", Slider, 255, 0, 255;
+
+input g, "Green", Slider, 127, 0, 255 detent 127;
+input gRange, "G/U Value Range", Slider, 255, 0, 255;
+
+input b, "Blue", Slider, 127, 0, 255 detent 127;
+input bRange, "B/V Value Range", Slider, 255, 0, 255;
 
 input ApplyAs, "Mode", Popup, 1, "Normal", "Multiply", "Screen", "Overlay", "Lighten", "Darken", "Add", "Subtract", "Difference";
 input Opacity, "Opacity", slider, 100, 0, 100;
@@ -40,33 +45,6 @@ exposedBackground=1;
 
 
 
-// INCLUDE "NumReporter.fxscript" v1.1
-
-on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
-	
-	float rw, rh, ra, rd, rzoom;
-	string reporter;
-	color fontcolor;
-	
-	DimensionsOf(_destIMG, rw, rh);
-	rzoom = rw/720;
-	
-	fontcolor = {255,235,235,235};
-	settextfont("verdana");
-	setTextstyle(kbold);
-	setTextjustify(_justification);
-	setTextSize(_fontsize * rzoom);
-													
-	NumToString(_data, reporter, _numberformat);
-	reporter = _label + " = " + reporter;
-	DrawString(reporter, 0, _h, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
-
-end 
-
-// END "NumReporter.fxscript"
-
-
-
 
 on RandomNoiseScaled(image _dest, value _noise, value _r, value _g, value _b, value _scale, value _blur, value _aspect, value _colorspace)
 	// 	_noise is a 0.1...400 vallue to match Photoshop's controls
@@ -84,35 +62,55 @@ on RandomNoiseScaled(image _dest, value _noise, value _r, value _g, value _b, va
 	boundsof(_dest, _box0);
 	boundsof(_img0, _box1);
 	
-float _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil;
+	float _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil;
 
-if (_r < 0)
-	_rFloor = 0;
-	_rCeil = (_r + 1)*255;
-else
-	_rFloor = _r * 255;
-	_rCeil = 255;
-end if
+	if(rRange/2 > r)
 
-if (_g < 0)
-	_gFloor = 0;
-	_gCeil = (_g + 1)*255;
-else
-	_gFloor = _g * 255;
-	_gCeil = 255;
-end if
+		_rCeil = 2*r;
+		_rFloor = 0;
+	else if (255 - rRange/2 < r)
+		_rCeil = 255;
+		_rFloor = 255 - (255-r)*2;
+	else
+		_rCeil = r + rRange/2;
+		_rFloor = r - rRange/2;
+	end if
 
-if (_b < 0)
+	if(gRange/2 > g)
+		DebugText("******** first G option");
+		_gCeil = 2*g;
+		_gFloor = 0;
+	else if (255 - gRange/2 < g)
+		DebugText("******** second G option");
+		_gCeil = 255;
+		_gFloor = 255 - (255-g)*2;
+	else
+		DebugText("******** third G option");
+		_gCeil = g + gRange/2;
+		_gFloor = g - gRange/2;
+	end if
 
-	_bFloor = (_colorspace==3) ? 128 : 0;
-	_bCeil =  (_colorspace==3) ? 128 - (_b * 128) : (_b + 1)*255;
-else
-	_bFloor = (_colorspace==3) ? 128 + (_b * 128) : _b * 255;
-	_bCeil =  (_colorspace==3) ? 128 : 255;
-end if
+	if(bRange/2 > b)
+		_bCeil = 2*b;
+		_bFloor = 0;
+	else if (255 - bRange/2 < b)
+		_bCeil = 255;
+		_bFloor = 255 - (255-b)* 2;
+	else
+		_bCeil = b + bRange/2;
+		_bFloor = b - bRange/2;
+	end if
 
-DebugText("_bFloor : _bCeil", _bFloor, _bCeil);
-		RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, ((_colorspace==3)?128-g/2:0), ((_colorspace==3)?128+g/2:g), _bFloor, _bCeil, 1);	// yuv
+	DebugText("**********************");
+	DebugText("_rCeil", _rCeil);
+	DebugText("_rFloor", _rFloor);
+	DebugText("_gCeil", _gCeil);
+	DebugText("_gFloor", _gFloor);
+	DebugText("_bCeil", _bCeil);
+	DebugText("_bFloor", _bFloor);
+	
+RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil, 1)
+	//	RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, ((_colorspace==3)?128-g/2:0), ((_colorspace==3)?128+g/2:g), _bFloor, _bCeil, 1);	// yuv
 
 	if (_blur > 0);
 		dimensionsOf(_img0, _w, _h);
@@ -125,7 +123,7 @@ DebugText("_bFloor : _bCeil", _bFloor, _bCeil);
 		blitRect(_img0, _box1, _dest, _box0);
 	end if;
 
-	DebugText("_img0.w",_w, "_img0.h", _h );
+//	DebugText("_img0.w",_w, "_img0.h", _h );
 end 
 
 
@@ -156,31 +154,30 @@ on RandomSeedFPS(value _outFPS, value _inFPS)
 	else
 		randomseed(0);
 	end if
-
 end
 
 
-DebugText("ifps", iFPS);
-DebugText("duration", duration);
+//	DebugText("ifps", iFPS);
+//	DebugText("duration", duration);
 
 RandomSeedFPS(noiseFPS, iFPS);
 
 RandomNoiseScaled(dest, NoiseAmount, r, g, b, 100/noiseScale, softnoise, noiseAspect, colorSpace);
 
-	if ApplyAs == 1; Matte(dest, src1, dest, opacity/100, kalpha); end if
-	if ApplyAs == 2; Multiply(src1, xbuffer, dest, opacity/100, kalpha); end if
-	if ApplyAs == 3; Screen(src1, xbuffer, dest, opacity/100, kalpha); end if
-	if ApplyAs == 4; Overlay(src1, xbuffer, dest, opacity/100, kalpha); end if
-	if ApplyAs == 5; Lighten(src1, xbuffer, dest, opacity/100, kalpha); end if
-	if ApplyAs == 6; Darken(src1, xbuffer, dest, opacity/100, kalpha); end if
-	if ApplyAs == 7; add(src1, xbuffer, dest, opacity/100, kalpha); end if;
-	if ApplyAs == 8; 
-			subtract(src1, xbuffer, dest, opacity/100, kalpha);
-			ChannelCopy(src1, dest, kalpha, knone, knone, knone); 
-	 end if;
-	if ApplyAs == 9; 
-			Difference(src1, xbuffer, dest, kalpha); 
-			ChannelCopy(src1, dest, kalpha, knone, knone, knone); 
-			Matte(dest, src1,  dest, opacity/100, knone); 
-	end if;
+if ApplyAs == 1; Matte(dest, src1, dest, opacity/100, kalpha); end if
+if ApplyAs == 2; Multiply(src1, xbuffer, dest, opacity/100, kalpha); end if
+if ApplyAs == 3; Screen(src1, xbuffer, dest, opacity/100, kalpha); end if
+if ApplyAs == 4; Overlay(src1, xbuffer, dest, opacity/100, kalpha); end if
+if ApplyAs == 5; Lighten(src1, xbuffer, dest, opacity/100, kalpha); end if
+if ApplyAs == 6; Darken(src1, xbuffer, dest, opacity/100, kalpha); end if
+if ApplyAs == 7; add(src1, xbuffer, dest, opacity/100, kalpha); end if;
+if ApplyAs == 8; 
+		subtract(src1, xbuffer, dest, opacity/100, kalpha);
+		ChannelCopy(src1, dest, kalpha, knone, knone, knone); 
+ end if;
+if ApplyAs == 9; 
+		Difference(src1, xbuffer, dest, kalpha); 
+		ChannelCopy(src1, dest, kalpha, knone, knone, knone); 
+		Matte(dest, src1,  dest, opacity/100, knone); 
+end if;
 
