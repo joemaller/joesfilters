@@ -1,0 +1,52 @@
+filter "Joe's Data-forward test";
+group "BETA"
+
+input boo, "boo", label, "";
+input booga, "booga", Clip
+code
+
+
+//numreporter subroutine
+		On numReporter(value reporterData, string reporterstring, value subformat, value height)
+	
+	
+			string reporter;
+			color fontcolor;
+
+			fontcolor = {200,255,255,255};
+			settextfont("Verdana");
+			setTextstyle(kbold);
+			setTextjustify(kcenterjustify);
+			setTextSize(30 * zoomfactor);
+			//ChannelFill(xbuffer, 0, 0, 0, 0)
+
+			NumToString(reporterData, reporter, subformat); reporter = reporterstring + " " + reporter
+
+			DrawString(reporter, 0, height, 1.2,  dest, fontcolor , aspectof(dest))
+		End
+//end numreporter
+
+float x, x2, h, w, q[duration], zoomfactor ;
+float sourceDuration, sourceOffset
+
+dimensionsOf(dest, w, h);
+
+image clipbuffer[w][h];
+
+getLimits(booga, sourceDuration, sourceOffset);
+
+if (sourceDuration > 0)
+getvideo(booga, frame, clipbuffer);
+end if
+
+zoomfactor = w/720;
+
+
+for x = 0 to frame
+	x2 = frame;
+
+next;
+
+dest = clipbuffer;
+
+numreporter(sourceDuration, "sourceDuration:", kfloat2, h/2*0.75);

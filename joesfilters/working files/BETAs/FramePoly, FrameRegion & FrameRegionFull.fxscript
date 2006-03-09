@@ -1,0 +1,27 @@
+filter "FramePoly, FrameRegion & FrameRegionFull";
+group "FXScript Reference";
+
+input frameMethod, "Frame Method", radiogroup, 3, "FramePoly", "FrameRegion", "FrameRegionFull";
+input borderWidth, "Border", slider, 8, 1, 100 detent 0;
+input borderColor, "Color", color, 255, 0, 50, 200;
+input scaler, "Scale", slider, 0.75, 0.1, 1;
+input rotation, "Rotate", angle, 0, -360, 360;
+
+code
+
+dest = src1;
+point box[4], c;
+region rgn1;
+
+boundsOf(dest, box);
+box *= scaler;
+Rotate(box, c, rotation, aspectof(dest))
+makeregion(box, rgn1);
+
+if (frameMethod == 1)
+	framePoly(box, dest, borderColor, borderWidth);
+else if (frameMethod == 2)
+	FrameRegion(rgn1, dest, bordercolor, borderWidth)		
+else if (frameMethod == 3)
+	frameregionfull(rgn1, dest, bordercolor, borderWidth, aspectof(dest))
+end if		

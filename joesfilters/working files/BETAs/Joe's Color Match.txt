@@ -1,0 +1,93 @@
+//                         v3.5 
+//	                  
+//	   wvwwvwvww    
+//	   \                  /  
+//	     \______/  
+//	                          	
+//       Joe's Filters     
+//   for Final Cut Pro 
+
+
+// (C) 2003 Joe Maller
+// http://www.joesfilters.com
+// http://www.fxscriptreference.org
+
+
+filter "Joe's Color Match";
+group "BETA";
+
+input targetColor, "Target Color", color, 255, 128, 128, 128;
+
+input matchColor, "Match Color", color, 255, 128, 128, 128;
+
+input title, "Joe's Filters", Label,"";
+input title1, "www.joesfilters.com", Label,"";
+
+code
+
+float i;
+float rGamma, gGamma, bGamma, xGamma;
+float rWhite, gWhite, bWhite;
+float rBlack, gBlack, bBlack;
+float rRange, gRange, bRange;
+float rKey[256], gKey[256], bKey[256];
+
+
+
+
+
+// Color picker needs to offer some kind of multi-pixel sampling...
+// 
+
+
+
+
+
+
+
+
+
+// correct out of range values for the match color:
+targetColor.r = (targetColor.r == 255) ? 254 : targetColor.r
+targetColor.g = (targetColor.g == 255) ? 254 : targetColor.g
+targetColor.b = (targetColor.b == 255) ? 254 : targetColor.b
+
+targetColor.r = (targetColor.r == 0) ? 1 : targetColor.r
+targetColor.g = (targetColor.g == 0) ? 1 : targetColor.g
+targetColor.b = (targetColor.b == 0) ? 1 : targetColor.b
+
+	xGamma = log10(128/255);
+
+rGamma = log10(targetColor.r/255) / log10(matchColor.r/255);
+gGamma = log10(targetColor.g/255) / log10(matchColor.g/255);
+bGamma = log10(targetColor.b/255) / log10(matchColor.b/255);
+
+//if DoWhite == 1;
+//	White.r = (White.r + White.g + White.b)/3; White.g = White.r; White.b = White.r;
+//end if
+
+//if DoBlack == 1;
+//	Black.r = (Black.r + Black.g + Black.b)/3; Black.g = Black.r; Black.b = Black.r;
+//end if
+
+//rRange = (White.r > Black.r) ? White.r - Black.r : 1;
+//gRange = (White.g > Black.g) ? White.g - Black.g : 1;
+//bRange = (White.b > Black.b) ? White.b - Black.b : 1;
+
+rRange = 255;
+gRange = 255;
+bRange = 255;
+
+
+for i = 0 to 255
+	rKey[i] = (i < 255) ? power((i-0)/rRange, rGamma): 1; 
+	gKey[i] = (i < 255) ? power((i-0)/gRange, gGamma): 1;
+	bKey[i] = (i < 255) ? power((i-0)/bRange, bGamma): 1;
+	
+	// any negative values seem to be interpreted as zero so these are unnecessary
+	//rKey[i] = (rKey[i] >= 0) ? rKey[i] : 0;
+	//gKey[i] = (gKey[i] >= 0) ? gKey[i] : 0;
+	//bKey[i] = (bKey[i] >= 0) ? bKey[i] : 0;
+next;
+
+levelMap(src1, dest, LinearRamp, rKey, gKey, bKey);

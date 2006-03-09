@@ -1,0 +1,278 @@
+transition "FCE Ramper"
+Group "BETA"
+
+
+//input gamma, "Gamma", slider, 3, 0.1, 25;
+input easing, "Ease In/Out", slider, 0, -100, 100 detent -75, -50, -33, 0, 33, 50, 75;
+
+
+input boxwidth, "Box Width", slider, 240, 10, 320;
+input dotsize, "Dot Size", slider, 5, 1, 50;
+input dotsoft, "Dot Soft", slider, 1, 0, 50;
+//input ph, "para Height", slider, 240, 1, 400;
+//input sinadj, "sinadj", slider, 1, -180, 180;
+
+input showvals, "Show Values", checkbox, 0;
+
+input traildots, "Trailing Dots", slider, 15, 1, 50;
+input fskip, "Trail Frame Skip", slider,3, 0.1, 25 ramp 75;
+
+input fontsize, "Font Size", slider, 22, 6, 144; 
+input tracking, "Tracking", slider, 2, -5, 10; 
+
+
+
+code
+
+// numreporter function
+// Sept 21, 2003
+        On numReporter(value reporterData, string reporterstring, value subformat, value height)
+                
+                string reporter;
+                color fontcolor;
+                float rw, rh, ra, rd, rzoom;
+                
+                DimensionsOf(dest, rw, rh);
+                rzoom = rw/720;
+                
+                fontcolor = {255,235,235,235};
+                settextfont("verdana");
+                setTextstyle(kbold);
+                setTextjustify(kcenterjustify);
+                setTextSize(fontsize * rzoom);
+                                                                
+                NumToString(reporterData, reporter, subformat); reporter = reporterstring + " = " + reporter
+                DrawString(reporter, 0, height, tracking,  dest, fontcolor , aspectof(dest))
+        
+        End
+//end numreporter 
+
+on dots(value dodot, value _dur)
+
+		// dodot is one of the color constants: kred, kblue, kgreen, etc...
+		
+	point dump;
+	float f;
+
+	for i = 0-traildots to 0
+
+		f = (frame+i*fskip) 
+		f = (f < 0) ? _dur + f : f;
+
+		dump = {f/duration * h - h/2, eqY(dodot, f, _dur)}
+		DrawSoftDot(dest, dump, kround, dotsize, dotsoft, 1, dodot, (i/traildots) + 1, aspectof(dest))
+	next
+
+	return(dump.y)
+end
+
+
+on dots2(value dodot, value _v)
+
+		// dodot is one of the color constants: kred, kblue, kgreen, etc...
+		
+	point dump;
+	float f;
+
+	for i = 0-traildots to 0
+
+		f = (frame+i*fskip) 
+		f = (f < 0) ? duration + f : f;
+
+		dump = {f/duration * h - h/2, _v * h - h/2}
+		DrawSoftDot(dest, dump, kround, dotsize, dotsoft, 1, dodot, (i/traildots) + 1, aspectof(dest))
+	next
+
+	return(dump.y)
+end
+
+
+
+on eqY(value yval, value _f, value _d)
+		// yval is a color, _f is the frame to calculate
+
+	if yval == kcyan 	
+		yval = h/2 * sin((1-_f/_d) * 180 -90);
+
+	else if yval == kgreen
+		yval = h/2 + ph / (power(_d/2, 2)) * power(_f - _d/ 2, 2) - ph; //parabola
+
+	else if yval == kred
+		//yval =  h/2 - sin(_f/_d * 180) * h;
+		
+		//yval = h/2 - (power(2 * (_f/_d), gamma)/2) * h	// half simple gamma curve (first half S)
+		
+		yval = (-power((_d-_f)/_d, 1/gamma) + 1) ; // inverted gamma curve
+
+	else if yval == kblue
+		//yval = h/2 +  power(_f/_d/0.5, gamma) *-h/2;
+		//yval = h/2 - (power((_d-_f)/_d, gamma) *h);
+		
+		yval =  ((-power(-2 * (_f/_d) + 2, gamma))/2 + 1) // half inverted gamma curve (second half S)
+	else if yval == kmagenta
+		//	The following plots a reverse curve, exiting at the lower right
+		
+		if _f/_d < 0.5
+			yval = (power(2 * (_f/_d), gamma)/2)	// half simple gamma curve (first half S)
+
+		else			
+			yval = ((-power(-2 * (_f/_d) + 2, gamma))/2 + 1)  // half inverted gamma curve (second half S)
+
+		end if
+
+	//else if yval == kwhite
+	//	yval = h/2 - (-power((_d-_f)/_d, gamma) + 1) * h; // inverted gamma curve
+
+	else if yval == kyellow
+		yval =  power(_f/_d, gamma);		// basic gamma curve
+
+	else if (yval == kwhite)
+		
+		if (_f/_d < 0.5)
+			yval = power(2*_f/_d, gamma); // inverted gamma curve
+		else 
+			yval =  power((_d - _f)/_d, gamma); // inverted gamma curve
+		end if
+		
+		
+		
+	end if
+	yval = h/2 - yval * h
+	return(yval)
+
+end
+
+
+on easeS(value _r, value _easing)
+	// modifies a 0-1 value towards an S-curve	
+	if (_r < 0.5)
+		return (power(2 * _r, _easing)/2);	// half simple gamma curve (first half S)
+	else			
+		return ((-power(-2 * _r + 2, _easing))/2 + 1);  // half inverted gamma curve (second half S)	
+	end if
+end
+
+
+on easeIn(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	return power(_r, _easing);
+
+end
+
+on easeOut(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	return 1 - power(1 - _r, _easing);
+end
+
+
+
+
+float gamma,f1, f2, f3, f4;
+float w, h, i, fxframe, fxratio;
+point tellPt, tellPt2, tellPt3, tellPt4, testBox[4]
+
+
+
+
+if  (easing < 0)		// easing is -100 - 100 value, negative values bias towards in
+//	easing =1-easing/50 ;
+else 
+//	easing = 1/(1+easing/50);
+end if
+	
+easing = (easing < 0) ? 1 - easing * 0.02 : 1/(1+easing * 0.02);
+
+
+gamma = easing;
+
+DimensionsOf(dest, w, h);
+
+fxframe = power(frame/duration, gamma) * duration;
+
+makeRect(testBox, -boxwidth/2, -h/2, boxwidth, h);
+framePoly(testBox, dest, kwhite, 1);
+
+
+
+
+//dots(kred, duration);		// ease out
+//dots(kyellow, duration);	// ease in
+//dots(kmagenta, duration); 	// ease both
+
+
+//f1 = dots(kcyan);
+//dots(kgreen);
+//dots(kblue);
+//f3 = dots(kwhite, duration);
+//dots(kwhite, duration);
+
+
+//dots2(kgreen, power(ratio, easing));
+//dots2(kred, easeIn(ratio, easing));
+//dots2(kcyan, power(1-ratio, easing));
+//dots2(kwhite, 1 - power(ratio, easing));
+//dots2(kgray, 1- power(1-ratio, easing));
+//dots2(kgray, 1- power(1-ratio, easing));
+//dots2(kmagenta, EaseInRatio(ratio, easing));
+//dots2(kred, EaseInRatio(1-ratio, easing));
+
+
+//matte(src2, src1, dest, easeS(ratio, easing), kalpha);
+
+if (ratio < 0.5)
+//	channelfill(dest, 255, 255 * easeS(ratio * 2, easing), 0, 0)
+//	dots2(kyellow, easeS(ratio * 2, easing));
+else
+//	channelfill(dest, 255, 255 * easeS(2-ratio * 2, easing), 0, 0)
+//	dots2(kyellow, easeS(2 - ratio * 2, easing));
+end if
+
+if (ratio < 0.5)
+	channelfill(dest, 255, 255 * easeIn(ratio*2, easing), 255, 0);
+	dots2(kblack, easeIn(ratio*2, easing));
+else
+	channelfill(dest, 255, 255,  255 * easeIn(2-ratio*2, easing), 0);
+	dots2(kblack, easeIn(2-ratio*2, easing));
+end if
+
+
+on easeMiddle(value _r, value _easing, value _method)
+	if (_method == 1) // easeIn
+		if (_r < 0.5)
+			return easeIn(_r * 2, _easing)
+		else
+			return easeIn(1 - _r * 2, _easing)
+		end if
+	else if (_method == 2) // easeOut
+		if (_r < 0.5)
+			return easeOut(_r * 2, _easing)
+		else
+			return easeOut(1 - _r * 2, _easing)
+		end if
+	else if (_method == 3) // easeS
+		if (_r < 0.5)
+			return easeS(_r * 2, _easing)
+		else
+			return easeS(1 - _r * 2, _easing)
+		end if
+	end if
+end
+
+
+//numReporter(easeOut(ratio, easing), "easeOut(ratio, easing)",  kfloat4, h/2*0.6);
+//numReporter(easeIn(ratio, easing), "easeIn(ratio, easing)",  kfloat4, h/2*0.7);
+
+
+
+//matte(src2, src1, dest, 1-(120+f2)/240, kalpha);
+
+if (showvals)
+//numReporter( f2, "f2", kfloat4, h/2*0.5);
+//numReporter( f3, "f3", kfloat4, h/2*0.6);
+//numReporter(ratio, "ratio", kfloat4, h/2*0.7);
+//numReporter(gamma, "gamma", kfloat4, h/2*0.8);
+numReporter(ratio, "ratio", kfloat4, h/2*0.8);
+//numReporter(ratio * 180, "ratio * 180", kfloat4, h/2*0.9);
+
+
+end if

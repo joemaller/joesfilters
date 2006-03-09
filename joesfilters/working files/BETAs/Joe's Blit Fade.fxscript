@@ -1,0 +1,192 @@
+transition "Blit Fade"
+Group "BETA"
+
+
+input easing, "Easing", slider, 0, -100, 100;
+input easeMethod, "Easing Method", popup, 1, "Ease In", "Ease Out", "Ease S";
+input squish, "Squish", radiogroup, 3, "Horizontal", "Vertical", "Both";
+
+
+code
+
+// INCLUDE "basic math.fxscript"  v1.1
+
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
+
+// END "basic math.fxscript"
+
+
+
+// INCLUDE "easeIn.fxscript"  v1.2
+
+on easeIn(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+	
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return power(_r, _easing);
+
+end
+
+// END "easeIn.fxscript"
+ 
+
+// INCLUDE "easeOut.fxscript"  v1.2
+
+on easeOut(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return 1 - power(1 - _r, _easing);
+end
+
+// END "easeOut.fxscript"
+ 
+
+// INCLUDE "easeS.fxscript"  v1.2
+
+on easeS(value _r, value _easing)
+	// modifies a 0-1 value towards an S-curve
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	if (_r < 0.5)
+		return (power(2 * _r, _easing)/2);	// half simple gamma curve (first half S)
+	else			
+		return ((-power(-2 * _r + 2, _easing))/2 + 1);  // half inverted gamma curve (second half S)	
+	end if
+end 
+
+
+// END "easeS.fxscript"
+ 
+
+// INCLUDE "easeMiddle.fxscript"  v1.3
+
+on easeMiddle(value _r, value _easing, value _method)
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+	
+	if (_method == 1) // easeIn
+		if (_r < 0.5)
+			return easeIn(_r * 2, _easing)
+		else
+			return easeIn((1 - _r) * 2, _easing)
+		end if
+	else if (_method == 2) // easeOut
+		if (_r < 0.5)
+			return easeOut(_r * 2, _easing)
+		else
+			return easeOut((1 - _r) * 2, _easing)
+		end if
+	else if (_method == 3) // easeS
+		if (_r < 0.5)
+			return easeS(_r * 2, _easing)
+		else
+			return easeS((1 - _r) * 2, _easing)
+		end if
+	end if
+end
+
+// END "easeMiddle.fxscript"
+ 
+
+
+
+
+on blitSquish(image _src1, image _src2, image _dest, point _centerPt, value _w, value _h, value _ratio, value _doX, value _doY)
+	if (_w > 0 && _h > 0) // width of incoming box has non-zero h/w
+		
+		point _inBox[4], _outBox[4];
+		makeRect(_inBox, floor(_centerPt.x-_w/2), floor(_centerPt.y-_h/2), ceil(_w), ceil(_h));
+		if (_ratio <= 0 || _ratio >= 1)	// straight blit
+			_outBox = _inbox;
+			if (_ratio <= 0)
+				blitRect(_src1, _inBox, _dest, _outBox);
+			else if (_ratio >= 1)
+				blitRect(_src2, _inBox, _dest, _outBox);
+			end if
+		else
+		
+		float _halfRatio
+		_halfRatio = (_ratio < 0.5) ? _ratio*2 : (1-_ratio)*2;
+		if (_doX && !_doY)
+			//image _img[(_inBox[1].x - _inBox[0].x) * (1- easeMiddle( _ratio, easing, easeMethod)) + 1][(_inBox[3].y - _inBox[0].y)];
+			image _img[(_inBox[1].x - _inBox[0].x) *(1-_halfRatio)+1][(_inBox[3].y - _inBox[0].y)];
+		else if (!_doX && _doY)
+			image _img[(_inBox[1].x - _inBox[0].x)][(_inBox[3].y - _inBox[0].y) * (1-_halfRatio) * aspectOf(_dest) + 1];
+		else if (_doX && _doY)
+			image _img[(_inBox[1].x - _inBox[0].x) * (1- _halfRatio) + 1][(_inBox[3].y - _inBox[0].y) * (1-_halfRatio) * aspectOf(_dest) + 1];
+		end if
+
+		boundsOf(_img, _outBox);
+		
+		if (_ratio < 0.5)
+			BlitRect(_src1, _inBox, _img, _outBox);
+		else
+			BlitRect(_src2, _inBox, _img, _outBox);
+		end if
+
+		
+		BlitRect(_img, _outBox, _dest, _inBox)
+
+		
+		end if
+	end if
+
+end
+
+
+
+//float halfRatio;
+
+point srcBox[4], destBox[4];
+boundsOf(dest, srcBox);
+
+//	if (squish == 1)
+//		image buf[(srcBox[1].x - srcBox[0].x) * (1- easeMiddle( ratio, easing, easeMethod)) + 1][(srcBox[3].y - srcBox[0].y)];
+//	else if (squish == 2)
+//		image buf[(srcBox[1].x - srcBox[0].x)][(srcBox[3].y - srcBox[0].y) *  (1- easeMiddle( ratio, easing, easeMethod)) * aspectOf(dest) + 1];
+//	else if (squish == 3)
+//		image buf[(srcBox[1].x - srcBox[0].x) * (1- easeMiddle( ratio, easing, easeMethod)) + 1][(srcBox[3].y - srcBox[0].y) *  (1- easeMiddle( ratio, easing, easeMethod)) * aspectOf(dest) + 1];
+//	end if
+//	
+//	
+//	
+//	
+//	boundsOf(buf, destBox);
+//	
+//	if (ratio < 0.5)
+//		BlitRect(src1, srcBox, buf, destBox);
+//	else
+//		BlitRect(src2, srcBox, buf, destBox);
+//	end if
+//	
+//	BlitRect(buf, destBox, dest, srcBox)
+//numreporter(dest, easeMiddle(ratio, easing, easeMethod), "easeMiddle", kfloat4, 0, 36, 1.5);
+
+srcBox *= 0.25;
+
+blitSquish(src1, src2, dest, srcBox[0], 100, 100, easeS(ratio*1.5, easing), (squish !=2), (squish >1));
+

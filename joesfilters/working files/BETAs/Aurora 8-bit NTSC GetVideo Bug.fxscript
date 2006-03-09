@@ -1,0 +1,39 @@
+// This demonstrates a problem with NTSC video using the Aurora 8-bit lecacy codec. 
+// If getVideo is passed to an NTSC 8-bit clip to a non-fullframe buffer, there will be a 
+// large green rectangle over half the image.
+
+
+
+filter "Aurora 8-bit NTSC GetVideo Bug"
+Group "FXScript Bugs"
+
+input doBlit, "Blit to FullFrame buffer", checkbox, 0;
+
+//fullframe
+
+code
+
+float clipOFFSET, clipDUR
+getLimits(clip1, clipDUR, clipOFFSET);
+
+
+if (!doBlit)
+
+	getVideo(clip1, -clipOFFSET + integer(frame/2), dest);
+
+else
+
+	float w, h;
+	point inBox[4], outBox[4];
+	dimensionsOf(dest, w, h);
+	
+	image temp[w][h*2];	// temp buffer is fullframe sized (twice field height)
+	
+	boundsOf(temp, inBox);
+	boundsOf(dest, outBox);
+	
+	getVideo(clip1, -clipOFFSET + integer(frame/2), temp);	// getVideo to fullframe-sized buffer
+	blitRect(temp, inBox, dest, outBox);				// blit back into dest
+	
+end if
+		

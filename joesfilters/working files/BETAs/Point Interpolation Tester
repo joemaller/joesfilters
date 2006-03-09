@@ -1,0 +1,721 @@
+filter "Point in Poly"
+group "FxScript Reference"
+
+
+input N, "N", point, 0.49, -0.49;
+
+input rotation, "Rotation", angle, 0, -360, 360;
+
+input A, "A 0 red", point, -0.45, -0.45;
+input B, "B 1 green", point, -0.1, -0.41;
+input C, "C 2 blue", point, 0.15, -0.15;
+input D, "D 3 cyan", point, 0.1, 0.25;
+input E, "E 4 magenta", point, -0.18, 0.35;
+input F, "F 5 yellow", point, -0.40, 0.22;
+input G, "F 6 ", point, -0.45, 0.12;
+input H, "F 7 ", point, -0.48, 0;
+
+input flipper, "flipper", checkbox, 0;
+
+input abstest, "absTest", slider, 0.5, -1, 1;
+input shifter, "shifter", slider, 0, -10, 10;
+
+
+input origin, "Origin", point, 0, 0;
+
+input numsides, "numsides", slider, 5, 3, 120;
+input starize, "starize", checkbox, 0;
+
+
+input ShapeWidth, "Width", Slider, 50, 1, 1000 ramp 80;
+input ShapeHeight, "Height", Slider, 50, 1, 1000 ramp 80;
+input ShapeScale, "Scale", Slider, 100, 1, 1000 ramp 80;
+
+
+
+code
+
+
+// INCLUDE "PtReporter.fxscript"  v1.1
+
+on PtReporter(image _destIMG, point _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporterX, reporterY;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.x, reporterX, _numberformat);
+	NumToString(_data.y, reporterY, _numberformat);
+	reporterX = _label + " = {" + reporterX + "," + reporterY + "}";
+	DrawString(reporterX, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "PtReporter.fxscript"
+ 
+
+
+// INCLUDE "NumReporter.fxscript"  v1.1
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "NumReporter.fxscript"
+ 
+
+
+// INCLUDE "absNoInt.fxscript"  vNew
+
+on absNoInt(value _num)	// returns the absolute floating point value of a number
+	return _num * sign(_num);
+end
+
+// END "absNoInt.fxscript"
+ 
+
+
+// INCLUDE "FastRotate.fxscript"  v1.2
+
+on FastRotate(point _srcPoly, value _rotation, value _aspect)
+	// a quick tool for rotating a polygon around a centerpoint.
+	// saves the step of having to define an extra point variable and call the centerOf function first
+	point _centerPt;
+	centerOfPoly(_srcPoly, _centerPt);
+	Rotate(_srcPoly, _centerPt, _rotation, _aspect)
+end
+
+// END "FastRotate.fxscript"
+ 
+
+
+// INCLUDE "BoundsOfPoly.fxscript"  v1.1
+
+on BoundsOfPoly(point _srcPoly, value _srcPolyPts, point _destRect)
+	
+	// returns the rectangular bounding box of n-sided polys
+	
+	// _srcPoly 		: 		polygon to fit inside _destRect
+	// _srcPolyPts 		: 		number of points in _srcPoly, because it can't be programatically determined
+	// _destRect		:		four-point poly which receives the bounding box around _srcPoly
+
+	float _j;
+	point _topLeft, _bottomRight;
+	
+	_topLeft = _srcPoly[0];
+	_bottomRight = _srcPoly[2];
+	
+	repeat with _j = 0 to ( _srcPolyPts -1)
+	
+		if (_srcPoly[_j].x < _topLeft.x)
+			_topLeft.x = _srcPoly[_j].x;
+		else if (_srcPoly[_j].x > _bottomRight.x)
+			_bottomRight.x = _srcPoly[_j].x;
+		end if
+
+		if (_srcPoly[_j].y < _topLeft.y)				
+			_topLeft.y = _srcPoly[_j].y;
+		else if (_srcPoly[_j].y > _bottomRight.y)
+			_bottomRight.y = _srcPoly[_j].y;
+		end if
+
+	end repeat
+
+	//makeRect(_destRect, _topLeft.x, _topLeft.y, abs(_topLeft.x) + abs(_bottomRight.x), abs(_topLeft.y) + abs(_bottomRight.y));
+	makeRect(_destRect, _topLeft.x, _topLeft.y, _bottomRight.x - _topLeft.x, _bottomRight.y - _topLeft.y);
+
+end
+
+// END "BoundsOfPoly.fxscript"
+ 
+
+
+// INCLUDE "CenterOfPoly.fxscript"  v1.1
+
+on CenterOfPoly(point _poly, point _center)
+	float _x, _arLength;
+	_arLength = arrayPointCount(_poly);
+	_center = _poly[0];
+	for _x = 1 to _arLength - 1
+		_center += _poly[_x]
+	next;
+	_center /= _arLength
+end
+
+// END "CenterOfPoly.fxscript"
+ 
+
+
+// INCLUDE "makeThresholdMapBez.fxscript"  v1.1
+
+on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
+		// a fast thresholding function using BezToLevelMap instead of for:next loops
+		// _th is the point to thrreshold around, _steps are the number of grays around _th
+		// mapLength is 255 for 8-bit maps
+		
+	point _p1, _p2;
+	
+	float _top, _bottom;
+	
+	if (_th - _steps/2 < 0)
+		_steps = _th * 2;
+	else if (_th + _steps/2 > _mapLength)
+		_steps = (_mapLength - _th) * 2;
+	end if
+	
+	if (_th & 1 == 0)	// even
+		_p1 = {floor(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {floor(_th + _steps/2)/_mapLength, 1};		
+	else // _th is odd
+		_p1 = {ceil(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {ceil(_th + _steps/2)/_mapLength, 1};		
+	end if
+
+	BezToLevelMap(_lmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
+
+end
+
+// END "makeThresholdMapBez.fxscript"
+ 
+
+
+// INCLUDE "ArrayPointCount.fxscript"  v1.2
+
+on indexExistsPt(value _i, point _ar);return(_ar[_i] == true); end
+
+on ArrayPointCount(point _ar)
+	float _l, _r, _seed, _step, _counter;
+	_seed = 7; // somewhat arbitrary, chosen after lots of performance testing
+	_step = _seed;	// store seed for later
+	 
+	_l = 1 // set this to save a loop checking the zeroth index
+	_r = _l + _seed;
+
+	repeat while true
+		_counter++;
+
+		if (indexExistsPt(_l, _ar) && indexExistsPt(_r, _ar))	// both values in array
+			_l = _r+1;	// start at _r+1 to prevent double-checking values
+			_r = _l + _step;
+			_step += _seed * _counter;
+
+		else if (!indexExistsPt(_l, _ar) && !indexExistsPt(_r, _ar))	// no values in array
+			return _l;	// stepped one over _r previously, last index must be _l-1, return _l to compenstate for count vs. index off-by-one
+
+		else 	// bottom value in array, top not. Half top and step bottom
+			_step = _r; // temporary storage of the _r variable
+			_l = _l+1; // increment _l to prevent double-checking values
+			_r = _l + integer((_r - _l)/2);	// half the distance between _l and _r
+			_step -= _r; // difference between old _r and new _r
+
+		end if
+	end repeat;
+end
+
+// END "ArrayPointCount.fxscript"
+ 
+
+
+// INCLUDE "ArrayPointReverse.fxscript"  vNew
+
+on ArrayPointReverse(point _ar)
+
+	float _x, _arLength;
+	_arLength = ArrayPointCount(_ar);
+	point _temp[_arLength];
+	
+	_temp = _ar;
+	
+	for _x = 0 to _arLength - 1
+		_ar[_x] = _temp[_arLength - 1 - _x];
+	next
+end
+
+// END "ArrayPointReverse.fxscript"
+ 
+
+
+// INCLUDE "ArrayPointWrap.fxscript"  v1.1
+
+on ArrayPointWrap(point _ar, value _offset)
+	// a simple subroutine for wrapping an array, ie moving the first value to the end, etc.
+	
+	if (_offset != 0)
+		float _x, _arLength;
+		
+		_arLength = ArrayPointCount(_ar);
+		point _temp[_arLength];
+	
+		if (abs(_offset) > _arLength)
+			_offset %= _arLength
+		end if	
+		
+		if (_offset < 0)
+			_offset = _arLength + _offset;
+		end if	
+		
+		_temp = _ar;
+	
+		for _x = 0 to _arLength  - 1
+			_ar[_x] = _temp[(_x + _offset)%_arLength];
+		next;
+	end if
+end 
+
+
+// END "ArrayPointWrap.fxscript"
+ 
+
+
+
+
+
+
+
+
+
+on sameSide(point _p1, point _p2, point _v1, point _v2)
+
+	// checks to see if both _p1 and _p2 are on the same side of the line _v1_v2
+
+	if 	((_p1.x - _v1.x) * (_v2.y - _v1.y) -(_p1.y - _v1.y) * (_v2.x - _v1.x)) * ((_p2.x - _v1.x) * (_v2.y - _v1.y) -(_p2.y - _v1.y) * (_v2.x - _v1.x)) > 0;
+		return true
+	end if
+end
+
+
+on PointInPoly0(point _pt, point _poly)
+	// check to be sure _pt is not an array, if it is, find middle and bounds, make sure small poly is in big poly
+
+	// this is ultimately a point in triangle detector. 
+
+// may want to re-think this. Build an array of triangle n-2 long. 
+// once all triangles are determined, step through the array and check for inside-ness
+
+
+	someColor.r += 25;
+//	FillPoly(_poly, dest, someColor)
+
+	float _arLength, _j, _k;
+	_arLength =	ArrayPointCount(_poly);
+	
+	point _triangles[_arLength - 2][3];
+	
+	if (_arLength > 3)
+		point _tri[3], _newPoly[_arLength - 1];
+		
+		_tri = {_poly[(_arLength-1)%_arLength].x, _poly[(_arLength-1)%_arLength].y, _poly[0].x,_poly[0].y, _poly[1].x, _poly[1].y};
+		
+		if (PointInPoly(_pt, _tri))
+			return true;
+		else
+			framePoly(_tri, dest, kred, 1);
+			_k = 0;
+
+
+			repeat with _j = 2 to _arLength -2
+				if (pointInPoly(_poly[_j], _tri))
+					fillPoly(_tri, dest, kyellow);
+					DrawSoftDot(dest, _poly[_j], ksquare, 4, 1, 1, kblack, 1, aspectOf(dest));
+					return true;
+				end if
+			end repeat
+			
+			repeat with _j = 1 to _arLength -1
+				_newPoly[_k] = _poly[_j % _arLength];
+				_k++;
+			end repeat
+		
+			PointInPoly(_pt, _newPoly);
+		end if
+		
+	end if
+
+	if PointInTriangle(N, _poly)
+		someColor = { 255, 0, 128, 0};
+		FillPoly(_poly, dest, someColor)
+		return true
+	end if
+end
+
+on PointInTriangle(point _pt, point _tri)
+	return (sameSide(_pt, _tri[0], _tri[1], _tri[2]) && sameSide(_pt, _tri[1], _tri[0], _tri[2]) && sameSide(_pt, _tri[2], _tri[0], _tri[1]))
+end
+
+
+on TriOverlap(point _poly, point _tri)
+
+	float _x, _arLength;
+	_arLength = arrayPointCount(_poly);
+	
+	for _x = 0 to _arLength-1
+		if PointInTriangle(_poly[_x], _tri)
+		//	someColor = { 255, 0, 128, 128};
+	//		FillPoly(_tri, dest, someColor)
+			return true
+		end if
+	next;
+	return false;
+end
+
+
+
+on Point3DReporter(image _destIMG, point3d _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking, color _color)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporterX, reporterY, reporterZ;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	//fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.x, reporterX, _numberformat);
+	NumToString(_data.y, reporterY, _numberformat);
+	NumToString(_data.z, reporterZ, _numberformat);
+	reporterX = _label + " = {" + reporterX + ", " + reporterY + ", " +  reporterZ + "}";
+	DrawString(reporterX, 0, _h, _tracking,  _destIMG, _color, aspectof(_destIMG));
+
+end
+
+
+
+color colors[12]
+colors[0] = {255, 255, 0, 0}
+colors[1] = {255, 255, 128, 0};
+colors[2] = {255, 255, 255, 0};
+colors[3] = {255, 128, 255, 0};
+colors[4] = {255, 0, 255, 0};
+colors[5] = {255, 0, 255, 128};
+colors[6] = {255, 0, 255, 255};
+colors[7] = {255, 0, 128, 255};
+colors[8] = {255, 0, 0, 255};
+colors[9] = {255, 128, 0, 255};
+colors[10] = {255, 255, 0, 255};
+colors[11] = {255, 255, 0, 128};
+
+
+
+on IsClockwise(point _poly)
+	float _x, _arLength, _direction;
+	_arLength = ArrayPointCount(_poly);
+	point blah, newPoint, _tri[3];
+	point3d blah3, b3;
+	for _x = 0 to _arLength - 1
+
+		//_direction += (angleTo(_poly[_x%_arLength], _poly[(_x + 1)%_arLength]) - angleTo(_poly[(_x - 1) %_arLength], _poly[_x%_arLength]))
+
+blah = {(_x + 1)%_arLength, (_x - 1)%_arLength}
+
+Interpolate(_poly[_x], _poly[(_x + 1)%_arLength], 1.25, newPoint); // set up a false 180¡ point...
+DrawSoftDot(dest, newPoint, kround, 5, 1, 1, kwhite, 1, aspectOf(dest));
+
+
+blah = {_x, angleTo(_poly[_x], _poly[(_x + 1)%_arLength]) + 180 + angleTo(_poly[(_x + 1) %_arLength], _poly[(_x+2)%_arLength]) + 180};
+blah = {(angleTo(_poly[_x], _poly[(_x + 1)%_arLength])+ 360)%360 * pi/180, (angleTo(_poly[(_x + 1)%_arLength], _poly[(_x + 2)%_arLength])+ 360)%360 * pi/180};
+blah = {(angleTo(_poly[_x], _poly[(_x + 1)%_arLength])+ 360) * pi/180, (angleTo(_poly[(_x + 1)%_arLength], _poly[(_x + 2)%_arLength])+ 360) * pi/180};
+blah = {_x,(angleTo(_poly[_x], _poly[(_x + 1)%_arLength])+ 360)- (angleTo(_poly[(_x + 1)%_arLength], _poly[(_x + 2)%_arLength])+ 360)};
+
+blah3 = {angleTo(_poly[_x], newPoint)+360, 0, angleTo(_poly[_x], _poly[(_x+2)%_arLength])+360};
+//blah3 = {angleTo(_poly[_x], newPoint), (angleTo(_poly[_x], newPoint)+180), angleTo(_poly[_x], _poly[(_x+2)%_arLength])};
+//blah3 = {distTo(_poly[_x], _poly[(_x+1)%_arLength]), distTo(_poly[(_x+1)%_arLength], _poly[(_x+2)%_arLength]), distto(_poly[_x], _poly[(_x+2)%_arLength])};
+
+
+// angles of a triangle from known sides:
+//b3.x = 	ACos((power(blah3.z,2) + power(blah3.y,2) - power(blah3.x,2))/(2*(blah3.z)*(blah3.y)));
+//b3.y = 	ACos((power(blah3.x,2) + power(blah3.z,2) - power(blah3.y,2))/(2*(blah3.x)*(blah3.z)));
+//b3.z = 	ACos((power(blah3.x,2) + power(blah3.y,2) - power(blah3.z,2))/(2*(blah3.x)*(blah3.y)));
+
+_tri[0] = _poly[_x];
+_tri[1] = _poly[(_x + 1)%_arLength];
+_tri[2] = _poly[(_x + 2)%_arLength];
+
+point3dReporter(dest,blah3, "Sides", kfloat2, _x/20 * dims.y -75, 32, 1.25, colors[_x]);
+//numReporter(dest, b3.x + b3.y + b3.z, "sum coods", kfloat2, _x/20 * dims.y -75, 32, 1.25);
+//point3dReporter(dest,b3, "Angles", kfloat2, _x/20 * dims.y + 40, 32, 1.25, colors[_x]);
+
+framePoly(_tri, dest, colors[_x],_x & 1  *2);
+
+
+			next;
+
+end
+
+
+on TriOrientation(point _poly)
+
+	float _x, _arLength, _direction, _spin;
+	_arLength = ArrayPointCount(_poly);
+	point blah, newPoint, _tri[3];
+
+	for _x = 0 to _arLength - 1
+		_tri[0] = _poly[_x % _arLength];
+		_tri[1] = _poly[(_x + 1)%_arLength]; // vertex to test
+		_tri[2] = _poly[(_x + 2)%_arLength];
+
+	//	Line(_poly[_x % _arLength], _poly[(_x+ 1) % _arLength], dest, colors[_x], 10 * (1 - _x/10))
+		//framePoly(_tri, dest, colors[_x],10 * (1 - _x/10));
+		
+		
+		
+
+		_direction = (_tri[1].x - _tri[0].x) * (_tri[2].y - _tri[0].y) - (_tri[2].x - _tri[0].x) * (_tri[1].y - _tri[0].y);
+if (_direction > 0)
+	//	Line(_poly[_x % _arLength], _poly[(_x+ 1) % _arLength], dest, kred, 10 * (1 - _x/10))
+		DrawSoftDot(dest, _tri[1], ksquare, 12, 1, 1, kred, 1, aspectOf(dest));
+
+else
+	//	Line(_poly[_x % _arLength], _poly[(_x+ 1) % _arLength], dest, kblue, 10 * (1 - _x/10))
+				DrawSoftDot(dest, _tri[1], ksquare, 12, 1, 1, kblue, 1, aspectOf(dest));
+
+end if
+		numReporter(dest, sign(_direction), "_direction", kfloat2, _x/20 * dims.y -75, 32, 1.25);
+
+	_spin += sign(_direction);
+			numReporter(dest, _spin, "_spin", kfloat2, _x/20 * dims.y +25, 32, 1.25);
+
+	next;
+	
+	
+	
+	
+end
+
+
+float col, linewidth;
+linewidth = 12
+
+
+on PointInPoly2(point _pt, point _poly)
+
+	float _j, _k, _x, _arLength;
+	point _tri[3];
+	_arLength = arrayPointCount(_poly);
+
+	_tri[0] = _poly[(_j + _arLength - 1)  % _arLength];
+	_tri[1] = _poly[(_j )%_arLength]; // vertex to test
+	_tri[2] = _poly[(_j + 1)%_arLength];
+
+		
+	if  (TriOverlap(_poly, _tri) ||(sign((_tri[1].x - _tri[0].x) * (_tri[2].y - _tri[0].y) - (_tri[2].x - _tri[0].x) * (_tri[1].y - _tri[0].y)) < 0))
+		// new triangle overlaps an existing point or makes an outside turn
+		ArrayPointWrap(_poly, 1);	// rotate the polygon's vertex array by one position 
+		pointInPoly2(N, _poly)		// recall the function using the rotated array
+	else 
+		linewidth -= 2
+		framePoly(_tri, dest, colors[col++ % 12],linewidth);
+	end if
+
+	if _arLength > 3
+		point _newPoly[_arLength -1]; 	// make a new polygon one point smaller than the current polygon		
+
+		_k = 0;
+		repeat with _j = 1 to _arLength -1
+			_newPoly[_k] = _poly[_j % _arLength];
+			_k++;
+		end repeat
+								
+		pointInPoly2(N, _newPoly);								
+	end if
+end
+
+
+on PointInPoly(point _pt, point _poly)
+
+	// thanks in part to several online examples including: 
+	//		http://www.ecse.rpi.edu/Homepages/wrf/research/geom/pnpoly.html
+	//		http://astronomy.swin.edu.au/~pbourke/geometry/insidepoly/
+	// 		http://www.acm.org/pubs/tog/editors/erich/ptinpoly/
+	// 		http://www.ics.uci.edu/~eppstein/161/960307.html
+
+    float _i, _j, _c, _arLength;
+	_arLength = arrayPointCount(_poly);
+	_c = 0;
+    _j = _arLength - 1;
+    _i = 0;
+    repeat while (_i < _arLength)
+		if (((_poly[_i].y<=_pt.y) && (_pt.y<_poly[_j].y)) || ((_poly[_j].y<=_pt.y) && (_pt.y<_poly[_i].y)))
+        	if (_pt.x < (_poly[_j].x - _poly[_i].x) * (_pt.y - _poly[_i].y) / (_poly[_j].y - _poly[_i].y) + _poly[_i].x)
+				_c ^= 1;
+			end if
+		end if
+		_j = _i++;
+	end repeat;
+	return _c;
+end
+
+
+
+
+on scalePoly(point _poly, value _n)
+	point _centerPt;
+	centerOfPoly(_poly, _centerPt);
+end
+
+
+
+
+
+float pi;
+pi = 3.141592653589793;
+
+
+
+float theColor;
+
+point dims, BOX[3], box4[4], box6[8], edgeUp, edgeDown, edgeRight, edgeLeft, intBC, centerPt;
+dimensionsOf(dest, dims.x, dims.y)
+
+A *= dims;
+B *= dims;
+C *= dims;
+D *= dims;
+E *= dims;
+F *= dims;
+G *= dims;
+H *= dims;
+
+N *= dims;
+
+
+box[0] = A;
+box[1] = B;
+box[2] = C;
+
+box4[0] = A;
+box4[1] = B;
+box4[2] = C;
+box4[3] = D;
+
+box6[0] = A;
+box6[1] = B;
+box6[2] = C;
+box6[3] = D;
+box6[4] = E;
+box6[5] = F;
+box6[6] = G;
+box6[7] = H;
+
+
+ArrayPointWrap(box6, shifter);
+if (flipper); ArrayPointReverse(box6); end if;
+
+framePoly(box, dest, kgray, 1);
+boundsOfPoly(box, 3, box4);
+framePoly(box4, dest, kgray, 1);
+boundsOfPoly(box6, 6, box4);
+framePoly(box4, dest, kgray, 1);
+
+FastRotate(box6, rotation, aspectOf(dest));
+framePoly(box6, dest, kblue, 3);
+
+DrawSoftDot(dest, box6[0], ksquare, 6, 1, 1, kred, 1, aspectOf(dest));
+DrawSoftDot(dest, box6[1], ksquare, 6, 1, 1, kgreen, 1, aspectOf(dest));
+DrawSoftDot(dest, box6[2], ksquare, 6, 1, 1, kblue, 1, aspectOf(dest));
+DrawSoftDot(dest, box6[3], ksquare, 6, 1, 1, kcyan, 1, aspectOf(dest));
+DrawSoftDot(dest, box6[4], ksquare, 6, 1, 1, kmagenta, 1, aspectOf(dest));
+DrawSoftDot(dest, box6[5], ksquare, 6, 1, 1, kyellow, 1, aspectOf(dest));
+DrawSoftDot(dest, box6[6], ksquare, 6, 1, 1, kyellow, 1, aspectOf(dest));
+DrawSoftDot(dest, box6[7], ksquare, 6, 1, 1, kyellow, 1, aspectOf(dest));
+
+theColor = kMagenta;
+
+DrawSoftDot(dest, N, kRound, 15, 1, 1, theColor, 1, aspectOf(dest));
+
+color someColor;
+someColor = {255, 30, 0, 0};
+//numReporter(dest, PointInPoly(N, box6), "PointInPoly(N, box6)", kfloat2, -0.25 * dims.y, 32, 1.25);
+
+
+//framePoly(box, dest, kgreen, 1);
+
+//numReporter(dest, angleTo(box6[2], box6[0]), "angleTo(box[2], box[0])", kfloat2, -0.45 * dims.y, 32, 1.25);
+//numReporter(dest, angleTo(box6[0], box6[1]), "angleTo(box[0], box[1])", kfloat2, -0.4 * dims.y, 32, 1.25);
+//numReporter(dest, angleTo(box6[0], box6[1]) -angleTo(box[2], box[0]) , "difference", kfloat2, -0.35 * dims.y, 32, 1.25);
+//numReporter(dest, angleTo(box[2], box[0]), "angleTo(box[2], box[0])", kfloat2, -0.35 * dims.y, 32, 1.25);
+//numReporter(dest, angleTo(box[0], box[2]), "angleTo(box[0], box[2])", kfloat2, -0.3 * dims.y, 32, 1.25);
+//numReporter(dest, angleTo(box[2], box[1]), "angleTo(box[2], box[01)", kfloat2, -0.25 * dims.y, 32, 1.25);
+//numReporter(dest, angleTo(box[1], box[2]), "angleTo(box[1], box[2])", kfloat2, -0.2 * dims.y, 32, 1.25);
+
+//numReporter(dest, angleTo(box[0], box[2]) - angleTo(box[0], box[1]), "[2]-[1])", kfloat2, 0 * dims.y, 32, 1.25);
+//numReporter(dest, angleTo(box[0], box[1]) - angleTo(box[0], box[2]), "[1]-[2])", kfloat2, 0.05 * dims.y, 32, 1.25);
+//numReporter(dest, angleTo(box[0], box[1]) - angleTo(box[0], box[2]), "[1]-[2])", kfloat2, 0.05 * dims.y, 32, 1.25);
+//numReporter(dest, angleTo(box[1], box[2]) - angleTo(box[1], box[2]), "[2]-[0])", kfloat2, 0.15 * dims.y, 32, 1.25);
+
+
+//numReporter(dest, (angleTo(box[0], box[2])) - (angleTo(box[0], box[1])), "(0->1) - (2->0)", kfloat2, -0.2 * dims.y, 32, 1.25);
+//numReporter(dest, (angleTo(box[1], box[0])) - (angleTo(box[1], box[2])), "(1->0) - (1->2)", kfloat2, -0.15 * dims.y, 32, 1.25);
+//numReporter(dest, (angleTo(box[0], box[2]) + 360)%360 - (angleTo(box[0], box[1]) + 360)%360, "(0->2) - (0->1)", kfloat2, -0.15 * dims.y, 32, 1.25);
+
+//numReporter(dest, acos(cos(45)), "acos(cos(45))", kfloat2, 0.05 * dims.y, 32, 1.25);
+
+float someVal;
+//Line(box6[3], box6[4], dest, kred,3)
+//DrawSoftDot(dest, box6[4], kdiamond, 8, 1, 1, kred, 1, aspectOf(dest));
+
+someVal = angleTo(box6[3], box6[4]);
+someVal = someVal < 0 ? someVal + 360 : someVal
+//numReporter(dest, someVal, "(3 -> 4)", kfloat2, -0.2 * dims.y, 32, 1.25);
+
+//TriOrientation(box6);
+//isClockwise(box6);
+//TriOverlap(box6, box);
+//PointInPoly2(N, box6);
+
+framePoly(box6, dest, kblack, 1);
+
+
+float i, anglefix, zoomfactor;
+zoomfactor = 720/dims.x
+point theShape[numsides];
+
+
+origin *= dims;
+
+angleFix = (numSides == 4 || numSides == 6 || numSides == 8) ? 360/numsides/2 : 0			// corrects the rotation of squares, hexagons and octagons, which I prefer flat-side top
+
+for i = 1 to numSides;
+	theShape[i-1].x = origin.x + ShapeScale/100 * ShapeWidth/Random(1, 3) * cos(360/numSides * i -90 - angleFix) * zoomfactor;
+	theShape[i-1].y = origin.y + ShapeScale/100 * ShapeHeight/Random(1, 3)  * sin(360/numSides * i -90 - angleFix) * zoomfactor / aspectOf(dest);
+next;
+
+//framePoly(theShape, dest, kred, 1);
+PointInPoly2(N, box6);
+
+//numReporter(dest, pointInPoly(N, theShape), "pnpoly(N, theShape)", kfloat2, 0.05 * dims.y, 32, 1.25);
+//numReporter(dest, pointInPoly(N, box6), "pnpoly(N, box6)", kfloat2, 0.1 * dims.y, 32, 1.25);
+
+if pointInPoly(N, theShape)
+//	fillpoly(theShape, dest, kred);
+end if

@@ -1,0 +1,73 @@
+filter "Systime Experiments"
+group "beta"
+
+
+input x, "X", checkbox, 0;
+
+code
+
+// INCLUDE "basic math.fxscript" v1.1
+
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
+
+// END "basic math.fxscript"
+
+
+
+
+
+
+// INCLUDE "NumReporter.fxscript"  v1.1
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "NumReporter.fxscript
+
+channelfill(dest, 0,0,0,0)
+		numreporter(dest, (floor(systime) +15)%60, "seconds", kfloat2, -100, 34, kcenterjustify);
+		numreporter(dest, ((floor(systime) -45) % 3600) / 60, "minutes", kinteger, -80, 34, kcenterjustify);
+		numreporter(dest, (floor(systime + 15))%3600, "hours", kfloat2, -60, 34, kcenterjustify);
+		numreporter(dest, ((floor(systime) + 15)/3600), "systime", kfloat6, -40, 34, kcenterjustify);
+		numreporter(dest, systime, "systime", kfloat6, -20, 34, kcenterjustify);
+
+
+
+//	Also try this code:
+//	
+//	set totalSeconds to (time of (current date))
+//	set theHour to totalSeconds div 3600 
+//	 -- gets the number of hours 
+//	set theMinutes to (totalSeconds mod 3600) div 60
+//	 -- gets the number of minutes after the hour
+//	set theSeconds to totalSeconds mod 60 
+//	 -- gets the number of seconds after the minute
+//	 display dialog "It's now " & theHour & " hours, " & theMinutes & " minutes, " Â
+//	 ÊÊ& theSeconds & " seconds past midnight."
+
+
+
+
+// 9/18/05
+// still no progress. The value of systime seems to be about 3 days worth of seconds.

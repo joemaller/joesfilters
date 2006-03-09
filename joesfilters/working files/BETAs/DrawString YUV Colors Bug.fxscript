@@ -1,0 +1,62 @@
+// this filters demonstrates a problem with DrawString when used in a YUVaware context
+// YUVcolor variables are wrongly interpreted and need to be pre-shifted to match
+// YUV colors from other functions.
+
+// Additionally, RGB color variables are always assumed to be RGB, even if they
+// contain YUV color values. The color seems to be pre-converted from RGB to YUV, 
+// then represented as the YUV equivalent of the RGB numbers
+
+
+
+Filter "DrawString YUV Colors Bug";
+group "FXScript Bugs";
+
+input route, "Do This:", radioGroup, 2, "No Shifting",  "Shift DrawString Only", "Shift DrawString and Fill";
+input outputFormat, "Output Format", popup, 3, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
+
+input s1, "Red / Luma", slider, 150, 0, 255;
+input s2, "Green / Cr", slider, 150, -255, 255;
+input s3, "Blue / Cb", slider, 150, -255, 255;
+
+informationFlag("YUVaware");
+
+code
+
+
+settextfont("verdana");
+setTextstyle(kbold);
+setTextjustify(kcenterJustify);
+setTextSize(36);
+
+
+color Rcolor;
+Rcolor = {255, s1, s2, s3}	// sliders are used to prevent any potential color-space contamination
+
+yuvcolor Ycolor
+Ycolor = {255, s1, s2, s3}
+
+SetPixelFormat(dest, outputFormat);	
+
+if (route == 1) // no shifting values
+
+	channelfill(dest, 255, ycolor.y, ycolor.u, ycolor.v)
+	DrawString("YUV COLOR", 0, 20, 1.25,  dest, Ycolor, aspectof(dest));
+
+else if (route == 2) // shift only DrawString color values
+
+	channelfill(dest, 255, ycolor.y, ycolor.u, ycolor.v)
+
+	Ycolor.u -= 127;
+	Ycolor.v -= 127;
+
+	DrawString("YUV COLOR", 0, 20, 1.25,  dest, Ycolor, aspectof(dest));
+
+else if (route == 3) // shift both fill drawString color values
+
+	Ycolor.u -= 127;
+	Ycolor.v -= 127;
+
+	channelfill(dest, 255, ycolor.y, ycolor.u, ycolor.v)
+	DrawString("YUV COLOR", 0, 20, 1.25,  dest, Ycolor, aspectof(dest));
+	
+end if

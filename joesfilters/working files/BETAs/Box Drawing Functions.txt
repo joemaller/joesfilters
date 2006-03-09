@@ -1,0 +1,140 @@
+filter "Box Drawing Functions"
+group "BETA"
+
+
+
+input p1, "p1", point, -0.25, -0.25;
+input p2, "p2", point, 0.25, 0.25;
+
+input c1, "color 1", color, 255, 0, 255, 0;
+input c2, "color 2", color, 255, 0, 0, 200;
+
+input boxsize, "Size", slider, 25, 5,100;
+input boxwidth, "Box Width", slider, 5, 1,100;
+
+input temp, "subpixels", slider, 1, 0.1, 10;
+input rotation, "Rotate", Angle, 0, -360, 360;
+
+float natW,natH;
+
+code
+
+if (natW == kundefined); getNativeSize(clip1, natW, natH); end if;
+
+float w,h,zoom;
+dimensionsOf(dest, w, h);
+zoom = w/natW;
+
+
+dest = src1;
+channelmultiply(dest, dest, 1, 0.5, 0.5, 0.5);
+channelfill(dest, 255, 33, 33, 33);
+point framesize;
+
+dimensionsOf(dest, framesize.x, framesize.y);
+
+on drawCross2(image _dest, point _center, value _size, color _color, value _width, value _rotation, value _zoom, value _subpixel)
+	
+	// subpixel indeicates the number of subpixels to use, less than zero increases precision, greater than zero reduces
+	float _h, _w, _aspect;
+	point _a, _c[4], _d[12];
+	_aspect = aspectOf(dest);
+	dimensionsOf(_dest, _w, _h);
+	_size *= _zoom;
+	_width *= _zoom;
+	
+	if (_width > _size)
+		_c[0].x  = _width;
+		_width = _size;
+		_size = _c[0].x;
+	end if
+	
+	makeRect(_c, _center.x - _size/2, _center.y - _width/2/_aspect, _size, _width/_aspect)
+	
+	_d[0]  = _c[0];
+	_d[5]  = _c[1];
+	_d[6]  = _c[2];
+	_d[11] = _c[3];
+
+	makeRect(_c, _center.x - _width/2, _center.y - _size/2/_aspect, _width, _size/_aspect)
+
+	_d[2] = _c[0];
+	_d[3] = _c[1];
+	_d[8] = _c[2];
+	_d[9] = _c[3];
+
+	makeRect(_c, _center.x - _width/2, _center.y - _width/2/_aspect, _width, _width/_aspect)
+
+	_d[1]  = _c[0];
+	_d[4]  = _c[1];
+	_d[7]  = _c[2];
+	_d[10] = _c[3];
+
+	if (_rotation != 0);	Rotate(_D, _center, _rotation, _aspect); end if
+
+
+	if (_subpixel != 0)
+		image _buf[_w][_h], _subbuf[_w * 1/_subpixel][_h * 1/_subpixel];
+		point _e[4];
+		channelfill(_subbuf, 0, _color.r, _color.g, _color.b);
+		
+		_d *= 1/_subpixel;
+		FillPoly(_d, _subbuf, _color);	
+		FramePoly(_d, _subbuf, _color, 1);
+		
+		boundsof(_dest, _c);
+		boundsof(_subbuf, _e);
+		
+		BlitRect(_subbuf, _e, _buf, _c)
+		matte(_buf, _dest, _dest, 1, kalpha);
+		
+	else				
+		FillPoly(_d, _dest, _color);	
+		FramePoly(_d, _dest, _color, 1);
+	end if
+
+end	
+	
+
+
+
+
+
+on drawbox(point boxCenter, value boxSize, color boxColor, value boxOpacity)
+	//drawbox(point, 32, somecolor, 0.5);
+	float s;
+	image boxBuffer[boxSize][boxSize];
+	point boxBox[4], tempBox[4], boxmidPt;
+	boundsOf(boxBuffer, tempBox);
+	makeRect(boxBox, boxCenter.x - boxSize/2, boxCenter.y - boxSize/2 * aspectOf(dest), boxSize, boxSize / aspectOf(dest));
+	channelFill(boxBuffer, 255, boxColor.r, boxColor.g, boxColor.b)
+	Blit(boxBuffer, tempBox, dest, boxBox, boxOpacity)
+
+	for s = 0 to 3
+			Interpolate(boxBox[s], boxBox[(s+1)%4], 0.15, boxmidPt)
+			line(boxBox[s], boxmidPt, dest, boxColor, 1);
+			Interpolate(boxBox[s], boxBox[(s+1)%4], 0.85, boxmidPt)
+			line(boxBox[(s+1)%4], boxmidPt, dest, boxColor, 1);
+	next
+
+	drawCross(boxCenter, 10, boxColor, 1, 0);
+end
+
+p1 *= framesize;
+p2 *= framesize;
+
+//drawbox(p1, boxsize, c1, 0.25);
+//drawbox(p2, boxsize, c2, 0.25);
+image buf2[framesize.x*2][framesize.y*2];
+point srcbox[4], destbox[4];
+boundsOf(dest, destbox)
+boundsOf(buf2, srcbox);
+channelfill(buf2, 255, 33, 33, 33);
+
+p1 *=2
+
+drawCross2(buf2, p1, boxsize*2, c1, boxwidth*2, rotation, 1, temp);
+BlitRect(buf2, srcbox, dest, destbox)
+
+p1 /=2;
+drawCross2(dest, p1, boxsize/2, c2, boxwidth/3, 30, zoom, 1);

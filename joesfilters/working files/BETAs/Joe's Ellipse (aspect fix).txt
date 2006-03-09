@@ -1,0 +1,152 @@
+//                         v3.5 
+//	                  
+//	   wvwwvwvww    
+//	   \                  /  
+//	     \______/  
+//	                          	
+//       Joe's Filters     
+//   for Final Cut Pro 
+
+
+// (C) 2002 Joe Maller
+// http://www.joesfilters.com
+// http://www.fxscriptreference.org
+
+
+generator "Joe's Ellipse (beta)";
+group "Joe's Generators";
+
+input shapelabel, "Shape", label, "";
+input OvalWidth, "Width", Slider, 200, 1, 1000 ramp 80;
+input OvalHeight, "Height", Slider, 200, 1, 1000 ramp 80;
+input ShapeScale, "Scale", Slider, 100, 1, 1000 ramp 80;
+input origin, "Origin", point, 0, 0;
+input ShapeAngle, "Angle", Angle, 0, -360, 360;
+
+
+input filllabel, "Fill", label, "";
+input fillShape, "Fill Shape", checkbox, 1;
+input fillColor, "Fill Color", color, 255, 235, 128, 0;
+input MaskBlur, "Fill Softness", Slider, 0, 0, 500 ramp 92;
+input shapeOpacity, "Fill Opacity", slider, 100, 0, 100;
+input SpotInvert, "Fill Frame", checkbox, 0;
+
+
+input borderlabel, "Border", label, "";
+input drawborder, "Border Shape", checkbox, 1;
+input frameColor, "Border Color", color, 255, 0, 180, 150;
+input frameWidth, "Border Width", slider, 8, 1, 100 ramp 50;
+input frameSoft, "Border Softness", slider, 0, 0, 50 ramp 80;
+input frameOpacity, "Border Opacity", slider, 100, 0, 100;
+
+input title, "Joe's Filters", Label,"";
+input title1, "www.joesfilters.com", Label,"";
+
+ProducesAlpha
+AlphaType(kalpha);
+InformationFlag("hasfields")
+
+
+code
+
+exposedbackground = 1;
+
+float h, w, i;
+point OvalRect[4], SourceRect[4], DestRect[4];						//ovalrect is the shape of the oval, source is the sample to copy from, destrect is the one to copy to
+
+dimensionsof(dest, w, h);
+image xbuffer[w][h];
+
+float zoomfactor; zoomfactor = w/720	
+image scalebuffer[(ShapeScale/100 * OvalWidth + framewidth + 10) * zoomfactor][(ShapeScale/100 * OvalHeight + framewidth + 10)/aspectOf(dest) * zoomfactor]	//make a new image buffer to contain the oval
+
+
+origin.x *= w;
+origin.y *= h;
+
+OvalRect[0] = {OvalWidth/-2, OvalHeight/ 2/ aspectOf(dest)};		//builds a box around the centerpoint to contain the oval
+OvalRect[1] = {OvalWidth/ 2, OvalHeight/ 2/ aspectOf(dest)};
+OvalRect[2] = {OvalWidth/ 2, OvalHeight/-2/ aspectOf(dest)};
+OvalRect[3] = {OvalWidth/-2, OvalHeight/-2/ aspectOf(dest)};
+OvalRect *= ShapeScale/100;												//instead of multiplying every line above by zoomfactor
+OvalRect *= zoomfactor;												//instead of multiplying every line above by zoomfactor
+								
+
+ChannelFill(scalebuffer, 255, 0, 0, 0);								//fill the new image buffer with blank pixels
+FillOval(ovalRect, scalebuffer, kwhite);							//draws the filled oval which will become the mask
+
+Boundsof(scalebuffer, SourceRect)
+DestRect = SourceRect; 												//duplicates SourceRect into DestRect	
+
+for i = 0 to 3;
+	DestRect[i].x += origin.x;										//moves DestRect to the origin point
+	DestRect[i].y += origin.y;
+next;
+
+Rotate(DestRect, origin, ShapeAngle, aspectOf(dest));				//rotates the destination shape NOT the pixels around the origin point
+
+
+if (fillshape)
+	
+	ChannelFill(dest, 255, 0, 0, 0);									//sets a clean background to receive the rotated pixels
+	BlitRect(scalebuffer, SourceRect, dest, DestRect)					//copies and rotates the source pixels
+
+	
+	
+	if MaskBlur > 0;
+		Blur(dest, xbuffer, MaskBlur * zoomfactor, aspectof(dest));
+	else
+		xbuffer = dest;
+	end if;
+	
+	ChannelFill(dest, 255, fillColor.r, fillColor.g, fillColor.b);
+	ChannelCopy(xbuffer, dest, kred, knone, knone, knone);
+	
+	if SpotInvert == 1
+		InvertChannel(dest, dest, 1, 0, 0, 0)
+	end if
+	
+	ChannelMultiply(dest, dest, shapeOpacity/100, 1, 1, 1)
+
+else
+	ChannelFill(dest, 0, frameColor.r, frameColor.g, frameColor.b);	// to prevent color halos when no shape fill
+end if
+
+
+
+if (drawborder == 1 || frameOpacity == 0 ) 
+	frameWidth *= zoomfactor;
+	color frameTempColor
+	frameOpacity *= 255/100
+	frameTempColor = {255, frameOpacity, frameOpacity, frameOpacity};
+
+	
+	image aspectBuffer[w * ShapeScale/100 + frameWidth][(h * ShapeScale/100+ frameWidth) * aspectOf(dest)];
+	
+	ChannelFill(aspectBuffer, 255, 0, 0, 0);			//fills scalebuffer with empty pixels
+	ChannelFill(xbuffer, 255, 0, 0, 0);					//fills xbuffer with empty pixels
+
+
+	for i = 0 to 3
+		OvalRect[i].y *= aspectOf(dest);
+		SourceRect[i].y *= aspectOf(dest);
+	next
+	
+	FrameOval(OvalRect, aspectBuffer, frameTempColor, frameWidth);		//draws the ring into aspectBuffer
+
+	BlitRect(aspectBuffer, SourceRect, xbuffer, DestRect);
+
+	if frameSoft > 0
+		image blurbuffer[w][h];
+		
+		blurbuffer = xbuffer
+		BlurChannel(blurbuffer, xbuffer, frameSoft * zoomfactor, 0, 1, 0, 0, aspectOf(dest));
+	end if;
+
+	ChannelCopy(xbuffer, xbuffer, kred, knone, knone, knone);
+	ChannelFill(xbuffer, -1, frameColor.r, frameColor.g, frameColor.b);
+	
+	Matte(xbuffer, dest, dest, 1, kalpha);
+end if;
+
+

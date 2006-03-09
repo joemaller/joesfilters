@@ -1,0 +1,149 @@
+filter "PointTrack Explorer"
+group "BETA"
+
+
+
+
+input frameshift, "Frameshift", slider, 1,0,100;
+input trackPt, "Track Point", point, -0.25, -0.25;
+
+input trackrange, "trackrange", slider, 25, 0, 100;
+
+input boxop, "Interpolation",slider, 1.5,-2, 2;
+
+
+input xclip1,"xclip", clip;
+
+input currentColor, "currentPt", color, 255, 200,200, 0;
+input nextColor, "nextPt", color, 255, 0, 255, 0;
+input guessColor, "guessPt", color, 255, 0, 0, 200;
+
+
+// used by numreporter:
+
+input fontsize, "Font Size", slider, 34, 6, 144; 
+input tracking, "Tracking", slider, 1.2, -5, 10; 
+
+
+
+code
+
+//numreporter function
+        On numReporter(value reporterData, string reporterstring, value subformat, value height)
+                
+                string reporter;
+                color fontcolor;
+                float rw, rh, ra, rd, rzoom;
+                
+                DimensionsOf(dest, rw, rh);
+                rzoom = rw/720;
+                
+                fontcolor = {255,235,235,235};
+                settextfont("verdana");
+                setTextstyle(kbold);
+                setTextjustify(kcenterjustify);
+                setTextSize(fontsize * rzoom);
+                                                                
+                NumToString(reporterData, reporter, subformat); reporter = reporterstring + " = " + reporter
+                DrawString(reporter, 0, height, tracking,  dest, fontcolor , aspectof(dest))
+        
+        End
+//end numreporter 
+
+//drawcross function
+
+ON drawCross(point crossCenterPt, value crossSize, color crossColor, value crossWidth, value makeX)
+	//example call: drawCross(point, 20, kred, 1, 0);
+	float boxj;
+	point crossBox[4];
+	MakeRect(crossBox, crossCenterPt.x -crossSize/2, crossCenterPt.y -crossSize/2* aspectOf(dest), crossSize, crossSize * aspectOf(dest))
+//need to add aspect correction to initial start point of rect, document that...
+	if (!makeX )
+			crossBox[0] = {-crossSize/2, 0};
+			crossBox[2] = { crossSize/2, 0};
+			crossBox[1] = {0, -crossSize/2};
+			crossBox[3] = {0,  crossSize/2};
+		crossBox += crossCenterPt;
+	end if
+	
+	
+	Line(crossBox[0], crossBox[2], dest, crossColor, crossWidth);
+	Line(crossBox[1], crossBox[3], dest, crossColor, crossWidth);
+
+END
+//end drawcross function
+
+
+
+ON drawbox(point boxCenter, value boxSize, color boxColor, value boxOpacity)
+	//drawbox(point, 32, somecolor, 0.5);
+	float s;
+	image boxBuffer[boxSize][boxSize];
+	point boxBox[4], tempBox[4], boxmidPt;
+	boundsOf(boxBuffer, tempBox);
+	makeRect(boxBox, boxCenter.x - boxSize/2, boxCenter.y - boxSize/2 * aspectOf(dest), boxSize, boxSize / aspectOf(dest));
+	channelFill(boxBuffer, 255, boxColor.r, boxColor.g, boxColor.b)
+	Blit(boxBuffer, tempBox, dest, boxBox, boxOpacity)
+
+	for s = 0 to 3
+			Interpolate(boxBox[s], boxBox[(s+1)%4], 0.15, boxmidPt)
+			line(boxBox[s], boxmidPt, dest, boxColor, 1);
+			Interpolate(boxBox[s], boxBox[(s+1)%4], 0.85, boxmidPt)
+			line(boxBox[(s+1)%4], boxmidPt, dest, boxColor, 1);
+	next
+
+	drawCross(boxCenter, 10, boxColor, 1, 0);
+END
+
+
+float w, h, clipDuration, clipOffset; 
+
+point box1[4], box2[4], srcbox[4], p1, p2, p3;
+
+dimensionsOf(dest, w, h);
+image xbuffer[w][h];
+
+
+
+
+trackPt = {trackPt.x * w, trackPt.y * h};
+
+getLimits(xclip1, clipDuration, clipOffset);
+
+if clipDuration > 0
+	getvideo(xclip1, -clipOffset + frame , dest);
+	getvideo(xclip1, -clipOffset + frame + frameshift, xbuffer);
+else
+	//	dest = src1;
+	getLimits(clip1, clipDuration, clipOffset);
+	if clipDuration > 0
+	
+		getvideo(clip1, -clipOffset + frame , dest);
+		getvideo(clip1, -clipOffset + frame + frameshift, xbuffer);
+	end if
+
+end if
+
+
+boundsof(dest, srcbox);
+makeRect(box1, -w/2, -h/2, w, h/2);
+makeRect(box2, -w/2, 0, w, h/2);
+
+PointTrack(dest, trackPt, xbuffer, trackPt, trackrange, p2)
+
+p3 = trackPt
+p3 += p2;
+
+//drawbox(trackPt, trackrange, currentColor, 0.25);
+//drawbox(p3, trackrange, nextColor, 0.25);
+
+DrawSoftDot(dest, trackPt, ksquare, trackrange, 0, 1, currentColor, 0.7, aspectOf(dest))
+DrawSoftDot(xbuffer, p3, ksquare, trackrange, 0, 1, guessColor, 0.75, aspectOf(dest))
+
+blitrect(dest, srcbox, dest, box1);
+blitrect(xbuffer, srcbox, dest, box2);
+
+
+numreporter(trackPt.x, "trackPt.x", kfloat2, h/2*0.65);
+numreporter(p3.x, "p3.x", kfloat2, h/2*0.8);
+

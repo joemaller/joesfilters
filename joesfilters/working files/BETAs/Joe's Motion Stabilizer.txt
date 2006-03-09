@@ -1,0 +1,204 @@
+//                         v4.0 
+//	                  
+//	   wvwwvwvww    
+//	   \                  /  
+//	     \______/  
+//	                          	
+//       Joe's Filters     
+//   for Final Cut Pro &
+//     Final Cut Express 
+
+
+// (C) 2001-2003 Joe Maller
+// http://www.joesfilters.com
+// http://www.fxscriptreference.org
+
+
+filter "Joe's Motion Stabilizer";
+group "BETAS";
+
+
+input frameshift, "Frameshift", slider, 1,0,100;
+input trackPt, "Track Point", point, -0.25, -0.25;
+
+input trackrange, "trackrange", slider, 25, 0, 100;
+
+input boxop, "Interpolation",slider, 1.5,-2, 2;
+
+input xclip1,"xclip", clip;
+
+input showboxes, "Show Boxes", checkbox, 1;
+input motiontrack, "Motion Track", checkbox, 0;
+input showvalues, "Show Values", checkbox, 1;
+
+input fontsize, "Font Size", slider, 25, 6, 144; 
+input tracking, "Tracking", slider, 1.2, -5, 10; 
+
+
+input currentColor, "currentPt", color, 255, 200,200, 0;
+input nextColor, "nextPt", color, 255, 0, 255, 0;
+input guessColor, "guessPt", color, 255, 0, 0, 200;
+
+
+point currentPt, guessPt;
+
+//fullframe;
+code
+
+
+// numreporter function
+// Oct 12, 2003
+        On numReporter(value reporterData, string reporterstring, value subformat, value height)
+				//numReporter(number , "label", number format, vertical_position)
+                
+                string reporter;
+                color fontcolor;
+                float rw, rh, ra, rd, rzoom;
+                
+                DimensionsOf(dest, rw, rh);
+                rzoom = rw/720;
+                
+                fontcolor = {255,235,235,235};
+                settextfont("verdana");
+                setTextstyle(kbold);
+                setTextjustify(kcenterjustify);
+                setTextSize(fontsize * rzoom);
+                                                                
+                NumToString(reporterData, reporter, subformat); reporter = reporterstring + " = " + reporter
+                DrawString(reporter, 0, height, tracking,  dest, fontcolor , aspectof(dest))
+        
+        End
+//end numreporter 
+
+//drawcross function
+
+ON drawCross(point crossCenterPt, value crossSize, color crossColor, value crossWidth, value makeX)
+	//example call: drawCross(point, 20, kred, 1, 0);
+	float boxj;
+	point crossBox[4];
+	MakeRect(crossBox, crossCenterPt.x -crossSize/2, crossCenterPt.y -crossSize/2* aspectOf(dest), crossSize, crossSize * aspectOf(dest))
+//need to add aspect correction to initial start point of rect, document that...
+	if (!makeX )
+			crossBox[0] = {-crossSize/2, 0};
+			crossBox[2] = { crossSize/2, 0};
+			crossBox[1] = {0, -crossSize/2};
+			crossBox[3] = {0,  crossSize/2};
+		crossBox += crossCenterPt;
+	end if
+	
+	
+	Line(crossBox[0], crossBox[2], dest, crossColor, crossWidth);
+	Line(crossBox[1], crossBox[3], dest, crossColor, crossWidth);
+
+END
+//end drawcross function
+
+
+
+ON drawbox(point boxCenter, value boxSize, color boxColor, value boxOpacity)
+	//drawbox(point, 32, somecolor, 0.5);
+	float s;
+	image boxBuffer[boxSize][boxSize];
+	point boxBox[4], tempBox[4], boxmidPt;
+	boundsOf(boxBuffer, tempBox);
+	makeRect(boxBox, boxCenter.x - boxSize/2, boxCenter.y - boxSize/2 * aspectOf(dest), boxSize, boxSize / aspectOf(dest));
+	channelFill(boxBuffer, 255, boxColor.r, boxColor.g, boxColor.b)
+	Blit(boxBuffer, tempBox, dest, boxBox, boxOpacity)
+
+	for s = 0 to 3
+			Interpolate(boxBox[s], boxBox[(s+1)%4], 0.15, boxmidPt)
+			line(boxBox[s], boxmidPt, dest, boxColor, 1);
+			Interpolate(boxBox[s], boxBox[(s+1)%4], 0.85, boxmidPt)
+			line(boxBox[(s+1)%4], boxmidPt, dest, boxColor, 1);
+	next
+
+	drawCross(boxCenter, 10, boxColor, 1, 0);
+END
+
+
+
+
+
+
+
+
+float w, h, clipDuration, clipOffset; 
+point centerPt, nextPt, tempPt, drawPt, startFrame[4], endFrame[4];
+
+
+dimensionsOf(dest, w, h);
+image xbuffer[w][h];
+
+trackPt = {trackPt.x * w, trackPt.y * h};
+
+getLimits(xclip1, clipDuration, clipOffset);
+
+if clipDuration > 0
+	getvideo(xclip1, -clipOffset + frame , dest);
+	getvideo(xclip1, -clipOffset + frame + frameshift, xbuffer);
+else
+	//	dest = src1;
+	getLimits(clip1, clipDuration, clipOffset);
+	if clipDuration > 0
+	
+		getvideo(clip1, -clipOffset + frame , dest);
+		getvideo(clip1, -clipOffset + frame + frameshift, xbuffer);
+	end if
+
+end if
+
+
+if (currentPt.x == kundefined)
+	currentPt = trackPt;
+end if 
+
+if (guessPt.x == kundefined)
+	guessPt = trackPt;
+end if 
+
+ 
+if (motiontrack)
+	PointTrack(dest, currentPt, xbuffer, guessPt, trackrange, nextPt)
+
+	Interpolate(currentPt, nextPt, boxop, guessPt);
+else
+	// this is for checking points and interpolation...
+	currentPt = trackPt;
+	nextPt = currentPt;
+	nextPt *= -1
+	Interpolate(currentPt, nextPt, boxop, guessPt);
+end if;
+
+
+if (showboxes)
+	
+	//drawbox(currentPt, trackrange, currentColor, 0.25);
+	//drawbox(nextPt, trackrange, nextColor, 0.25);
+	drawbox(guessPt, trackrange, guessColor, 0.25);
+
+	DrawSoftDot(dest, currentPt, 1, trackrange, 0, 1, currentColor, 0.3, aspectOf(dest))
+	DrawSoftDot(dest, nextPt, 2, trackrange, 0, 1, nextColor, 0.3, aspectOf(dest))
+	//DrawSoftDot(dest, guessPt, 0, trackrange, 0, 1, guessColor, 0.3, aspectOf(dest))
+
+	centerPt = {0,0}; 
+	currentColor  = {255, 0, 0, 0};
+	//drawCross(centerPt, 1000, currentColor, 1, 0);
+	//drawCross(guessPt, 10, guessColor, 1, 1);
+	
+	
+end if
+
+
+if showvalues
+	numReporter(nextPt.x, "nextPt.x", kfloat2, h/2*0.3);
+	numReporter(nextPt.y, "nextPt.y", kfloat2, h/2*0.4);
+	numReporter(currentPt.x, "currentPt.x", kfloat2, h/2*0.7);
+	numReporter(currentPt.y, "currentPt.y", kfloat2, h/2*0.8);
+//	numReporter(trackPt.x, "trackPt.x", kfloat2, h/2*-0.4);
+//	numReporter(trackPt.y, "trackPt.y", kfloat2, h/2*-0.25);
+//	numReporter(trackPt.x, "trackPt.x", kfloat2, h/2*-0.4);
+//	numReporter(DistTo(savedPt, nowPt), "DistTo(savedPt, nowPt)", kfloat2, h/2*-0.25);
+	numReporter(frame, "Frame", kfloat2, h/2*-0.25);
+end if
+
+currentPt = nextPt;

@@ -1,0 +1,1 @@
+Generator "Color Fields"Group "BETA TOOLs"input c1, "Field 1 Color", color, 255, 255, 0, 0;input c2, "Field 2 Color", color, 255, 0, 125, 0;InformationFlag("hasfields");RenderEachFrameWhenStillcodecolor c0;c0 = c1;//if  (frame * 2 % 2 == 0) if  ((frame * 2) & 1 == 1) 	c0 = c2end ifchannelfill(dest, c0.a, c0.r, c0.g, c0.b);

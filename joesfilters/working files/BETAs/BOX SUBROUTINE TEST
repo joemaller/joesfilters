@@ -1,0 +1,61 @@
+filter "BOXTEST SUBROUTINE"
+group "BETA"
+
+input doit, "do it", slider, 50, 1, 100;
+
+ input rotater, "Rotate:", Popup, 1, "0¡ (No rotation)", "90¡ Clockwise", "90¡ Counter-Clockwise", "180¡", "Flip Horizontal", "Flip Vertical";
+
+code
+
+// works as expected
+
+point inbox[4], outbox[4]
+boundsOf(dest, outbox);
+inbox = outbox;
+
+
+framePoly(outbox, dest, kred, 2);
+
+
+
+on r(point _box, value _rotater, value _scaler)
+	
+	if ( _rotater != 1)
+		point rotatetemp[4]
+		float j;
+			
+		rotatetemp = _box;
+		
+		if (_rotater < 5)
+			_rotater = (_rotater < 4) ? (_rotater * 2 - 5) * -1 : _rotater/2;
+			
+			for j = 0 to 3
+				_box[j] = rotatetemp[(j + 4 + _rotater) % 4];
+			next;
+			
+		else if (_rotater == 5) // do flip horizontal
+	
+			for j = 0 to 3
+				_box[j] = rotatetemp[j^1];
+			next;
+	
+		else if (_rotater == 6) // flip vertical
+		
+			for j = 0 to 3
+				_box[j] = rotatetemp[3-j];
+			next;
+		
+		end if	
+	end if
+
+	_box *= _scaler;
+
+end
+
+
+r(outbox, rotater, doit/100);
+BlitRect(src1, inbox, dest, outbox)
+framePoly(outbox, dest, kgreen, 2);
+
+
+

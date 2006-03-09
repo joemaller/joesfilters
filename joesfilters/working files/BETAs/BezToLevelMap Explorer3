@@ -1,0 +1,203 @@
+// the purpose of this is to help with gamma/Bez translations
+// might not be for public release...
+
+
+filter "BezToLevelMap vs Gamma Translator3";
+group "FXScript Reference";
+
+
+input mapMethod, "Map Method", RadioGroup, 2, "makeLevelMapFN", "makeLevelMapBez", "makeThresholdMapBez";
+
+
+input inputBlack, "Input Black", slider, 0, 0, 253;
+input gamma, "Gamma", slider, 1, 0.1, 5 ramp 85 detent 1;
+input inputWhite, "Input White", slider, 255, 2, 255;
+
+input outputBlack, "Output Black", slider, 0, 0, 255;
+input outputWhite, "Output White", slider, 255, 0, 255;
+
+
+input fxscriptreference, "www.FXScriptReference.org", label, "";
+
+
+
+input desat, "Desaturate", checkbox, 1;
+
+fullframe;
+
+
+
+
+code
+
+float w, h, i, j, a[256];
+
+dimensionsOf(dest, w, h);
+
+
+
+
+on makeLevelMapFN(float _lmap, value _inBlack, value _gamma, value _inWhite, value _outBlack, value _outWhite)
+	
+	float _i, _j;	
+
+	_outBlack = (_outWhite-_outBlack > 0) ? _outBlack : _outWhite-1;	// corrects for  reversal of inWhite and inBlack
+
+	for _i = _inWhite to 255						//sets all pixels from inputwhite to 255 to maximum value
+		_lmap[_i] = 1
+	next;
+	
+	_j = (_inWhite > _inBlack) ?	_inWhite - _inBlack: 1;  //sets the divisor for the next step, this will be the number of values between black and white
+	
+	for _i = _inBlack to _inWhite				//sets the ramp of pixels from black to white to a gamma adjusted curve of values
+		_lmap[_i] = power((_i-_inBlack)/_j, _gamma);
+	next;
+	
+	_lmap *= _outWhite-_outBlack;				//multiplies everything by the difference of output white and black, because the clut is fractional values, all values will decrease in the step after next
+	_lmap += _outBlack;							//increases the clut by the output black, sets the bottommost level
+	_lmap /= 255;									//corrects the total clut to make sure all 255 values fall between 0 and 1	
+
+end
+
+
+
+
+on makeLevelMapBez(float _lmap, value _inBlack, value _gamma, value _inWhite, value _outBlack, value _outWhite, value _mapLength)
+
+	float _j, _D1, _D2;
+	point _Lpt, _Rpt, _Cpt1, _Cpt2;
+
+	_outBlack = (_outWhite-_outBlack > 0) ? _outBlack : _outWhite-1;	// corrects for  reversal of inWhite and inBlack
+
+	_Lpt = {_inBlack/_mapLength, _outBlack/_mapLength};
+	_Rpt = {_inWhite/_mapLength, _outWhite/_mapLength};
+	
+	if (_gamma > 1)
+		_j = power(_gamma/10, exp(1))
+		_D1 = 1 - 1/_gamma - _j/10;
+		_D2 = _j;
+		_Cpt1.x = sin(power(_gamma, log(2)/log(_gamma) - _j/10) * 45) * _D1 + _Lpt.x; 
+		_Cpt1.y = cos(power(_gamma, log(2)/log(_gamma) - _j/10) * 45) * _D1 + _Lpt.y;
+	
+		Interpolate(_Lpt, _Cpt1, (_inWhite-_inBlack)/255, _Cpt1)	// correct for input scaling (horizontal)
+	
+	else // gammma <= 1
+		
+		_j = power(1.825, -_gamma) - 0.445;	// I don't know why these numbers work, they were discovered after extensive testing and charting	
+		_D1 = power(4,-_gamma) + j/10 ;
+		_D2 = 1-_gamma - j
+		
+		_Cpt1.x = sin(power(gamma,exp(1)) * (90-AngleTo(_Lpt, _Rpt) )) * _D1 + _Lpt.x;
+		_Cpt1.y = cos(power(gamma,exp(1)) * (90-AngleTo(_Lpt, _Rpt) )) * _D1 + _Lpt.y;
+		
+		Interpolate(_Lpt, _Cpt1, (_outWhite - _outBlack)/_mapLength, _Cpt1)		// correct for output scaling (vertical)
+	
+	end if
+		
+	Interpolate(_Cpt1, _Rpt, 1-_D2, _Cpt2)	// possibly save the subtraction by reversing the points...
+	
+	BezToLevelMap(_lmap, _Lpt, _Cpt1, _Cpt2, _Rpt, 0, _mapLength, TRUE);
+	
+	if (inputBlack > 0)
+		_Cpt1 = {0, _Lpt.y};
+		BezToLevelMap(_lmap, _Cpt1, _Cpt1, _Lpt, _Lpt, 0, _inBlack, TRUE);
+	end if
+	if (inputWhite < _mapLength)
+		_Cpt1 = {1, _Rpt.y};
+		BezToLevelMap(_lmap, _Rpt, _Rpt, _Cpt1, _Cpt1, _inWhite, _mapLength, TRUE);
+	end if
+
+end
+
+
+
+on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
+		// mapLength is 255 for 8-bit maps
+		
+	point _p1, _p2;
+	
+	float _top, _bottom;
+	
+	if (_th - _steps/2 < 0)
+		_steps = _th * 2;
+	else if (_th + _steps/2 > _mapLength)
+		_steps = (_mapLength - _th) * 2;
+	end if
+	
+	if (_th & 1 == 0)	// even
+		_p1 = {floor(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {floor(_th + _steps/2)/_mapLength, 1};		
+	else // _th is odd
+		_p1 = {ceil(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {ceil(_th + _steps/2)/_mapLength, 1};		
+	end if
+
+	BezToLevelMap(_lmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
+
+end
+
+
+
+
+
+
+
+
+
+
+on floor(value _x)	// simple function to round towards negative infinity
+	return( ((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x));
+end
+on ceil(value _x)	// simple function to round towards positive infinity
+	return( ((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x));
+end
+on round(value _x, value _precision)	// rounding function with decimal precision	
+	_x *= power(10, _precision)
+	
+	if (_x > 0) 
+		_x = (_x - integer(_x)  >= 0.5) ? _x = ceil(_x) : floor(_x);
+	else
+		_x = (_x - integer(_x)  <= -0.5) ? _x = floor(_x) : ceil(_x);
+	end if
+
+	return _x/(power(10, _precision));
+end
+
+
+
+
+
+
+
+
+
+
+
+
+if (mapmethod == 1)
+	
+	makeLevelMapFN(a, inputBlack, gamma, inputWhite, outputBlack, outputWhite);
+
+else if (mapmethod == 2)
+	
+	makeLevelMapBez(a, inputBlack, gamma, inputWhite, outputBlack, outputWhite, 255);
+	
+else if (mapmethod == 3)
+	
+	makeThresholdMapBez(a, inputWhite, inputBlack, 255);
+
+end if
+
+
+
+
+
+
+
+image img1[w][h];
+if (desat); 
+	desaturate(src1, img1); 
+else
+	img1 = src1;
+end if;
+levelmap(img1, dest, linearramp, a, a, a);

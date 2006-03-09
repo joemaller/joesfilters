@@ -1,0 +1,488 @@
+filter "Stabilize Demo";
+group "Lyric Tracking";
+fullFrame;
+InvalEntireItem
+RenderEachFrameWhenStill
+InformationFlag("hasfields")
+
+input mode, "Step", Popup, 1, "1. Select Feature", "2. Track", "3. Repair Track", "4. Stabilize"
+input l1, "Select Feature", Label, ""
+input center, "Feature Center", Point, 0, 0
+input l2, "Track", Label, ""
+input pRange, "Search Range", Slider, 30, 2, 200 ramp 88
+input subPix, "SubPixel Level", Popup, 1, "1", "1/2", "1/4", "1/8"
+input boundaryThreshold, "CW Threshold", Slider, 0, 0, 255 ramp 82
+// input resample, "Resample", CheckBox, 0
+input l25, "Repair Track", Label, ""
+input recenter, "Recenter Feature", Point, 0, 0
+input repairMode, "Repair Mode", Popup, 1, "Current Frame Only", "Retrack From Here"
+input l3, "Stabilize", Label, ""
+input smooth, "Smooth Track", Slider, 0, 0, 100 // ramp 25
+// input dampen, "Dampen Stabilize", Slider, 0, 0, 100 detent 0
+input autoCrop, "Auto Scale %", Slider, 100, 0, 200 detent 100
+input l4, "Preferences", Label, ""
+input gizColor, "Flip Cursor Colors", CheckBox, 0
+input showTrack, "Show Track", CheckBox, 0
+
+
+// coord variable naming conventions:  xyz = normalized, pXyz = canonical pixels (640x480), dXyz = current dest pixels
+// conversions:    pixToNorm(pt)  =  pt / 640
+//                 pixToDest(pt)  =  (pt / 640) * frameSize
+//                 normToDest(pt) =  pt * frameSize
+
+// statics
+float selectFrame, scanned, scanDuration, maxScale, repaired, repairframe, selectVal, valInvert, lastSubPix, lastRange, lastThresh
+point selectCenter, repairCenter, lastSelect
+point offsets[9000] 	// normalized coords, max track = 5 minutes @ 30fps
+
+code
+
+// variables
+point frameSize, dSelectCenter, dScanCenter, dDelta, zero
+float clipDuration, clipOffset, getFrame, boxSize, f, dRange, byCW
+float spScale, spRange, scanFactor, size, spSize, sx, sy, zoomFactor
+float ox, oy, sumc, c, i, j, k, ix, iy, sp, sm, halfdRange, demo
+point lp, lps, lp1, lp2, lpm
+string txt, txt2, txt3, txt4
+
+demo = 1
+// get frame metrics & scale center point selector
+DimensionsOf(dest, frameSize.x, frameSize.y)
+dSelectCenter = selectCenter; dSelectCenter *= frameSize
+GetLimits(clip1, clipDuration, clipOffset)
+zero = {0, 0}
+zoomFactor = frameSize.x / 720
+
+// set up tracking scale factors
+scanFactor = (subPix == 4) ? 8 : 4 // PointTrack seems to need >4 x range size images to work 
+spScale = Power(2, subPix - 1)
+byCW = 0
+if boundaryThreshold != 0
+	byCW = 1
+end if
+dRange = integer(pRange / 640 * frameSize.x); dRange = integer(dRange / 2) * 2 + 1   // ensure dRange is odd
+halfdRange = integer((dRange - 1) / 2)
+spRange = dRange * spScale
+size = dRange * scanFactor
+spSize = spRange * scanFactor
+
+// tracking image buffers
+image feature[spSize][spSize], source[spSize][spSize]
+image srcBuf[frameSize.x][frameSize.y]
+
+// center-of-weight decls
+float hues[dRange][dRange], values[dRange][dRange], featCenterValue
+float hue, sat, val, cwValue, cwHue, dcv, xWeights[dRange], yWeights[dRange], halfWeight, wSum
+point bStack[dRange*dRange*4], dCW, CW, dStartXY, pxp
+color pxc
+
+// selection gizmo display
+on drawGizmo(image d, point xy, value gc)
+	boxSize = dRange
+	point dXY; dXY = xy; dXY *= frameSize
+	point box[4]
+	MakeRect(box, dXY.x - boxSize / 2, dXY.v - boxSize / 2, boxSize, boxSize)
+	FramePoly(box, d, gc, 3)
+	DrawSoftDot(dest, dXY, kRound, 3, 0, 10, (gizColor ? kRed : kBlue), 0.75, aspectOf(dest))
+end
+
+on RGBtoVal(color clr)
+	val = (clr.r > clr.g && clr.r > clr.b ? clr.r : (clr.g > clr.b ? clr.g : clr.b))
+end
+
+on RGBtoNVal(color clr)  // normalized val based on valInvert flag
+	val = (clr.r > clr.g && clr.r > clr.b ? clr.r : (clr.g > clr.b ? clr.g : clr.b))
+	if valInvert; val = 255 - val; end if
+end
+
+// locate close value to selectVal by spiral outward search
+on findSelectVal(image cws)  // in cws, starting at dStartXY -> adjusted dStartXY
+	for i = 1 to 5  // max search range 5 pixels
+		for sx = dStartXY.x - i to dStartXY.x + i
+			for sy = dStartXY.y - i to dStartXY.y + i
+				pxp = { sx, sy }
+				colorOf(cws, pxp, pxc)
+				RGBtoNVal(pxc)
+				dcv = val - selectVal; dcv *= sign(dcv) 
+				if dcv <= boundaryThreshold / 4
+					dStartXY = pxp
+					return
+				end if
+			next
+		next
+	next
+end
+
+// experimental center-of-weight-based subpixel tracker, sets cwValue, cwHue, dCW globals
+on computeCW(image cws, point dXY, value show)
+
+	dStartXY = { integer(dXY.x), integer(dXY.y) }
+	ColorOf(cws, dStartXY, pxc)
+	RGBtoNVal(pxc)	// -> val
+
+	// see if we're on a pixel close to selectVal & spiral search for it if not
+	dcv = val - selectVal; dcv *= sign(dcv) 
+	if dcv > boundaryThreshold / 4
+		findSelectVal(cws)
+	end if
+	cwValue = val
+
+	// init weight & val arrays
+	for i = 0 to dRange - 1;
+		xWeights[i] = 0; yWeights[i] = 0
+		for j = 0 to dRange - 1
+			values[i][j] = -1
+		next
+	next
+	halfWeight = 0
+
+	// find feature boundary, filling hues/values arrays on the way
+	sp = 0; bStack[sp] = { halfdRange, halfdRange }
+	repeat while sp >= 0
+		ix = bStack[sp].x; iy = bStack[sp].y; sp -= 1
+		pxp = { dStartXY.x + ix - halfdRange, dStartXY.y + iy - halfdRange }
+		if ix < 0 || ix >= dRange || iy < 0 || iy >= dRange
+			if show; DrawSoftDot(dest, pxp, kRound, 3, 0, 0, (gizColor ? kBlue : kRed), 0.25, aspectOf(dest)); end if
+		else
+			if values[ix][iy] < 0
+				colorOf(cws, pxp, pxc)
+				RGBtoNVal(pxc) // -> val
+				dcv = val - cwValue; dcv *= sign(dcv) 
+				if dcv <= boundaryThreshold
+					values[ix][iy] = val
+					xWeights[ix] += val; yWeights[iy] += val
+					halfWeight += val / 2
+					sp += 1; bStack[sp] = { ix+1, iy }
+					sp += 1; bStack[sp] = { ix, iy+1 }
+					sp += 1; bStack[sp] = { ix-1, iy }
+					sp += 1; bStack[sp] = { ix, iy-1 }
+				else
+					if show; pxp.x += 0.5; pxp.y += 0.5; DrawSoftDot(dest, pxp, kRound, 3, 0, 10, (gizColor ? kBlue : kRed), 0.25, aspectOf(dest)); end if
+				end if
+			end if
+		end if
+	end repeat
+	// compute x & y CWs
+	wSum = 0
+	for ix = 0 to dRange - 1
+		if xWeights[ix] > 0 && wSum + xWeights[ix] >= halfWeight
+			ix += ((halfWeight - wSum) / xWeights[ix]) - 1
+			exit for
+		else
+			wSum += xWeights[ix]
+		end if
+	next
+	wSum = 0
+	for iy = 0 to dRange - 1
+		if yWeights[iy] > 0 && wSum + yWeights[iy] >= halfWeight
+			iy += ((halfWeight - wSum) / yWeights[iy]) - 1
+			exit for
+		else
+			wSum += yWeights[iy]
+		end if
+	next
+	
+	// resultant weight-based center
+	dCW = { dStartXY.x + ix - halfdRange, dStartXY.y + iy - halfdRange }
+	CW = dCW; CW /= frameSize
+//	if show; DrawSoftDot(dest, dCW, kRound, 3, 0, 10, (gizColor ? kRed : kBlue), 0.5, aspectOf(dest)); end if
+end
+
+// tracks feature for frame f, uses various globals, including dScanCenter; sets offsets[f], maxScale
+on trackFrame()
+	// get scan region of next frame
+	getFrame = (aspectof(dest) < 2 ? f : integer(f/2)) - clipOffset;
+	getVideo(clip1, getFrame, srcBuf)					
+	MakeRect(ssr, dScanCenter.x - size / 2, dScanCenter.y - size / 2, size, size)
+	MakeRect(szr, -spSize / 2, -spSize / 2, spSize, spSize)
+	BlitRect(srcBuf, ssr, source, szr)
+
+	// find feature
+	PointTrack(feature, origin, source, origin, spRange, dDelta)
+			
+	// adjust delta for subpix scale
+	dDelta /= spScale
+
+	// check for scan failure (delta > range/2)
+	if abs(dDelta.x) > halfDRange || abs(dDelta.y) > halfdRange
+		// interpolate delta if exceeded
+		if f > selectFrame  // searching forward, use earlier deltas
+			if f - 2 >= selectFrame
+				// for the moment, use the prior frame's delta
+				dDelta = offsets[f-1]; dDelta -= offsets[f-2]; dDelta *= frameSize
+			else
+				dDelta = {0, 0}
+			end if
+		else // searching backwards, use later deltas
+			if f + 2 <= selectFrame
+				// for the moment, use the next frame's delta
+				dDelta = offsets[f+1]; dDelta -= offsets[f+2]; dDelta *= frameSize
+			else
+				dDelta = {0, 0}
+			end if
+		end if
+	end if
+	
+	// record feature offset
+	dScanCenter += dDelta
+
+	if byCW
+		// move offset to CW if CW scan selected
+		computeCW(srcBuf, dScanCenter, 0)  // -> CW
+		offsets[f] = CW
+	else
+		offsets[f] = dScanCenter; offsets[f] /= frameSize;  // normalize
+	end if
+	
+	// max scale for autocrop
+	sx = selectCenter.x - offsets[f].x; sx *= sign(sx) * 1.5
+	sy = selectCenter.y - offsets[f].y; sy *= sign(sy) * 1.5
+	if sx > maxScale; maxScale = sx; end if
+	if sy > maxScale; maxScale = sy; end if
+end
+
+on setSelect(point ctr)
+	// snap selection
+	selectCenter = ctr
+	dSelectCenter = selectCenter; dSelectCenter *= frameSize
+	selectFrame = frame
+	scanned = 0
+	repaired = 0
+	offsets[selectFrame] = selectCenter
+
+	// adjust selectCenter to center-of-weight if CW mode selected
+	if byCW
+		// first snap center value
+		colorOf(src1, dSelectCenter, pxc)
+		RGBtoVal(pxc)
+		// determine whether to invert val's to get max range
+		if val < 127
+			valInvert = 1
+			val = 255 - val
+		else
+			valInvert = 0
+		end if
+		selectVal = val
+		// compute & record CW
+		computeCW(src1, dSelectCenter, 1)  // -> CW, dCW
+		selectCenter = CW
+		dSelectCenter = dCW
+		offsets[selectFrame] = selectCenter
+	end if
+end
+
+ResetText
+SetTextSize(14 / 640 * frameSize.x)
+
+if repaired == kUndefined
+	repaired = 0
+	scanned = 0
+	selectFrame = -1
+	lastSelect = { -1e6,-1e6 }
+	repairCenter = recenter
+end if
+
+if scanned && duration != scanDuration
+	scanned = 0  // reset if clip length changes
+	selectFrame = -1
+end if
+
+// main mode switch
+if duration > 9000
+	dest = src1
+	ResetText; SetTextJustify(kcenterjustify)
+	DrawString("Clip too long (> 9000 frames)", 0, 0, 2, dest, kRed, aspectOf(dest))
+else if mode == 1  	// feature select
+	dest = src1
+	// process only on user-made param changes
+	if lastSelect != center || selectFrame != frame || lastSubPix != subPix || lastRange != pRange || lastThresh != boundaryThreshold   
+		setSelect(center)
+		lastSelect = center
+		lastSubPix = subPix
+		lastRange = pRange
+		lastThresh = boundaryThreshold
+	end if
+
+	drawGizmo(dest, selectCenter, (gizColor ? kBlack : kWhite))
+
+else	if mode == 2		// track
+	dest = src1
+
+	if not scanned && selectFrame >= 0
+		// do a PointTrack scan
+		point fsr[4], fzr[4], ssr[4], szr[4], dr[4], origin;
+		origin = {0, 0}
+		maxScale = 0
+
+		// first, grab selected feature image
+		getFrame = (aspectof(dest) < 2 ? selectFrame : integer(selectFrame/2)) - clipOffset;
+		getVideo(clip1, getFrame, srcBuf)
+		MakeRect(fsr, dSelectCenter.x - size / 2, dSelectCenter.y - size / 2, size, size)
+		MakeRect(fzr, -spSize / 2, -spSize / 2, spSize, spSize)
+		BlitRect(srcBuf, fsr, feature, fzr)
+		
+		// forwards from selectFrame to eo clip
+		dScanCenter = selectCenter; dScanCenter *= frameSize
+		for f = selectFrame + 1 to duration - 1
+			trackFrame
+		next
+
+		// backwards from selectFrame to so clip, only if not after a clear-to-end repair
+		if not repaired
+			dScanCenter = selectCenter; dScanCenter *= frameSize
+			for f = selectFrame - 1 to 0 step -1
+				trackFrame
+			next
+		end if
+
+		scanDuration = duration
+		scanned = 1
+		repaired = 0
+	end if
+
+	drawGizmo(dest, offsets[frame], (gizColor ? kCyan : kGreen))
+
+	if byCW
+		// draw CW bounds for this frame
+		lp = offsets[frame]; lp *= frameSize
+		computeCW(src1, lp, 1)
+	end if
+
+else	if mode == 3		// tracking repair
+
+	dest = src1
+	//ensure we've tracked
+	if not (scanned || (repaired && selectFrame == frame))
+		ResetText; SetTextJustify(kcenterjustify)
+		DrawString("Not Yet Tracked", 0, 0, 2, dest, kRed, aspectOf(dest))
+	else
+		if repairCenter != recenter
+			// new center, do the repair
+			if repairMode == 1  // current frame only
+				offsets[frame] = recenter
+			else
+				setSelect(recenter)
+				repaired = 1
+			end if
+			drawGizmo(dest, recenter, (repaired ? (gizColor ? kBlack : kWhite) : (gizColor ? kCyan : kGreen)))
+			repairCenter = recenter
+			repairFrame = frame
+		else
+			// waiting for recenter
+			drawGizmo(dest, offsets[frame], (frame == repairFrame ? (repaired ? (gizColor ? kBlack : kWhite) : (gizColor ? kCyan : kGreen)) : (gizColor ? kMagenta : kYellow)))				
+		end if
+	end if
+
+else	if mode == 4		// stabilize
+
+	//ensure we've tracked
+	if not scanned
+		dest = src1
+		ResetText; SetTextJustify(kcenterjustify)
+		DrawString("Not Yet Tracked", 0, 0, 2, dest, kRed, aspectOf(dest))
+	else
+		// offset frame by stored offset for this frame
+		point fp[4], tp[4]
+		BoundsOf(dest, fp); tp = fp
+		// smooth if requested
+		if smooth > 0
+			// apply exponential kernel filter 
+			ox = 0; oy = 0; sumc = 0;
+			sm = 1.0 + 5 * smooth / 100
+			for i = 0 to 10   // 11 steps, 
+				ix = i * 2 - 10
+				c = exp(-((ix/sm)*(ix/sm)))
+				j = i - integer(10 / 2)
+				k = frame + j
+				if k < 0; k = 0; end if
+				if k >= duration; k = duration - 1; end if
+				ox += offsets[k].x * c
+				oy += offsets[k].y * c
+				sumc += c
+			next
+			ox = selectCenter.x - ox / sumc
+			oy = selectCenter.y - oy / sumc
+		// else if dampen > 0
+		// 	ox = (selectCenter.x - offsets[frame].x) * ((100 - dampen) / 100)
+		// 	oy = (selectCenter.y - offsets[frame].y) * ((100 - dampen) / 100)
+		else
+			ox = selectCenter.x - offsets[frame].x
+			oy = selectCenter.y - offsets[frame].y
+		end if
+
+		// compute offset & auto-crop polys
+		offset(tp, ox * frameSize.x, oy * frameSize.y)
+		Scale(tp, zero, 1 + maxScale * autoCrop / 100, 1 + maxScale * autoCrop / 100)
+		
+		// stabilize move
+		channelfill(dest, 255, 0, 0, 0);
+		BlitRect(src1, fp, dest, tp)
+		
+		if demo && !previewing
+			drawGizmo(dest, selectCenter, (gizColor ? kCyan : kGreen))
+		end if
+
+	end if
+end if
+
+// show track curve if enabled
+if showTrack && previewing && (scanned || repaired) 
+	lp = offsets[0]; lps = offsets[0]
+	color lc; if !gizColor; lc = { 255, 255, 0, 195 }; else; lc = { 255, 255, 112, 0 }; end if
+	for f = 1 to (repaired ? repairFrame : duration - 1)
+		lp1 = lp; lp1 *= frameSize
+		lp2 = offsets[f]; lp2 *= frameSize
+		if mode == 4 && autoCrop > 0 // stabilize
+			Scale(lp1, zero, 1 + maxScale * autoCrop / 100, 1 + maxScale * autoCrop / 100)
+			Scale(lp2, zero, 1 + maxScale * autoCrop / 100, 1 + maxScale * autoCrop / 100)
+		end if
+		Line(lp1, lp2, dest, lc, 1)
+		lp = offsets[f]
+
+		// show smooth if requested
+		if smooth > 0
+			// apply exponential kernel filter 
+			ox = 0; oy = 0; sumc = 0;
+			sx = 1.0 + 5 * smooth / 100
+			for i = 0 to 10   // 11 steps, 
+				ix = i * 2 - 10
+				c = exp(-((ix/sx)*(ix/sx)))
+				j = i - integer(10 / 2)
+				k = f + j
+				if k < 0; k = 0; end if
+				if k >= duration; k = duration - 1; end if
+				ox += offsets[k].x * c
+				oy += offsets[k].y * c
+				sumc += c
+			next
+			ox = ox / sumc
+			oy = oy / sumc
+
+			lp1 = lps; lp1 *= frameSize
+			lp2 = {ox, oy}; lp2 *= frameSize
+			if mode == 4 && autoCrop > 0 // stabilize
+				Scale(lp1, zero, 1 + maxScale * autoCrop / 100, 1 + maxScale * autoCrop / 100)
+				Scale(lp2, zero, 1 + maxScale * autoCrop / 100, 1 + maxScale * autoCrop / 100)
+			end if
+			Line(lp1, lp2, dest, (gizColor ? kYellow : kGreen), 1)
+			lps = {ox, oy}
+		end if
+	next
+	lp = offsets[frame]; lp *= frameSize
+	DrawSoftDot(dest, lp, kRound, 3, 0, 10, (gizColor ? kRed : kBlue), 0.75, aspectOf(dest))
+end if
+
+// condition repair to pending mode if if anything other than repair mode
+if mode != 4
+	repairCenter = recenter
+end if
+
+if demo && !previewing
+	ResetText; SetTextJustify(kcenterjustify)
+	SetTextSize(25 / 640 * frameSize.x)
+	image buf2[frameSize.x][frameSize.y]
+	ChannelFill(buf2, 0, 0, 0, 0)
+	DrawString("Lyric Plugins Demo - www.lyric.com", 0.005 * frameSize.x, 0.005 * frameSize.y, 2, buf2, kBlack, aspectOf(dest))
+	DrawString("Lyric Plugins Demo - www.lyric.com", 0.0, 0.0 * frameSize.y, 2, buf2, kWhite, aspectOf(dest))
+	Matte(buf2, dest, dest, 0.5, kAlpha)
+end if

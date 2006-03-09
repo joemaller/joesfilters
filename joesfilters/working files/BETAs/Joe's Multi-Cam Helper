@@ -1,0 +1,89 @@
+Generator "Joe's Multi-Cam Helper"
+Group "BETA"
+
+input convertclip, "Source Clip", clip;
+input camcorner, "Position", RadioGroup, 1, "Upper Left", "Upper Right", "Lower Right","Lower Left";
+
+
+
+input fontsize, "Font Size", slider, 22, 6, 144; 
+input tracking, "Tracking", slider, 2, -5, 10; 
+
+informationFlag("hasfields"); 
+
+code
+
+
+// numreporter function
+// Sept 21, 2003
+        On numReporter(value reporterData, string reporterstring, value subformat, value height)
+                
+                string reporter;
+                color fontcolor;
+                float rw, rh, ra, rd, rzoom;
+                
+                DimensionsOf(dest, rw, rh);
+                rzoom = rw/720;
+                
+                fontcolor = {255,235,235,235};
+                settextfont("verdana");
+                setTextstyle(kbold);
+                setTextjustify(kcenterjustify);
+                setTextSize(fontsize * rzoom);
+                                                                
+                NumToString(reporterData, reporter, subformat); reporter = reporterstring + " = " + reporter
+                DrawString(reporter, 0, height, tracking,  dest, fontcolor , aspectof(dest))
+        
+        End
+//end numreporter 
+
+
+float sourceDuration, sourceOffset, aspect, w, h;
+
+dimensionsOf(dest, w, h);
+
+aspect = aspectOf(dest);
+
+getLimits(convertclip, sourceDuration, sourceOffset);
+
+float j, getfps, df;
+GetTimecode(convertclip, j, getfps, df)
+
+numReporter(sourceDuration, "sourceDuration:", kfloat4, h/2*0.8)
+
+if (fps == 30 && getfps == 29.97)
+	numReporter(1, "FPS mismatch:", kfloat2, -50)
+end if
+
+numReporter(getfps, "Clip FPS:", kfloat2, h/2*0.5);
+numReporter(aspectOf(dest), "aspectOf(dest): ", kfloat4, h/2*0.65);
+
+point a, b, c;
+
+a = {2,1}
+b = {5,5}
+
+a += b;
+numReporter(a.x, "a.x = ", kfloat2, h/2*-0.5);
+numReporter(a.y, "a.y = ", kfloat2, h/2*-0.3);
+
+
+
+point startbox[4], endbox[4], blob[4][4];
+
+
+blob[0] = {1,1,		0,1,		0,0,		1,0};
+blob[1] = {0,1,		1,1,		1,0,		0,0};
+blob[2] = {0,0,		1,0,		1,1,		0,1};
+blob[3] = {1,0,		0,0,		0,1,		1,1};
+
+
+
+BoundsOf(dest, startbox);
+
+FramePoly(startbox, dest, kred, 3);
+endbox = startbox;
+endbox *= blob[camcorner -1];
+FramePoly(endbox, dest, kblue, 2);
+
+

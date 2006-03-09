@@ -1,0 +1,352 @@
+transition "Joe's Better Dissolve"
+group "beta"
+
+
+input lag, "Lag", slider, 0.55, 0.25, 0.75;
+
+input easing, "Easing", slider, 0, -100, 100;
+input easeMethod, "Easing Method", popup, 3,  "Ease In", "Ease Out", "S-Curve";
+
+
+input pt, "pt", point, 0,0;
+
+
+
+input stackOrder, "Invert Composite Order", checkbox, 0;
+
+input bgColor, "Background Color", color, 255, 0, 0, 0;
+input bgOpacity, "Background Opacity", slider, 0, 0,100;
+
+
+input check, "Check", checkbox, 0;
+
+InformationFlag("YUVaware");
+producesAlpha
+
+code
+
+exposedBackground=1;
+
+// INCLUDE "NumReporter.fxscript"  v1.1
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "NumReporter.fxscript"
+ 
+ 
+ 
+ 
+// INCLUDE "ease.fxscript"  v1.2
+
+
+on ease(value _r, value _easing, value _method)
+	
+	// a single placeholder easing tool for easier use, 
+	
+	// required inputs:
+
+	if (_method == 1)
+		return easeIn(_r, _easing)
+	else if (_method == 2)
+		return easeOut(_r, _easing)
+	else if (_method == 3)
+		return easeS(_r, _easing)
+	end if
+end
+
+
+on easeIn(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+	
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return power(_r, _easing);
+
+end
+
+on easeOut(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return 1 - power(1 - _r, _easing);
+end
+
+
+on easeS(value _r, value _easing)
+	// modifies a 0-1 value towards an S-curve
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	if (_r < 0.5)
+		return (power(2 * _r, _easing)/2);	// half simple gamma curve (first half S)
+	else			
+		return ((-power(-2 * _r + 2, _easing))/2 + 1);  // half inverted gamma curve (second half S)	
+	end if
+end  
+
+// END "ease.fxscript"
+ 
+
+ 
+
+// INCLUDE "ArrayFloatCount.fxscript"  v1.2
+
+on isIndexFloatArray(value _i, float _ar);return(_ar[_i][0] != kundefined); end 	//  checks for the existance of a zeroth index of the passed index
+on isIndexFloat(value _i, float _ar);return(_ar[_i] != kundefined); end 
+on ArrayFloatIndexExists(value _i, float _ar);return(isIndexFloatArray(_i, _ar) || isIndexFloat(_i, _ar)); end 
+
+on ArrayFloatCount(float _ar)
+	float _l, _r, _seed, _step, _counter;
+	_seed = 7; // somewhat arbitrary, chosen after a lot of performance testing
+	_step = _seed;
+	
+	_l = 1 // set this to save a loop checking the zeroth index
+	_r = _l + _seed;
+
+	repeat while true
+		_counter++;
+
+		if (ArrayFloatIndexExists(_l, _ar) && ArrayFloatIndexExists(_r, _ar))	// both values in array
+			_l = _r+1;	// start at _r+1 to prevent double-checking values
+			_r = _l + _step;
+			_step += _seed * _counter;
+
+		else if (!ArrayFloatIndexExists(_l, _ar) && !ArrayFloatIndexExists(_r, _ar))	// no values in array
+				return _l;	// stepped one over _r previously, last index must be _l-1, return _l to compenstate for count vs. index off-by-one
+
+		else 	// bottom value in array, top not. Half top and step bottom
+			_step = _r; // temporary storage of the _r variable
+			_l = _l+1; // increment _l to prevent double-checking values
+			_r = _l + integer((_r - _l)/2);	// half the distance between _l and _r
+			_step -= _r; // difference between old _r and new _r
+
+		end if
+	end repeat;
+end 
+
+// END "ArrayFloatCount.fxscript"
+ 
+ 
+
+ 
+// INCLUDE "makeLevelMapBez.fxscript"  v1.1
+
+on makeLevelMapBez(float _lmap, value _inBlack, value _gamma, value _inWhite, value _outBlack, value _outWhite)
+		// requires ArrayFloatCount.fxscript
+		
+		// uses BezToLevelMap to generate an adjustment level map for image correction.
+		// results have been calibrated against the slower makeLevelMapFN
+		// inputs are the adjustment array and five standard levels adjustment settings
+
+		//note (11-14-04): output white seems over-sensitive? blowing out around output-white 220
+		
+
+	float _j, _D1, _D2, _mapLength;
+	point _Lpt, _Rpt, _Cpt1, _Cpt2;
+
+	// enforce limits
+	_gamma = (_gamma > 10) ? 10:_gamma;
+	_gamma = (_gamma < 0.1) ? 0.1:_gamma;
+	_gamma = (_gamma < 1) ? 1- (1-_gamma) * 0.9 : _gamma;
+
+	
+	_mapLength = ArrayFloatCount(_lmap)-1;
+	_gamma = 1/_gamma; // invert value to match Photoshop's values
+	_outBlack = (_outWhite-_outBlack > 0) ? _outBlack : _outWhite-1;	// corrects for  reversal of inWhite and inBlack
+
+	_Lpt = {_inBlack/_mapLength, _outBlack/_mapLength};
+	_Rpt = {_inWhite/_mapLength, _outWhite/_mapLength};
+	
+	if (_gamma > 1)
+		_j = power(_gamma/10, exp(1))
+		_D1 = 1 - 1/_gamma - _j/10;
+		_D2 = _j;
+		_Cpt1.x = sin(power(_gamma, log(2)/log(_gamma) - _j/10) * 45) * _D1 + _Lpt.x; 
+		_Cpt1.y = cos(power(_gamma, log(2)/log(_gamma) - _j/10) * 45) * _D1 + _Lpt.y;
+	
+		Interpolate(_Lpt, _Cpt1, (_inWhite-_inBlack)/255, _Cpt1)	// correct for input scaling (horizontal)
+	
+	else // gammma <= 1
+		
+		_j = power(1.825, -_gamma) - 0.445;	// I don't know why these numbers work, they were discovered after extensive testing and charting	
+		_D1 = power(4,-_gamma) + _j/10 ;
+		_D2 = 1-_gamma - _j
+		
+		_Cpt1.x = sin(power(_gamma,exp(1)) * (90-AngleTo(_Lpt, _Rpt) )) * _D1 + _Lpt.x;
+		_Cpt1.y = cos(power(_gamma,exp(1)) * (90-AngleTo(_Lpt, _Rpt) )) * _D1 + _Lpt.y;
+		
+		Interpolate(_Lpt, _Cpt1, (_outWhite - _outBlack)/_mapLength, _Cpt1)		// correct for output scaling (vertical)
+
+	end if
+		
+	Interpolate(_Cpt1, _Rpt, 1-_D2, _Cpt2)	// possibly save the subtraction by reversing the points...
+	
+	BezToLevelMap(_lmap, _Lpt, _Cpt1, _Cpt2, _Rpt, 0, _mapLength, TRUE);
+	
+	if (_inBlack > 0)
+		_Cpt1 = {0, _Lpt.y};
+		BezToLevelMap(_lmap, _Cpt1, _Cpt1, _Lpt, _Lpt, 0, _inBlack, TRUE);
+	end if
+	if (_inWhite < _mapLength)
+		_Cpt1 = {1, _Rpt.y};
+		BezToLevelMap(_lmap, _Rpt, _Rpt, _Cpt1, _Cpt1, _inWhite, _mapLength, TRUE);
+	end if
+
+end
+
+
+// END "makeLevelMapBez.fxscript"
+ 
+
+
+on additiveDissolve(image _src1, image _src2, image _dest, point _pt, value _ratio, value _w, value _h, value _easing, value _easeMethod, value _lag, value _stackOrder)
+
+	float _a[256], _eRatio, _ieratio, _u, _g, _d;
+	point _inBox[4], _outBox[4];
+
+	image _img1[_w][_h], _img2[_w][_h];	
+	makeRect(_inBox, _pt.x-_w/2, _pt.y-_h/2, _w, _h);
+	boundsOf(_img1, _outBox);
+	blitRect(_src1, _inBox, _img1, _outBox);
+	blitRect(_src2, _inBox, _img2, _outBox);
+	
+	_eRatio = ease(_ratio, _easing, _easemethod); 
+	_ieRatio = ease(1- _ratio, _easing, _easemethod); 
+	
+	if (getPixelFormat(_dest) != kFormatYUV219)	// add check for existing color space
+		ConvertImage(_img, _img, kFormatYUV219);
+		ConvertImage(_dest, _dest, kFormatYUV219);
+	end if
+
+	channelcopy(_img1, _img1, kred, kred, kgreen, kblue);
+	channelcopy(_img2, _img2, kred, kred, kgreen, kblue);
+
+	_u = _ieRatio/_lag;  
+	_d = _ieRatio/_lag + 1- 1/_lag;
+	_g = _ieRatio/(_lag + 0.2);
+
+	_u = (_u > 1) ? 1 : _u
+	_d = (_d < 0) ? 0 : _d
+	_g = (_g > 1) ? 1 : _g
+
+	makeLevelMapBez(_a, 0, _g, 255, 255*_d, 255 * _u);
+	LevelMap(_img1, _img1, _a, linearRamp, linearRamp, linearRamp); // outgoing clip
+
+	_u = _eRatio/_lag;  
+	_d = _eRatio/_lag + 1- 1/_lag;
+	_g = _eRatio/(_lag + 0.2);
+
+	_u = (_u > 1) ? 1 : _u
+	_d = (_d < 0) ? 0 : _d
+	_g = (_g > 1) ? 1 : _g
+
+	makeLevelMapBez(_a, 0, _g, 255, 255*_d, 255 * _u);
+	LevelMap(_img2, _img2, _a, linearRamp, linearRamp, linearRamp); // incoming clip
+
+	if (_stackOrder)
+		matte(_img2, _img1, _img1, 1, kalpha);
+	else
+		matte(_img1, _img2, _img1, 1, kalpha);
+	end if
+	
+	//matte(_img1, _img2, _img1, 0.5, kalpha);
+	
+	blitRect(_img1, _outBox, _dest, _inBox);
+
+end
+
+
+ 
+ 
+ 
+float a[256], eRatio, ieRatio, u, g, d, w, h;
+point dims
+dimensionsOf(dest, dims.x,dims.y)
+pt *= dims;
+image img[dims.x][dims.y];
+point box[4]
+
+eRatio = ease(ratio, easing, easemethod); 
+ieRatio = ease(1- ratio, easing, easemethod); 
+
+	if (getPixelFormat(dest) != kFormatYUV219)
+		ConvertImage(img, img, kFormatYUV219);
+		ConvertImage(dest, dest, kFormatYUV219);
+	end if
+
+channelcopy(src1, dest, kred, kred, kgreen, kblue);
+channelcopy(src2, img, kred, kred, kgreen, kblue);
+
+u = ieRatio/lag;  
+d = ieRatio/lag + 1- 1/lag;
+g = ieRatio/(lag + 0.2);
+
+u = (u > 1) ? 1 : u
+d = (d < 0) ? 0 : d
+g = (g > 1) ? 1 : g
+
+makeLevelMapBez(a, 0, g, 255, 255*d, 255 * u);
+LevelMap(dest, dest, a, linearRamp,linearRamp, linearRamp); // outgoing clip
+
+u = eRatio/lag;  
+d = eRatio/lag + 1- 1/lag;
+g = eRatio/(lag + 0.2);
+
+u = (u > 1) ? 1 : u
+d = (d < 0) ? 0 : d
+g = (g > 1) ? 1 : g
+
+makeLevelMapBez(a, 0, g, 255, 255*d, 235 * u);			
+LevelMap(img, img, a, linearRamp, linearRamp, linearRamp); // incoming clip
+
+if (stackOrder)
+	matte(img, dest, dest, 1, kalpha);
+else
+	matte(dest, img, dest, 1, kalpha);
+end if
+
+channelfill(dest, 0, 0, 127, 127)
+additiveDissolve(src1, src2, dest, pt, ratio*2, dims.x,dims.y, easing, easeMethod, lag, stackOrder)
+
+
+if false //check
+	matte(src2, src1, img, ratio, kalpha)
+makeRect(box, -w/2, -h/2, w/2, h)
+	blitRect(img, box, dest, box);
+end if
+

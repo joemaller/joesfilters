@@ -1,0 +1,270 @@
+filter "Diff"
+group "builder"
+
+input color1, "Color 1", color, 255, 125, 255, 9;
+input color2, "Color 2", color, 255, 195, 185, 79;
+
+input aLength, "Array Length", slider, 15, 1, 125;
+
+input sorter, "Sort Method", radioGroup, 1, "QuickSort", "Insertion Sort";
+
+
+code
+
+// INCLUDE "NumReporter.fxscript"  v1.1
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, 1,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "NumReporter.fxscript"
+ 
+// INCLUDE "ArrayFloatCount.fxscript"  v1.1
+
+on indexExists(value _i, float _ar);return(_ar[_i]!=kundefined); end 
+
+on ArrayFloatCount(float _ar)
+	float _l, _r, _seed, _step, _counter;
+	_seed = 7; // somewhat arbitrary, chosen after a lot of performance testing
+	_step = _seed;
+	
+	_l = 1 // set this to save a loop checking the zeroth index
+	_r = _l + _seed;
+
+	repeat while true
+		_counter++;
+
+		if (indexExists(_l, _ar) && indexExists(_r, _ar))	// both values in array
+			_l = _r+1;	// start at _r+1 to prevent double-checking values
+			_r = _l + _step;
+			_step += _seed * _counter;
+
+		else if (!indexExists(_l, _ar) && !indexExists(_r, _ar))	// no values in array
+			return _l;	// stepped one over _r previously, last index must be _l-1, return _l to compenstate for count vs. index off-by-one
+
+		else 	// bottom value in array, top not. Half top and step bottom
+			_step = _r; // temporary storage of the _r variable
+			_l = _l+1; // increment _l to prevent double-checking values
+			_r = _l + integer((_r - _l)/2);	// half the distance between _l and _r
+			_step -= _r; // difference between old _r and new _r
+
+		end if
+	end repeat;
+end
+
+// END "ArrayFloatCount.fxscript"
+ 
+
+
+color outColor;
+on ColorDifference(color _clr1, color _clr2, color _result)
+	_result.a = abs(_clr1.a - _clr2.a);
+	_result.r = abs(_clr1.r - _clr2.r);
+	_result.g = abs(_clr1.g - _clr2.g);
+	_result.b = abs(_clr1.b - _clr2.b);
+//	return ((_clr1.r - _clr2.r) + (_clr1.g - _clr2.g) + (_clr1.b - _clr2.b))/3;
+	return ArrayFloatCount(_result);
+end 
+
+
+
+
+on ArrayFloatSwap(float _key1, float _key2)
+	float _temp;
+	_temp = _key1;
+	_key2 = _key1;
+	_key1 = _temp;
+end 
+
+
+
+// INCLUDE "ArrayFloatPrint_r.fxscript"  v1.1
+
+on ArrayFloatPrint_r(float _ar)
+	float _count, _i, _h;
+	string _index;
+	dimensionsOf(dest, _h, _h);
+	_count =	ArrayFloatCount(_ar)
+	for _i = 0 to _count-1	
+		NumToString(_i, _index, kInteger);
+		numreporter(dest, _ar[_i], "_ar[" + _index + "]", kfloat2, _i/_count * _h - _h/2 + 12, 24, 345);
+	next
+end 
+
+
+// END "ArrayFloatPrint_r.fxscript"
+ 
+
+on ColorReporter(image _destIMG, color _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string _reporterA, _reporterR, _reporterG, _reporterB;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.a, _reporterA, _numberformat);
+	NumToString(_data.r, _reporterR, _numberformat);
+	NumToString(_data.g, _reporterG, _numberformat);
+	NumToString(_data.b, _reporterB, _numberformat);
+	_reporterR = _label + " = {" + _reporterA + "," + _reporterR + "," + _reporterG + "," + _reporterB + "}";
+	DrawString(_reporterR, -1, _h - 1, 1.25,  _destIMG, fontColor, aspectof(_destIMG));
+	DrawString(_reporterR, 1, _h + 1, 1.25,  _destIMG, kblack, aspectof(_destIMG));
+	DrawString(_reporterR, 0, _h, 1.25,  _destIMG, _data, aspectof(_destIMG));
+
+end 
+
+
+
+
+
+// INCLUDE "ArrayFloatQuickSort.fxscript"  v1.2
+
+// 	FXScript QuickSort by Joe Maller, December 2004
+//	Based on various internet resources, these were most helpful:
+// 	http://www.cs.ubc.ca/spider/harrison/Java/sorting-demo.html
+// 	http://www.csse.monash.edu.au/~lloyd/tildeAlgDS/Sort/
+//	http://en.wikipedia.org/wiki/Sorting_algorithm
+
+on ArrayFloatQuickSort(float _ar, value _lo, value _hi)
+	
+	float _l, _r, _pivot, _temp;
+	
+	if( _hi > _lo )
+		_l = _lo; 
+		_r = _hi;
+		_pivot = integer((_l + _r)/2);	// variable will be recast once value is found
+		
+		// find median of three pivot:		
+		if (_ar[_l] > _ar[_pivot])
+			_temp = _ar[_l]; _ar[_l] = _ar[_pivot]; _ar[_pivot] = _temp;	// swap _l & _pivot
+		end if
+		if (_ar[_l] > _ar[_r])
+			_temp = _ar[_l]; _ar[_l] = _ar[_r]; _ar[_r] = _temp;	// swap _l and _r
+		end if
+		if (_ar[_pivot] > _ar[_r])
+			_temp = _ar[_pivot]; _ar[_pivot] = _ar[_r]; _ar[_r] = _temp;	// swap _pivot & _r
+		end if
+
+		_pivot = _ar[_pivot]; // median of three
+		
+		repeat while (_r >= _l) 	// work through all indices between _l and _r
+
+			repeat while(_ar[_l] < _pivot) // don't move smaller values on left
+				_l++;
+			end repeat
+		
+			repeat while(_ar[_r] > _pivot) // don't move larger values on right
+				_r--;
+			end repeat
+			
+			if(_l > _r) 
+				exit repeat;
+			end if
+			
+			// swap _l and _r:
+			_temp = _ar[_l];
+			_ar[_l] = _ar[_r];
+			_ar[_r] =  _temp;
+			
+			// step index values for next loop:
+			_l++; 
+			_r--;
+		end repeat
+
+		ArrayFloatQuickSort(_ar, _lo, _r); 	// sort smaller partition
+		ArrayFloatQuickSort(_ar, _l,  _hi);	// sort larger partition
+
+	end if
+end 
+
+// END "ArrayFloatQuickSort.fxscript"
+ 
+
+
+// INCLUDE "ArrayFloatInsertionSort.fxscript"  v1.1
+
+// 	FXScript Insertion Sort by Joe Maller, December 2004
+//	Based on various internet resources, these were most helpful:
+// 	http://www.cs.ubc.ca/spider/harrison/Java/sorting-demo.html
+// 	http://www.csse.monash.edu.au/~lloyd/tildeAlgDS/Sort/
+//	http://en.wikipedia.org/wiki/Sorting_algorithm
+
+on ArrayFloatInsertionSort(float _ar, value _arLength)
+	float _i, _j, _q;
+
+	for _i = 1 to _arLength
+		_q = _ar[_i];
+		_j = _i-1;
+
+		repeat while _j < _arLength && _j > -1
+			if ( _ar[_j] > _q )
+				_ar[_j+1] = _ar[_j];	// _ar[_j+1] was initially copied into _q because _j started at _i-1
+				_j--;
+			else
+				exit repeat
+			end if
+		end repeat
+
+		_ar[_j+1] = _q;	// this re-steps _j to compensate for the last step of the prev loop, is there a way around that?
+	next
+end 
+
+// END "ArrayFloatInsertionSort.fxscript"
+ 
+
+on CompareColors(color _c1, color _c2)
+	return abs(_c1.r - _c2.r) + abs(_c1.g - _c2.g) + abs(_c1.b - _c2.b)); 
+end 
+
+
+
+float x;
+float theArray[5];theArray = {3,2,1,22,5};
+//float theArray[12]; theArray = {3,5,4,22,5,0,-23,7,2,9,11,222};
+//float theArray[aLength]; randomSeed(0);RandomTable(theArray);
+//theArray *= 102.2;
+
+x = ColorDifference(color1, color2, outColor);
+//channelfill(dest, outcolor.a, outColor.r, outColor.g, outColor.b);
+if sorter == 1
+	ArrayFloatQuickSort(theArray, 0, ArrayFloatCount(theArray) - 1);
+else if sorter == 2
+	ArrayFloatInsertionSort(theArray, ArrayFloatCount(theArray) - 1);
+end if
+
+
+ArrayFloatPrint_r(theArray);
+
+
+
+
+numreporter(dest, (CompareColors(color1, color2)), "CompareColors", kfloat6, 0, 40, kCenterJustify);
+
+
+ColorReporter(dest, color1, "color1", kinteger, 40, 40, kcenterjustify);
+ColorReporter(dest, color2, "color2", kinteger, 60, 40, kcenterjustify);

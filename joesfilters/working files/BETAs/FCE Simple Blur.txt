@@ -1,0 +1,100 @@
+filter "Simple FCE blur"
+group "BETA"
+
+
+
+input e0, "Start Blur", slider, 0, 0, 100;
+input e1, "End Blur", slider, 100, 0, 100;
+input easing, "Ease In/Out", slider, 0, -100, 100
+
+//input gamma, "Gamma", slider, 3, 0.1, 10;
+
+
+//input blurval, "Blur Radius", slider, 5, 0, 150;
+
+input easecurve, "Easing Curve", RadioGroup, 2, "Single Curve", "S-Curve", "Inverted Single Curve";
+
+input showvals, "Show Values", checkbox, 0;
+
+
+input fontsize, "Font Size", slider, 22, 6, 144; 
+input tracking, "Tracking", slider, 2, -5, 10; 
+
+
+code
+
+
+// numreporter function
+// Sept 21, 2003
+        On numReporter(value reporterData, string reporterstring, value subformat, value height)
+                
+                string reporter;
+                color fontcolor;
+                float rw, rh, ra, rd, rzoom;
+                
+                DimensionsOf(dest, rw, rh);
+                rzoom = rw/720;
+                
+                fontcolor = {255,235,235,235};
+                settextfont("verdana");
+                setTextstyle(kbold);
+                setTextjustify(kcenterjustify);
+                setTextSize(fontsize * rzoom);
+                                                                
+                NumToString(reporterData, reporter, subformat); reporter = reporterstring + " = " + reporter
+                DrawString(reporter, 0, height, tracking,  dest, fontcolor , aspectof(dest))
+        
+        End
+//end numreporter 
+
+
+
+if (easing < 0)
+	easing = 1-easing/50;
+else
+	easing = 1/(1+easing/50)
+end if
+float gamma;
+gamma = easing;
+
+
+
+
+float w, h, e, fxRatio;
+DimensionsOf(dest, w, h);
+
+
+
+if (easecurve == 1)	// simple curve
+	fxRatio =  power(ratio, gamma) ;
+else if (easecurve == 2) // S curve
+	if ratio < 0.5
+		fxRatio = power(2 * (ratio), gamma)/2	// first half S
+	else
+		fxRatio = (-power(-2 * (ratio) + 2, gamma))/2 + 1  // second half S (inverted)
+	end if
+else if (easecurve == 3)	// inverted simple curve
+	fxRatio =  (-power(1-ratio, 1/gamma) + 1); 
+end if
+
+e = e0 + fxRatio * (e1-e0)	// build a handler for crossover values, or not, depending on what happens...
+
+
+
+
+
+
+
+
+
+
+
+BlurChannel(src1, dest, e, 1, 1, 1, 1, aspectOf(dest))
+//ChannelMultiply(src1, dest, 1, fxRatio, 1-fxRatio, 0)
+
+
+if (showvals)
+	numReporter(fxRatio, "fxRatio", kfloat4, h/2*0.5);
+	numReporter(e, "e", kfloat4, h/2*0.7);
+	numReporter(easing, "easing", kfloat4, h/2*0.9);
+end if

@@ -1,0 +1,186 @@
+filter "WideScreen Matte 2"
+group "BETA"
+
+
+
+ input rotater, "Rotate:", Popup, 1, "0¡ (No rotation)", "90¡ Clockwise", "90¡ Counter-Clockwise", "180¡", "Flip Horizontal", "Flip Vertical";
+
+
+input scaleOO, "Scale Original | Output", Slider, 0, -1, 1 detent -1, 0, 1;
+
+input fitWH, "Fitting", Slider, 0, -1, 1 detent -1, 0, 1;
+input hshift, "Pan (Horizontal Adjust)", slider, 0, -100,  100;
+input vshift, "Scan (Vertical Adjust)", slider, 0, -100,  100;
+
+
+input srcFAR, "Frame Aspect Ratio", popup, 2, "1:1", "1.33:1 (4:3)", "1.55:1 (14:9)","1.66:1 (5:3)", "1.77:1 (16:9)", "2:1", "2.35:1 (47:20)", "0.5625:1 (9:16)";
+
+//input swapFields, "Reverse Fields - Output", checkbox, 0;
+
+
+
+code
+
+channelfill(dest, 0, 0, 0, 0);
+
+on r(point _box, value _rotater, value _scaler)
+	
+	if ( _rotater != 1)
+		point _rotatetemp[4];
+		float _j;
+			
+		_rotatetemp = _box;
+		
+		if (_rotater < 5)
+			_rotater = (_rotater < 4) ? (_rotater * 2 - 5) * -1 : _rotater/2;
+			
+			for _j = 0 to 3
+				_box[_j] = _rotatetemp[(_j + 4 + _rotater) % 4];
+			next;
+			
+		else if (_rotater == 5) // do flip horizontal
+	
+			for _j = 0 to 3
+				_box[_j] = _rotatetemp[_j^1];
+			next;
+	
+		else if (_rotater == 6) // flip vertical
+		
+			for _j = 0 to 3
+				_box[_j] = _rotatetemp[3-_j];
+			next;
+		
+		end if	
+	end if
+
+	_box *= _scaler;
+
+end
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+
+
+
+float srcFieldDominance, destField, srcFPS;
+point ybox[4], srcbox[4], rotatetemp[4];
+float aspect, scaler, boxW, boxH, sourceDuration, sourceOffset, w, h, i, j, df;
+
+destField = frame * 2 & 1; // outgoing field is first (0) or second (1)
+
+float destFAR;
+
+
+	if (srcFAR == 1); srcFAR = 1/1; end if
+	if (srcFAR == 2); srcFAR = 4/3; end if
+	if (srcFAR == 3); srcFAR = 14/9; end if
+	if (srcFAR == 4); srcFAR = 5/3; end if
+	if (srcFAR == 5); srcFAR = 16/9; end if
+	if (srcFAR == 6); srcFAR = 2/1; end if
+	if (srcFAR == 7); srcFAR = 47/20; end if
+	if (srcFAR == 8); srcFAR = 9/16; end if
+
+
+
+dimensionsOf(dest, w, h);
+aspect = aspectOf(dest);
+
+destFAR = w/h/aspect;
+
+// adjust input values:
+
+fitWH = (fitWH + 1)/2; // turns this into a 0-1 decimal value
+
+if ( rotater == 2 || rotater == 3)
+	srcFAR = 1/srcFAR;
+end if
+
+hshift /= 100;
+vshift /= 100; 
+vshift = -vshift;
+
+if (srcFAR < (w/h)/aspect ) // fix for perceived directional adjustment of horiz. offset
+	hshift = -hshift;
+	vshift = -vshift;
+end if
+
+
+scaleOO = (scaleOO+1)/2
+
+
+
+scaler = ((srcFAR * aspect)/(w/h) - 1) * fitWH + 1;
+boxW = w * scaler;
+boxH = w / (srcFAR * aspect) * scaler;
+
+MakeRect(ybox, boxW/-2, boxH/-2, boxW, boxH)
+
+ybox *= scaleOO;
+
+for j = 0 to 3
+	ybox[j].x += ((boxW - w) * (hshift) * 0.5);
+	ybox[j].y += ((boxH - h) * (vshift) * 0.5) + destfield ^ swapFields;
+next;
+
+
+
+
+
+r(ybox, rotater, 1);
+
+
+
+boundsOf(dest, srcbox);
+Blit(src1, srcbox, dest, ybox, 1)
+FramePoly(ybox, dest, kred, 2);
+
+
+
+
+// starting with a smaller box than the output frame...
+// goal is to have the fitting slider detents follow a (Smallest, Middle, Biggest) model
+
+if (srcFAR < (w/h)/aspect ) // input frame is taller aspect than output frame
+	
+	// first from 1 to middle, then middle to max
+	// need to establish scaling values between those three points.
+	
+	boxW = 1;
+	
+	
+	
+	
+	
+end if 
+
+
+
+
+
+
+
+
+//NumReporter(dest, aspect, "aspect", kfloat2, h/2 * 0.7, 32, 1);
+//NumReporter(dest, srcFAR, "srcFAR", kfloat2, h/2 * 0.8, 32, 1);
+//NumReporter(dest, w/h * aspect, "destFAR", kfloat2, h/2 * 0.9, 32, 1);
+
+

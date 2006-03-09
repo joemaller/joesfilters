@@ -1,0 +1,59 @@
+scriptid "Basic 3D" //DO NOT LOCALIZE
+filter "Basic 3D";
+group "Perspective";
+ProducesAlpha;
+
+input Rx, "X axis Rotation", angle, 0, -360, 360 detent 0;
+input Ry, "Y axis Rotation", angle, 0, -360, 360 detent 0;
+input Rz, "Z axis Rotation", angle, 0, -360, 360 detent 0;
+input center, "Center", point, 0, 0;
+input S, "Scale", slider, 100, 0, 200 detent 100;
+
+input angleofview, "angleofview", slider, 30, 2, 180;
+code
+
+exposedbackground = 1;
+
+float i//, angleofview;
+point p, c, source[4], target[4], centerofview, centerofplane;
+point3d target3d[4], centerofplane3D, eye3d;
+
+boundsof(dest, target);
+centerof(target, centerofview);
+source = target;
+
+dimensionsof(dest, centerofplane.x, centerofplane.y);
+centerofplane *= center;
+centerofplane += centerofview	// Handle odd sized heights (eg, a 720x243 field), bug 3036384
+
+//angleofview = 30;
+
+convert2dto3d(centerofview, eye3d, distto(target[0], target[2])/(2*tan(angleofview/2)));
+convert2dto3d(centerofplane, centerofplane3d, 0);
+
+offset(target, centerofplane.x-centerofview.x, centerofplane.y-centerofview.y);
+scale(target, centerofplane, S/100, S/100);
+
+convert2dto3d(target, target3d, 0);
+
+c = {centerofplane3d.z, centerofplane3d.y}
+for i = 0 to 3
+	p = {target3d[i].z, target3d[i].y};
+	rotate(p, c, Rx, aspectof(dest));
+	target3d[i] = {target3d[i].x, p.y, p.x};
+next;
+
+rotate3d(target3d, centerofplane3d, 0, Ry, 0);
+
+c = {centerofplane3d.x, centerofplane3d.y}
+for i = 0 to 3
+	p = {target3d[i].x, target3d[i].y};
+	rotate(p, c, Rz, aspectof(dest));
+	target3d[i] = {p.x, p.y, target3d[i].z};
+next;
+
+convert3dto2d(target3d, target, eye3d);
+
+
+channelfill(dest, 0, 0, 0, 0);
+blitrect(src1, source, dest, target);

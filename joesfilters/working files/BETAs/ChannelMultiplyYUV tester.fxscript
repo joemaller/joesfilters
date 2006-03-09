@@ -1,0 +1,53 @@
+filter "ChannelMulitplyYUV Tester"
+group "BETA"
+
+
+input a, "A", slider, 0.5, 0, 5;
+input r, "R", slider, 0.5, 0, 5;
+input g, "G", slider, 0.5, 0, 5;
+input b, "B", slider, 0.5, 0, 5;
+
+input RGBorYUV, "RGBorYUV", radiogroup, 1, "RGB", "YUV";
+
+
+InformationFlag("YUVaware"); 
+
+code
+
+// INCLUDE "ChannelMultiplyYUV.fxscript" v1.1
+
+on ChannelMultiplyYUV(image _src, image _dest, value _a, value _y, value _u, value _v)
+
+	// this is significantly slower than the RGB equivalent, but works.
+	// probably possible to replace the levelmaps with a combination of multiply and add
+
+	float _ukey[256], _vkey[256]
+
+	_ukey = linearRamp;
+	_vkey = linearRamp;
+	_ukey *= _u;
+	_vkey *= _v;
+	_ukey += (1-_u)/2;
+	_vkey += (1-_v)/2;
+
+	levelmap(_src, _dest, linearRamp, linearRAmp, _ukey, _vkey);
+	channelMultiply(_dest, _dest, _a, _y, 1, 1);
+end
+
+// END "ChannelMultiplyYUV.fxscript"
+
+
+
+
+
+
+
+float x
+for x = 1 to 25
+if RGBorYUV == 1
+	ChannelMultiply(src1,dest, a, r, g, b)
+else
+	ChannelMultiplyYUV(src1,dest, a, r, g, b)
+end if
+next
+

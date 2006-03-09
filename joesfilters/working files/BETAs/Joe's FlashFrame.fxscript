@@ -1,0 +1,351 @@
+transition "Joe's Flash Frame"
+group "beta"
+
+input method, "Method", RadioGroup, 3, "Opacity", "Multiply", "Screen"
+
+input easing, "Easing", slider, 0, -100, 100;
+input easeMethod, "Easing Method", popup, 2,  "Ease In", "Ease Out", "S-Curve";
+
+input xclip, "xclip", clip;
+
+input timeslip, "Time Slip", slider, 0.6, 0.5, 1;
+
+input traildots, "Trailing Dots", slider, 15, 1, 50;
+input fskip, "Trail Frame Skip", slider,3, 0.1, 25 ramp 75;
+
+input revealer, "Revealer", slider, 0, 0, 500;
+
+
+InformationFlag("YUVaware");
+producesAlpha
+
+
+
+
+code
+
+exposedBackground=1;
+
+
+// INCLUDE "NumReporter.fxscript"  v1.1
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "NumReporter.fxscript"
+ 
+
+
+// INCLUDE "ease.fxscript"  v1.2
+
+
+on ease(value _r, value _easing, value _method)
+	
+	// a single placeholder easing tool for easier use, 
+	
+	// required inputs:
+	// input easing, "Easing", slider, 0, -100, 100;
+	// input easeMethod, "Easing Method", popup, 3,  "Ease In", "Ease Out", "S-Curve";
+
+	if (_method == 1)
+		return easeIn(_r, _easing)
+	else if (_method == 2)
+		return easeOut(_r, _easing)
+	else if (_method == 3)
+		return easeS(_r, _easing)
+	end if
+end
+
+
+on easeIn(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+	
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return power(_r, _easing);
+
+end
+
+on easeOut(value _r, value _easing)
+	// modifies a 0-1 value by the easing value
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	return 1 - power(1 - _r, _easing);
+end
+
+
+on easeS(value _r, value _easing)
+	// modifies a 0-1 value towards an S-curve
+	// easing should be a value between -100 and 100
+
+	if (_r < 0 || _r > 1)
+		return _r;
+	end if
+		
+	_easing = (_easing < 0) ? 1 - _easing * 0.02 : 1/(1 + _easing * 0.02);
+
+	if (_r < 0.5)
+		return (power(2 * _r, _easing)/2);	// half simple gamma curve (first half S)
+	else			
+		return ((-power(-2 * _r + 2, _easing))/2 + 1);  // half inverted gamma curve (second half S)	
+	end if
+end
+
+// END "ease.fxscript"
+ 
+
+
+// INCLUDE "getField.fxscript"  v1.5
+
+on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field);
+	//REQUIRES: 	DeInterlaceFast.fxscript
+	//				ErrorReporter.fxscript
+
+	// getField(clip, frame, dest, 720, 480, 1);
+	// replacement for GetVideo which returns a single field of interlaced video
+	// basic getVideo call plus dinmensions and field selection
+	// field is 0 or 1 to match deinterlace functions
+	
+	// getvideo into half-height buffers appears to return only the upper field (line 0)
+	// that means de-intelacing can be skipped for matching fields to save processing
+	
+	if (_field < 0 || _field > 1)
+		ErrorReporter(dest, "_field value out of range");
+		return;
+	end if
+	
+	
+	if (_field == 0)
+		image _half[_nativeW][_nativeH/2];
+		point _halfBox[4], _destBox[4];
+		boundsOf(_half, _halfBox);
+		boundsOf(_dest, _destBox);
+		
+		if (_halfBox[0] == _destBox[0] && _halfBox[2] == _destBox[2])	// _half is the same size as _dest, skip a blit
+		
+			getVideo(_clip1, _offset, _dest);
+
+		else		// _half and _dest are different sizes, use blitRect
+				
+			getVideo(_clip1, _offset, _half);
+			blitRect(_half, _halfBox, _dest, _destBox);
+		
+		end if
+		
+			
+	else // _field == 1
+		image _full[_nativeW][_nativeH];
+		getVideo(_clip1, _offset, _full);
+		DeInterlaceFast(_full, _dest, _field, true);
+	end if
+	
+end	// end getField
+
+
+
+// END "getField.fxscript"
+ 
+
+
+
+// INCLUDE "DeInterlaceFast.fxscript"  v1.6
+
+on DeInterlaceFast(image _srcIMG, image _destIMG, value _field, value _bounceFix)
+	
+	// _srcIMG : source image
+	// _destIMG : destination image
+	// _field : 0 = top field, 1 = bottom field
+	// _bounceFix turns on spatial correction, this fixed a getField bug and is needed for occasional field-based de-interlace calls
+
+	// this might fail at some future time if the scaling method in FCP changes
+
+	if (_field != 0 && _field != 1)
+		ErrorReporter(dest, "_field must be a boolean");
+		return;
+	end if	
+		
+	float _j;
+	point _r1[4], _r2[4];
+	BoundsOf(_srcIMG, _r1);
+	
+	if (_field) // second field, shift box down
+		_r1[0].y += 1;	// shift top row down
+		_r1[1].y += 1;
+		if ((_r1[3].y - _r1[0].y) & 1) 	// frame height needs to be even
+			_r1[2].y += 1;			// shift bottom down one row
+			_r1[3].y += 1;
+		end if
+
+	else // first field
+		if ((_r1[3].y - _r1[0].y) & 1) // odd frame height
+			_r1[2].y -= 1; // odd frame height, trim one row off of bottom
+			_r1[3].y -= 1;
+		end if
+	end if
+	image _halfIMG[_r1[1].x - _r1[0].x][(_r1[3].y - _r1[0].y) /2];
+	BoundsOf(_halfIMG, _r2);
+	BlitRect(_srcIMG, _r1, _halfIMG, _r2); // smash blit (isolates fields)
+	
+	if (_bounceFix)
+		makeRect(_r2, _r2[0].x, _r2[0].y - _field/2, _r2[1].x - _r2[0].x, _r2[3].y - _r2[0].y)	// corrects for  field bouncing
+	end if
+	BoundsOf(_destIMG, _r1);
+	BlitRect(_halfIMG, _r2, _destIMG, _r1);
+
+end
+
+// END "DeInterlaceFast.fxscript"
+ 
+
+
+// INCLUDE "ErrorReporter.fxscript"  v1.1
+
+on ErrorReporter(image _dest, string _errorMsg)
+	float _w, _h;
+	
+	dimensionsOf(dest, _w, _h);
+	
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_w * 0.05);
+	
+	channelfill(_dest, 255, 255, 125, 0);
+	DrawString(_errorMsg, 0, 0, 1.25, _dest, kwhite, aspectof(_dest));
+
+	
+	setTextjustify(krightJustify);
+	setTextSize(_w * 0.025);
+	DrawString("FXScriptReference.org", 0.4 * _w, 0.4 * _h, 1.25, _dest, kwhite, aspectof(_dest));
+
+end // end ErrorHandler
+
+
+// END "ErrorReporter.fxscript"
+ 
+
+
+
+
+ 
+float w,h,j, getFrame, theField, clipDUR, clipOFFSET;
+point temp, box[4]
+dimensionsOf(dest, w, h)
+
+
+if method == 1 // opacity
+	channelfill(dest, 255, 0, 0, 0);
+
+	matte(src1, dest, dest, ratio, kalpha);
+else if method == 2 // multiply
+	channelfill(dest, 255, 255, 255, 255);
+	multiply (dest, src1, dest, ease(ratio, easing, easeMethod), kalpha);
+	//multiply (dest, src2, dest, 1-ease(ratio, easing, easeMethod), kalpha);
+else if method == 3 // Screen
+	channelfill(dest, 255, 0, 0, 0);
+	screen (dest, src1, dest, ease(ratio, easing, easeMethod), kalpha);
+	//screen (dest, src2, dest, 1-ease(ratio, easing, easeMethod), kalpha);
+end if
+
+dest = src1;
+float clipTC, clipFR, clipDF
+
+getFrame = duration * ease(ratio * 2, easing, easeMethod)*timeslip;
+theField = getFrame&1;
+//getFrame /=2;
+//getField(clip1, -clipOFFSET + frame/2, dest, w, h, theField);
+
+
+getLimits(clip1, clipDUR, clipOFFSET);
+xclip = clip1
+GetTimecode(xclip, clipTC, clipFR, clipDF);
+
+//GetField(clip1,  frame/2 - clipOFFSET, dest, w,h*2, fieldnumber-1);
+channelmultiply(dest, dest, 1, 0.5, 1, 1);
+
+numreporter(dest, clipOFFSET, "clipOFFSET", kfloat4, -0.9 * h/2, 28, 1);
+clipOFFSET = clipTC -  (clipTC - frame - clipOFFSET) - clipOFFSET;
+numreporter(dest, clipOFFSET, "clipOFFSET*", kfloat4, -0.8 * h/2, 28, 1);
+
+
+string tc;
+
+GetTimecodeStringFromClip(clip1, frame, tc);
+	DrawString(tc, 0, h/2, 1, dest, kred, aspectof(dest));
+
+
+
+numreporter(dest, frame, "frame", kfloat4, -0.7 * h/2, 28, 1);
+
+
+
+
+//numreporter(dest, getFrame, "getFrame", kfloat4, -120, 28, 1);
+numreporter(dest, frame, "frame", kfloat4, -160, 28, 1);
+//numreporter(dest, integer(frame/2), "frame/2", kfloat4, 0.7 * -h/2, 28, 1);
+
+
+
+
+numreporter(dest, fieldprocessing, "fieldprocessing", kfloat4, 0.6 * -h/2, 28, 1);
+numreporter(dest, clipDUR, "clipDUR", kfloat4, 0.5 * -h/2, 28, 1);
+numreporter(dest, clipTC - frame/(fieldProcessing+1), "clipTC +frame/fieldprocessing", kfloat2, 0.4 * -h/2, 28, 1);
+numreporter(dest, clipTC - frame/(fieldProcessing+1), "clipTC +frame/fieldprocessing", k30fps, 0.3 * -h/2, 28, 1);
+//numreporter(dest, clipTC - frame, "clipTC - frame", kfloat4, 0.3 * -h/2, 28, 1);
+
+getLimits(xclip, clipDUR, clipOFFSET);
+GetTimecode(xclip, clipTC, clipFR, clipDF);
+
+numreporter(dest, clipTC - frame/(fieldProcessing+1), "clipTC +frame/fieldprocessing", kfloat2, 0.1 * -h/2, 28, 1);
+numreporter(dest, clipTC - frame/(fieldProcessing+1), "clipTC +frame/fieldprocessing", k30fps, 0 * -h/2, 28, 1);
+
+//numreporter(dest, clipOffset, "xclipOffset", kfloat4, 0, 28, 1);
+//numreporter(dest, clipDUR, "xclipDUR", kfloat4, 0.1 * h/2, 28, 1);
+//numreporter(dest, clipTC, "xclipTC", kfloat4, 40, 28, 1);
+//numreporter(dest, clipTC - frame, "xclipTC - frame", kfloat4, 60, 28, 1);
+
+//getFrame = 2 * ratio * 2 * 0.6;
+
+
+
+makeRect(box, -h/2, -h/2, h/2, h)
+//line(box[1], box[2], dest, kwhite, 1);
+makeRect(box, -h/2, -h/2, h, h)
+//framePoly(box, dest, kred, 1);
+
+///numreporter(dest, ratio, "               Ratio", kfloat4, 70, 28, 1);
+//numreporter(dest, ratio * 2*timeslip, "Ratio * timeslip", kfloat4, 80, 28, 1);
+//numreporter(dest, ease(ratio * 2, easing, easeMethod)*timeslip, "Ratio * timeslip", kfloat4, 90, 28, 1);
+//numreporter(dest, duration * easeOut((frame-j*fskip)/duration * 2*timeslip, (timeslip-0.5)*100), "eased frame", kfloat4, -50, 28, 1);
+//numreporter(dest, easeOut((frame-j*fskip)/duration * 2*timeslip, (timeslip-0.5)*100), "easedRatio", kfloat4, 110, 28, 1);
+
+GetTimecodeStringFromClip(srcClip, timeOffset, string)

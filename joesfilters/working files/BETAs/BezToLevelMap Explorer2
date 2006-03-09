@@ -1,0 +1,335 @@
+// the purpose of this is to help with gamma/Bez translations
+// might not be for public release...
+
+
+filter "BezToLevelMap vs Gamma Translator2";
+group "FXScript Reference";
+
+
+input processcheck, "Process/Explore", checkbox, 1;
+input mapMethod, "levelMap Method", RadioGroup, 2, "For/Next", "BezToLevelMap";
+
+
+
+
+input check, "Check Value", slider, 128, 0, 255;
+input stepping, "Stepping", slider, 1, 1, 25;
+
+
+input fakeGamma, "Fake Gamma", slider, 2.718282, 0.1, 4;
+
+input leftPt, "Left Point", point, -0.5, 0.5;
+input ctlPt1, "Control Point 1", point, -0.25, 0;
+input ctlPt2, "Control Point 2", point,  0.5, -0.5;
+input rightPt,	"Right Point", point, 0.5, -0.5;
+
+
+input angle1, "angle 1", slider, 30, 0, 90;
+input angle2, "angle 2", slider, 30, 0, 90;
+
+input distCheck, "DistCheck", checkbox, 0;
+input jcheck, "J check", checkbox, 0;
+
+input aDist, "Angle Distance", slider, 0.6, 0, 2;
+input aDist2, "Angle Distance2", slider, 0.3, 0, 2;
+
+
+
+
+
+
+
+input inputBlack, "Input Black", slider, 0, 0, 253;
+input gamma, "Gamma", slider, 1, 0.1, 5 ramp 85 detent 1;
+input inputWhite, "Input White", slider, 255, 2, 255;
+
+input outputBlack, "Output Black", slider, 0, 0, 255;
+input outputWhite, "Output White", slider, 255, 0, 255;
+
+
+input fxscriptreference, "www.FXScriptReference.org", label, "";
+
+fullframe;
+
+
+
+
+code
+
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+on PtReporter(image _destIMG, point _data, string _label, value _numberformat, value _h, value _fontsize, value _tracking)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporterX, reporterY;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(kcenterjustify);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.x, reporterX, _numberformat);
+	NumToString(_data.y, reporterY, _numberformat);
+	reporterX = _label + " = {" + reporterX + "," + reporterY + "}";
+	DrawString(reporterX, 0, _h, _tracking,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+on quickDot(point _p, value _color)
+	point _temp;
+	_temp = _p;
+	_temp -= 0.5;
+	_temp.x *= 255/w * w;
+	_temp.y *= -h;
+	
+	DrawSoftDot(dest, _temp, kSquare, 8, 3, 3, _color, 0.5, aspectof(dest));
+	
+	
+end
+
+
+on grayramp(image _dest, value _thickness)//, value _clut[256])
+
+	// uses global a array since I've had trouble sending Array's into subroutines...
+	float _w, _h, _j;
+	point _srcBox[4], _destBox[4];
+	dimensionsOf(_dest, _w, _h);		
+	image _temp[256][abs(_thickness)], _temp2[256][abs(_thickness)];
+
+	boundsOf(_temp, _srcBox);
+	_destBox = _srcBox;
+	
+	Highlight(_temp, _srcBox[0], 0, 0, 255, 0, 0, kblack, kwhite, aspectof(Dest))
+
+
+	LevelMap(_temp,_temp2, linearRamp, a, a, a);
+
+	for _j = 0 to 3
+		_destBox[_j].y += _thickness/2
+	next
+
+	BlitRect(_temp2, _srcBox, _dest, _destBox)
+end
+
+
+
+float w, h, i, j, a[256], a2[256];
+point x;
+dimensionsOf(dest, w, h);
+
+
+outputBlack = (outputWhite-outputBlack > 0) ? outputBlack : outputWhite-1;	//corrects for impossible reversal of output values
+inputBlack = (inputWhite-inputBlack > 0) ? inputBlack : inputWhite-0.01;	//corrects for impossible reversal of output values
+
+
+
+// LEVELS
+
+
+for i = inputWhite to 255						//sets all pixels from inputwhite to 255 to maximum value
+	a[i] = 1
+next;
+
+j = (inputWhite > inputBlack) ?	inputWhite - inputBlack: 1;  //sets the divisor for the next step, this will be the number of values between black and white
+
+for i = inputBlack to inputWhite				//sets the ramp of pixels from black to white to a gamma adjusted curve of values
+	a[i] = power((i-inputBlack)/j, gamma);
+next;
+
+
+a *= outputWhite-outputBlack;				//multiplies everything by the difference of output white and black, because the clut is fractional values, all values will decrease in the step after next
+a += outputBlack;							//increases the clut by the output black, sets the bottommost level
+a /= 255;									//corrects the total clut to make sure all 255 values fall between 0 and 1	
+
+
+grayramp(dest, 15);
+
+
+for j = 0 to 255 step stepping
+
+	x = {j - 256/2, a[j] * -h + h/2};
+	DrawSoftDot(dest, x, kRound, 2, 1, 0, kyellow, 0.7, aspectof(dest));
+
+next
+
+numReporter(dest, a[check], "gamma a[check]", kfloat4, h/2 * -0.9, 24, 1)
+
+a2 = a;
+
+
+
+
+
+
+leftPt = {inputBlack/255,0}
+rightPt = {inputWhite/255,1}
+
+
+//ctlPt1.x = sin(angle1) * aDist;
+//ctlPt1.y = cos(angle1) * -aDist + 1
+
+//ctlPt2.x = sin(angle1) * -aDist + 1;	// s curve
+//ctlPt2.y = cos(angle1) * aDist		// s curve
+
+//ctlPt2.x = cos(angle2) * -aDist2 + 1;
+//ctlPt2.y = sin(angle2) * aDist2 
+
+//	ctlPt1.x = sin(power(gamma,fakeGamma) * 45) * aDist;
+//	ctlPt1.y = cos(power(gamma,fakeGamma) * 45) * -aDist + 1;
+
+
+leftPt.y *= 1 - outputBlack/255;
+leftPt.y += outputBlack/255;
+
+rightPt.y *= outputWhite/255;
+
+
+if (gamma > 1)
+	j = power(gamma/10, exp(1))
+	aDist = 1 - 1/gamma - j/10;
+	aDist2 =  j;
+	ctlPt1.x = sin(power(gamma, log(2)/log(gamma) - j/10) * 45) * aDist + leftPt.x; 
+	ctlPt1.y = cos(power(gamma, log(2)/log(gamma) - j/10) * 45) * aDist + leftPt.y;
+
+	Interpolate(leftPt, ctlPt1, (inputWhite-inputBlack)/255, ctlPt1)	// correct for output scaling
+
+
+else // gammma <= 1
+	
+	j = power(1.825, -gamma) - 0.445;	// I don't know why these numbers work, they were discovered after extensive testing and charting	
+	aDist = power(4,-gamma) + j/10 ;
+	aDist2 = 1-gamma - j
+	
+	ctlPt1.x = sin(power(gamma,exp(1)) * (90-AngleTo(LeftPt, RightPt) )) * aDist + leftPt.x;
+	ctlPt1.y = cos(power(gamma,exp(1)) * (90-AngleTo(LeftPt, RightPt) )) * aDist + leftPt.y;
+	
+	Interpolate(leftPt, ctlPt1, (outputWhite - outputBlack)/255, ctlPt1)		// correct for output scaling
+
+end if
+
+
+
+numreporter(dest, aDist, "aDist", kfloat2, h/2 * -0.5, 24, 1)
+numreporter(dest, aDist2, "aDist2", kfloat2, h/2 * -0.4, 24, 1)
+
+
+
+
+Interpolate(ctlPt1, rightPt, 1-aDist2, ctlPt2)
+
+BezToLevelMap(a, leftPt, ctlPt1, ctlPt2, rightPt, 0, 255, TRUE);
+
+if (inputBlack > 0)
+	x = {0, leftPt.y};
+	BezToLevelMap(a, x, x, leftPt, leftPt, 0, inputBlack, TRUE);
+end if
+if (inputWhite < 255)
+	x = {1, rightPt.y};
+	BezToLevelMap(a, rightPt, rightPt, x, x, inputWhite, 255, TRUE);
+end if
+
+
+for j = 0 to 255 step stepping
+
+	x = {j - 256/2, a[j] * -h + h/2};
+	DrawSoftDot(dest, x, kRound, 2, 1, 0, kgreen, 0.7, aspectof(dest));
+
+next
+
+if (mapMethod== 2)
+	a2 = a;
+end if
+
+
+
+if (processcheck)
+	
+	
+	
+	grayramp(dest, -15);
+	
+	
+	
+	
+	
+	numReporter(dest, a[check], "bezmap a[check]", kfloat4, h/2 * -0.8, 24, 1)
+	numReporter(dest, check, "check", kfloat4, h/2 * -0.6, 24, 1)
+	
+	
+	PtReporter(dest, leftPt, "LeftPt", kfloat2, h/2 * 0.2, 24, 1);
+	PtReporter(dest, ctlPt1, "ctlPt1", kfloat2, h/2 * 0.3, 24, 1);
+	PtReporter(dest, ctlPt2, "ctlPt2", kfloat2, h/2 * 0.4, 24, 1);
+	PtReporter(dest, rightPt, "RightPt", kfloat2, h/2 * 0.5, 24, 1);
+	 
+	numreporter(dest, AngleTo(RightPt, LeftPt), "AngleTo(LeftPt, ctlPt1)", kfloat4, h/2 * 0.8, 24, 1)
+	
+	 
+	 
+	 
+	quickDot(ctlPt1, kcyan);
+	quickDot(ctlPt2, kcyan);
+	quickDot(rightPt, kgreen);
+	quickDot(leftPt, kgreen);
+	
+	x = {255/w * w, -h};
+	
+	
+	
+	ctlPt1 -= 0.5;		// changes 0 to 1 values into -0.5 to 0.5 values
+	ctlPt2 -= 0.5;
+	leftPt -= 0.5;
+	rightPt -= 0.5;
+	
+	ctlPt1 *= x;
+	ctlPt2 *= x;
+	rightPt *= x;
+	leftPt *= x;
+	
+	
+	
+	image img1[w][h];
+	
+	line(leftPt, ctlPt1, img1, kcyan, 1);
+	line(rightPt, ctlPt2, img1, kcyan, 1);
+	line(ctlPt1, ctlPt2, img1, kred, 1);
+	
+	ctlPt1 = {check - 128, h};
+	ctlPt2 = {check - 128, -h}
+	
+	line(ctlPt1, ctlPt2, img1, kwhite, 1);
+	
+	
+	matte(img1, dest, dest, 0.7, kalpha);
+
+else
+
+	image img1[w][h];
+	desaturate(src1, img1);
+	levelmap(img1, dest, linearramp, a2, a2, a2);
+
+end if

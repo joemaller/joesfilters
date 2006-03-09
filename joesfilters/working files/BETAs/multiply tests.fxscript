@@ -1,0 +1,102 @@
+transition "opTest"
+group "BETA"
+
+input opacity, "Opacity", Slider, 0.25, 0, 1;
+
+input ApplyAs, "Mode", Popup, 2, "Normal", "Multiply", "Screen", "Overlay", "Lighten", "Darken", "Add", "Subtract", "Difference";
+input firstUnmult, "First Unmultiply", Popup, 1, "none", "knone", "kalpha", "kblack", "kwhite";
+input secondUnmult, "First Unmultiply", Popup, 1, "none", "knone", "kalpha", "kblack", "kwhite";
+
+
+
+input doIt, "Do it", Checkbox, 0;
+
+ProducesAlpha
+code
+exposedbackground=1;
+
+srctype1 = kAlpha; // found in an FCP filter does this work?
+
+
+
+on SubtractNoAlpha(image _src1, image _src2, image _dest, value _op, value _AlphaType)
+	float _w, _h;
+	DimensionsOf(_src1, _w, _h);
+	image _tmp[_w][_h];
+	_tmp = _src1;
+	Subtract(_src1, _src2, _dest, _op, _AlphaType);
+	if(doit)
+		ChannelCopy(_src1, _dest, kalpha, knone, knone, knone);
+	end if
+end
+
+on MultiplyWithAlpha(image _overImage, image _underImage, image _dest, value _op, value _AlphaType, value _preserveBaseAlpha)
+	float _w, _h;
+	DimensionsOf(_overImage,_w, _h);
+	image _resultImage[_w][_h];
+
+	Multiply(_underImage, _overImage, _resultImage, _op, kAlpha);		// default multiply, transparent areas in underImage results in black
+	ChannelCopy(_underImage, _resultImage, kalpha, knone, knone, knone);	// copy alpha from underImage back to multiply result
+	
+	
+	if (firstUnmult == 2)
+		UnMultiply(_resultImage, knone); // prevent fringing on edges of underimage
+	else if (firstUnmult == 3)
+		unMultiply(_resultImage, kalpha);
+	else if (firstUnmult == 4)
+		unMultiply(_resultImage, kblack);
+	else if (firstUnmult == 5)
+		unMultiply(_resultImage, kwhite);
+	end if
+	
+	
+	if(_preserveBaseAlpha)
+		_dest = _resultImage;
+	else
+ 	//	UnMultiply(_resultImage, kblack); // prevent fringing on edges of underimage
+		if (secondUnmult == 2)
+			UnMultiply(_resultImage, knone); // prevent fringing on edges of underimage
+		else if (secondUnmult == 3)
+			unMultiply(_resultImage, kalpha);
+		else if (secondUnmult == 4)
+			unMultiply(_resultImage, kblack);
+		else if (secondUnmult == 5)
+			unMultiply(_resultImage, kwhite);
+		end if
+		ChannelMultiply(_overImage, _overImage, _op, 1, 1, 1);	// create variable opacity of overImage
+		Matte(_resultImage, _overImage, _dest, 1, kAlpha);	// matte overimage UNDER result of previous multipy for correct multiply result
+	end if
+end
+
+on MatteWithAlpha(image _overImage, image _underImage, image _dest, value _op, value _AlphaType, value _preserveBaseAlpha)
+	
+	
+end
+
+
+float w, h
+DimensionsOf(src1, w, h)
+image img1[w][h], img2[w][h];
+
+img1 = src1;
+img2 = src2;
+
+
+//opacity  = ratio;
+
+if ApplyAs == 1; Matte				(img1, img2, dest, opacity, kalpha); end if
+if ApplyAs == 2; MultiplyWithAlpha	(img1, img2, dest, opacity, kalpha, doIt); end if
+if ApplyAs == 3; Screen	 	 		(img2, img1, dest, opacity, kalpha); end if
+if ApplyAs == 4; Overlay 	 		(img2, img1, dest, opacity, kalpha); end if
+if ApplyAs == 5; Lighten 	 		(img2, img1, dest, opacity, kalpha); end if
+if ApplyAs == 6; Darken	 	 		(img2, img1, dest, opacity, kalpha); end if
+if ApplyAs == 7; add	 	 		(img2, img1, dest, opacity, kalpha); end if
+if ApplyAs == 8; SubtractNoAlpha	(img2, img1, dest, opacity, kalpha); end if;
+if ApplyAs == 9; 
+
+dest = img2;
+channelfill(dest, 255 * opacity, -1, -1, -1);
+Difference(dest, img1, dest, kalpha); 
+	//	ChannelCopy(src1, dest, kalpha, knone, knone, knone); 
+	//	Matte(dest, src1,  dest, opacity, knone); 
+end if;

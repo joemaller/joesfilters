@@ -1,0 +1,34 @@
+Filter "Joe's Multi-Cam Helper 1"
+Group "BETA"
+
+input camcorner, "Position", RadioGroup, 1, "Upper Left", "Upper Right", "Lower Right","Lower Left";
+
+ProducesAlpha
+code
+exposedbackground = 1;
+
+float h,w;
+point srcbox[4], destbox[4];
+
+BoundsOf(dest, srcbox);
+channelfill(dest, 0, 0, 0, 0);
+
+
+// I know I could do this with some sort of algorithim, and I still might
+// but my head is mush and I just want it to work right now...
+
+
+
+if (camcorner == 1); MakeRect(destbox, srcbox[0].x, srcbox[0].y, (srcbox[1].x - srcbox[0].x)/2, (srcbox[2].y - srcbox[1].y)/2); end if
+if (camcorner == 2); MakeRect(destbox, 0, srcbox[0].y, (srcbox[1].x - srcbox[0].x)/2, (srcbox[2].y - srcbox[1].y)/2); end if
+if (camcorner == 3); MakeRect(destbox, 0,0, (srcbox[1].x - srcbox[0].x)/2, (srcbox[2].y - srcbox[1].y)/2); end if
+if (camcorner == 4); MakeRect(destbox, srcbox[0].x, 0, (srcbox[1].x - srcbox[0].x)/2, (srcbox[2].y - srcbox[1].y)/2); end if
+
+
+
+
+
+//MakeRect(destbox, 25, 25, 100, 100)
+
+fillpoly(destbox,dest, kcyan);
+BlitRect(src1, srcbox, dest, destbox)
