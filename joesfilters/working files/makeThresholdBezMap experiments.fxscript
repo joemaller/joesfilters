@@ -1,0 +1,117 @@
+filter "testing makeThresholdBezMap";
+group "nopthing";
+
+
+input threshold, "Threshold", slider, 100, 0, 255;
+input steps, "Steps", slider, 2, 2, 255
+input width, "width", slider, 10, 1, 255
+input softness, "softness", slider, 25, 0, 255
+
+input arLength, "Ar Length", Slider, 255, 10, 255;
+
+
+
+
+code
+
+
+
+// INCLUDE "basic_math.fxscript" r128
+
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
+
+// END "basic_math.fxscript"
+
+
+// INCLUDE "makeThresholdMapBez.fxscript" r130
+
+on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
+		// a fast thresholding function using BezToLevelMap instead of for:next loops
+		// _th is the point to threshold around, _steps are the number of grays around _th
+		// mapLength is 255 for 8-bit maps
+		
+	point _p1, _p2;
+	
+	if (_th - _steps/2 < 0)
+		_steps = _th * 2;
+	else if (_th + _steps/2 > _mapLength)
+		_steps = (_mapLength - _th) * 2;
+	end if
+	
+	_p1 = {floor(_th - _steps/2)/_maplength, 0};
+	_p2 = {ceil (_th + _steps/2)/_mapLength, 1};
+
+	BezToLevelMap(_lmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
+
+end
+
+// END "makeThresholdMapBez.fxscript"
+
+on makeKeyMapBez(float _kmap, value _center, value _width, value _softness, value _mapLength)
+		// a fast keying replacement function using BezToLevelMap 
+		// this can spike a single value from a LUT using back to back threshold operations.
+		// _th is the point to threshold around, _steps are the number of grays around _th
+		// mapLength is 255 for 8-bit maps
+		
+	point _p1, _p2;
+	float _startSoft, _startWidth, _endWidth, _endSoft;
+	
+	_startWidth = _center - _width/2;
+	_startSoft = integer(_startWidth - _softness/2);
+	if (_startWidth > 0)
+		_startWidth = integer(_startWidth)
+		if (_startSoft <= 0)
+			_startSoft = 0;
+		end if
+	else
+		_startWidth = 0;
+		_startSoft = 0;
+	end if
+	
+	_endWidth = _center + _width/2;
+	_endSoft = integer(_endWidth + _softness/2); 
+	if (_endWidth < _mapLength)
+		_endWidth = integer(_endWidth);
+		if (_endSoft >= _mapLength)
+			_endSoft = _mapLength;
+		end if
+	else
+		_endWidth = _mapLength; 
+		_endSoft = _mapLength;
+	end if
+			
+	DebugText("_center", _center);
+	DebugText("startSoft", _startSoft, "startWidth", _startWidth, "endWidth", _endWidth, "endSoft", _endSoft );
+	_kmap *=0; // zero out array, zero-indexes will not be reassigned.
+	
+	_p1 = {0, 0};
+	_p2 = {(_softness/2)/(_softness/2 + _width), 1};
+// =========================================================================
+// = THERE IS A BUG HERE WHICH IS NOT ASSIGNING _p2 TO THE CORRECT X POINT =
+// =========================================================================
+float debug = _p2.x;
+DebugText("_p2.x", debug);
+	// first assignment goes from beginning of softness through end of width
+	BezToLevelMap(_kmap, _p1, _p1, _p2, _p2, _startSoft, _endWidth, TRUE);
+
+	_p1 = {0, 1};
+	_p2 = {1, 0};
+
+	// second assignment is only the trailing softness falloff
+	BezToLevelMap(_kmap, _p1, _p1, _p2, _p2, _endWidth, _endSoft, TRUE);
+
+end
+
+
+
+
+
+float LUT[256]
+//LUT = linearRamp;
+//makeThresholdMapBez(LUT, threshold, steps, arLength);
+makeKeyMapBez(LUT, threshold, width, softness, 255);
+levelMap(src1, dest, linearRamp, LUT, linearRamp, linearRamp);
+channelFill(dest, 255, -1, 0, 0);

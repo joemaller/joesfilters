@@ -1,0 +1,120 @@
+filter "YUVColorKey test";
+group "Beta";
+
+
+input aRGBcolor, "RGB Color", Color, 255, 255, 0, 0;
+
+
+input Tolerance, "Tolerance", Slider, 100, 0, 511;
+input cTolerance, "cTolerance", Slider, 100, 0, 511;
+input Soften, "Edge Soften", Slider, 0, 0, 255;
+
+input RGBorYUV, "RGB or YUV", RadioGroup, 1, "RGB", "YUV";
+
+input doit, "Color convert to YUV", Checkbox, 0;
+
+InformationFlag("YUVaware")
+
+code
+
+// INCLUDE "RGBtoYUVcolor.fxscript" r124
+
+on RGBtoYUVcolor(color _rgbColor)
+	color _temp;
+	_temp = _rgbColor
+	_rgbColor.r = _temp.r * 0.299 + _temp.g * 0.587 + _temp.b * 0.114 
+	_rgbColor.g = _temp.r * -0.169 + _temp.g * -0.332 + _temp.b * 0.500 + 128; 
+	_rgbColor.b = _temp.r* 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
+end 
+
+// END "RGBtoYUVcolor.fxscript"
+
+
+// INCLUDE "ColorReporter.fxscript" r124
+
+on ColorReporter(image _destIMG, color _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string _reporterA, _reporterR, _reporterG, _reporterB;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.a, _reporterA, _numberformat);
+	NumToString(_data.r, _reporterR, _numberformat);
+	NumToString(_data.g, _reporterG, _numberformat);
+	NumToString(_data.b, _reporterB, _numberformat);
+	_reporterR = _label + " = {" + _reporterA + "," + _reporterR + "," + _reporterG + "," + _reporterB + "}";
+	DrawString(_reporterR, -1, _h - 1, 1.25,  _destIMG, fontColor, aspectof(_destIMG));
+	DrawString(_reporterR, 1, _h + 1, 1.25,  _destIMG, kblack, aspectof(_destIMG));
+	DrawString(_reporterR, 0, _h, 1.25,  _destIMG, _data, aspectof(_destIMG));
+
+end 
+
+// END "ColorReporter.fxscript"
+
+
+
+
+
+on makeKeyMapBez(float _kmap, value _center, value _width, value _softness, value _mapLength)
+		// a fast keying replacement function using BezToLevelMap 
+		// this can spike a single value from a LUT using back to back threshold operations.
+		// _th is the point to threshold around, _steps are the number of grays around _th
+		// mapLength is 255 for 8-bit maps
+		
+	point _p1, _p2;
+	
+	if (_th - _steps/2 < 0)
+		_steps = _th * 2;
+	else if (_th + _steps/2 > _mapLength)
+		_steps = (_mapLength - _th) * 2;
+	end if
+	
+	if (_th & 1 == 0)	// even
+		_p1 = {floor(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {floor(_th + _steps/2)/_mapLength, 1};		
+	else // _th is odd
+		_p1 = {ceil(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {ceil(_th + _steps/2)/_mapLength, 1};		
+	end if
+
+	BezToLevelMap(_kmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
+
+end
+
+
+
+
+
+
+if (RGBorYUV == 1)
+		if (getPixelFormat(src1) != kFormatRGB219)
+			ConvertImage(src1, dest, kFormatRGB219);
+			DebugText("converted to RGB");
+		else
+		dest = src1;
+		end if
+
+	RGBColorKey(dest, dest, aRGBcolor.r, Tolerance, aRGBcolor.g, Tolerance, aRGBcolor.b, Tolerance, Soften, true)
+else
+	if (getPixelFormat(src1) != kFormatYUV219)
+	ConvertImage(src1, dest, kFormatYUV219);
+			DebugText("converted to YUV");
+
+	else
+		dest = src1;
+	end if
+if (doit);	RGBtoYUVcolor(aRGBcolor); end if
+
+YUVColorKey(dest, dest, aRGBcolor.r, Tolerance, aRGBcolor.g, cTolerance, aRGBcolor.b, cTolerance, Soften, true)
+end if
+
+ColorReporter(dest, aRGBcolor, "aRGBcolor", kfloat2, 0, 32, kcenterJustify)
