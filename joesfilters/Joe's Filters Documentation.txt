@@ -4,4 +4,19 @@ New Filters Documentation
 Joe's Widescreen Matte RT
 
 This is a renderless matte generator. Choose the shape of the rectangle by selecting the upper left and lower right corners. To just use top and bottom edges, click Top/Bottom Only, the points will are then used to pick the top and bottom of the rectangle.
-s 
+
+The matte's coor and opacity can be adjusted
+
+
+
+
+
+Aspect Ratios (everything converter and Aspect Matte)
+Based on the aspect Ratio list at IMDB <http://www.imdb.com/Sections/DVDs/AspectRatios/> which lists how many DVDs are available at various frame aspects.
+
+
+
+
+
+ArrayFloatCount
+This will also work on color arrays, send one argument of the array to count it's elements arrayFloatCount(colorArray.r) will work, ArrayFloatCount(colorArray) will cause a mismatch.

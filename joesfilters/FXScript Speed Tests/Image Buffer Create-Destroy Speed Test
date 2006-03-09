@@ -1,0 +1,67 @@
+// this filter tries to quantify the cost of creating and destroying an image buffer
+// in a funciton as opposed to passing a 'junk' buffer which could be created beforehand
+//
+// 10 iterations, 10 second DV NTSC clip (3,000 tests):
+// 		Create & Destroy a buffer:  		44 seconds 
+//		re-use junk buffer:				30 seconds
+//	 	re-use junk buffer with function:		30 seconds
+
+// note: testing machine was an 1.25Ghz G4 powerbook
+//
+// Conclusion:
+// There is a significant cost for creating bufffers on each function call
+// Creating a junk buffer to for use by all functions is faster, 
+// though presents it's own persistance problems.
+
+
+filter "Image Buffer Create/Destroy Speed Test"
+group "FXScript Speed Tests"
+
+
+input method, "Method", RadioGroup, 1, "Procedural reusing buffer", "Function Creates Buffer", "Function Reuses Buffer";
+
+input iterations, "Iterations", slider, 10, 1, 10000;
+input theColor, "Fill Color", color, 255, 234, 120, 0;
+
+code
+
+
+float x, w, h; // shared
+
+dimensionsOf(dest, w,h);
+
+
+on quickFill(image _dest, color _fillColor)	// creates a buffer with each run
+	image TEMP[w][h];
+	channelfill(TEMP, _fillColor.a, _fillColor.r,_fillColor.g,_fillColor.b);
+	_dest = TEMP;
+end
+
+on junkFill(image _dest, image _junk, color _fillColor)	// uses a pre-defined junk buffer
+	channelfill(_junk, _fillColor.a, _fillColor.r,_fillColor.g,_fillColor.b);
+	_dest = _junk;
+end
+	
+if method == 1	// procedural, using existing buffer
+	image TEMP[w][h];
+
+	for x = 1 to iterations
+		channelfill(TEMP, theColor.a, theColor.r,theColor.g,theColor.b);
+		dest = TEMP;
+	next
+
+else if method ==2 // function creates buffer
+
+	for x = 1 to iterations
+		quickfill(dest, theColor);
+	next
+
+
+else if (method == 3)	// function reuses buffer
+
+	image TEMP[w][h];
+	for x = 1 to iterations
+		junkfill(dest, TEMP, theColor);
+	next
+
+end if
