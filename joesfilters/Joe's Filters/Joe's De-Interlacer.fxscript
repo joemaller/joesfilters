@@ -17,7 +17,7 @@ input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
 input label3, "Fade With Original", label, "";
 input opacity, "Opacity", slider, 100, 0, 100;
 
-input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfcopyright, "© Joe's Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 
@@ -351,7 +351,7 @@ end
  
 
 
-// INCLUDE "getField.fxscript"  v1.8
+// INCLUDE "getField.fxscript" r91
 
 on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nativeH, value _field, value _bounceFix);
 	//REQUIRES: 	DeInterlaceFast.fxscript
@@ -388,36 +388,11 @@ on getField(clip _clip1, value _offset, image _dest, value _nativeW, value _nati
 			blitRect(_half, _halfBox, _dest, _destBox);
 		end if
 	end if
-end
+end 
 
 // END "getField.fxscript"
  
 
-
-// INCLUDE "ErrorReporter.fxscript"  v1.1
-
-on ErrorReporter(image _dest, string _errorMsg)
-	float _w, _h;
-	
-	dimensionsOf(dest, _w, _h);
-	
-	settextfont("verdana");
-	setTextstyle(kbold);
-	setTextjustify(kcenterjustify);
-	setTextSize(_w * 0.05);
-	
-	channelfill(_dest, 255, 255, 125, 0);
-	DrawString(_errorMsg, 0, 0, 1.25, _dest, kwhite, aspectof(_dest));
-
-	
-	setTextjustify(krightJustify);
-	setTextSize(_w * 0.025);
-	DrawString("FXScriptReference.org", 0.4 * _w, 0.4 * _h, 1.25, _dest, kwhite, aspectof(_dest));
-
-end // end ErrorHandler
-
-
-// END "ErrorReporter.fxscript"
  
 
 
@@ -481,7 +456,7 @@ if (clipDUR > 0)
 		DifferenceMask(halfbuffer, dest, dest, threshold, 1, soften );	//  reuses pre-deinterlaced field
 	
 	else if (motiondiff == 3)	// surrounding fields
-		
+		DebugText("frame", frame, "frames: ", -clipOFFSET + frame + ((theField ^1) * 2 - 1);
 		getField(clip1, -clipOFFSET + frame + ((theField ^ 1) * 2 - 1), halfbuffer, Nw, Nh, theField ^ 1, false);
 		DeInterlaceFast(src1, halfbuffer2, theField ^ 1,false);
 
