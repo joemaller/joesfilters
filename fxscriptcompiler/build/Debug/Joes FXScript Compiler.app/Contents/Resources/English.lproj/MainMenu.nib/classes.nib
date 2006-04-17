@@ -1,0 +1,12 @@
+{
+    IBClasses = (
+        {
+            ACTIONS = {"" = id; }; 
+            CLASS = FirstResponder; 
+            LANGUAGE = ObjC; 
+            SUPERCLASS = NSObject; 
+        }, 
+        {CLASS = MyApplication; LANGUAGE = ObjC; SUPERCLASS = NSApplication; }
+    ); 
+    IBVersion = 1; 
+}

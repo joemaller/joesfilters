@@ -1,0 +1,18 @@
+Add edit button in Watermark code box
+    - opens a file in BBEdit or editor from preferences
+    - if no file is in box but text exists
+        - Edit a new document, set contents to contents of watermark box
+        
+        
+Store contents of watermark box in User Defaults.
+
+
+The watermark should be pulling from a file and should not be editable in from the compiler app.
+Does that limit it's usefulness for other people? No. They just need to create a text file for their watermark...
+
+
+
+
+Handle Build Folder
+
+Catch focus switch, this should be portable so it can be used by iPhoto scripts as well.
