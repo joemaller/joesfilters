@@ -16,3 +16,7 @@ Does that limit it's usefulness for other people? No. They just need to create a
 Handle Build Folder
 
 Catch focus switch, this should be portable so it can be used by iPhoto scripts as well.
+
+
+Better interface stretchiness
+Add SVN root to preferences drawer
