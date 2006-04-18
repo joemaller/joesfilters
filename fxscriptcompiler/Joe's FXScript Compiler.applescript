@@ -349,6 +349,8 @@ end zeroPad
 
 on getVersion(theFile)
 	do shell script "cvs -d/usr/local/cvsrep status " & quoted form of theFile & " | awk '/Working/ {print $3}'"
+	--do shell script "/usr/local/bin/./svn log  " & quoted form of theFile & " | grep -m1 -er[0-9] | awk '{print $1}'"
+	
 end getVersion
 
 
