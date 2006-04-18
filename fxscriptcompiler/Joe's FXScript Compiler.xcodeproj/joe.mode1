@@ -211,7 +211,7 @@
 				<key>PBXProjectModuleGUID</key>
 				<string>D89DB8E40891F99100B26162</string>
 				<key>PBXProjectModuleLabel</key>
-				<string>Joe's FXScript Compiler.applescript</string>
+				<string>To Do List</string>
 				<key>PBXSplitModuleInNavigatorKey</key>
 				<dict>
 					<key>Split0</key>
@@ -219,14 +219,19 @@
 						<key>PBXProjectModuleGUID</key>
 						<string>D89DB8EA0891FD5600B26162</string>
 						<key>PBXProjectModuleLabel</key>
-						<string>Joe's FXScript Compiler.applescript</string>
+						<string>To Do List</string>
 						<key>_historyCapacity</key>
 						<integer>0</integer>
 						<key>bookmark</key>
-						<string>D8344FB109F47FCA00C4EF69</string>
+						<string>D8344FC309F4862600C4EF69</string>
 						<key>history</key>
 						<array>
-							<string>D8344FB009F47FCA00C4EF69</string>
+							<string>D8344FBF09F4862600C4EF69</string>
+							<string>D8344FB509F47FFF00C4EF69</string>
+						</array>
+						<key>prevStack</key>
+						<array>
+							<string>D8344FC009F4862600C4EF69</string>
 						</array>
 					</dict>
 					<key>SplitCount</key>
@@ -279,6 +284,8 @@
 			<key>Layout</key>
 			<array>
 				<dict>
+					<key>BecomeActive</key>
+					<true/>
 					<key>ContentConfiguration</key>
 					<dict>
 						<key>PBXBottomSmartGroupGIDs</key>
@@ -362,7 +369,7 @@
 								<key>PBXProjectModuleGUID</key>
 								<string>1CE0B20306471E060097A5F4</string>
 								<key>PBXProjectModuleLabel</key>
-								<string>Joe's FXScript Compiler.applescript</string>
+								<string>InfoPlist.strings</string>
 								<key>PBXSplitModuleInNavigatorKey</key>
 								<dict>
 									<key>Split0</key>
@@ -370,14 +377,13 @@
 										<key>PBXProjectModuleGUID</key>
 										<string>1CE0B20406471E060097A5F4</string>
 										<key>PBXProjectModuleLabel</key>
-										<string>Joe's FXScript Compiler.applescript</string>
+										<string>InfoPlist.strings</string>
 										<key>_historyCapacity</key>
 										<integer>0</integer>
 										<key>bookmark</key>
-										<string>D8344FAD09F47FCA00C4EF69</string>
+										<string>D8344FC209F4862600C4EF69</string>
 										<key>history</key>
 										<array>
-											<string>D88905B708834F6A0099C2F9</string>
 											<string>D88905B808834F6A0099C2F9</string>
 											<string>D850FF69088704F300BA81DA</string>
 											<string>D850FF6A088704F300BA81DA</string>
@@ -389,7 +395,8 @@
 											<string>D8C250D7089029340036701C</string>
 											<string>D8344FA909F47FCA00C4EF69</string>
 											<string>D8344FAA09F47FCA00C4EF69</string>
-											<string>D859EB8C09F3706500F93142</string>
+											<string>D8344FBC09F4862600C4EF69</string>
+											<string>D88905B708834F6A0099C2F9</string>
 										</array>
 										<key>prevStack</key>
 										<array>
@@ -407,6 +414,7 @@
 											<string>D8C2509A088CC65F0036701C</string>
 											<string>D8344FAB09F47FCA00C4EF69</string>
 											<string>D8344FAC09F47FCA00C4EF69</string>
+											<string>D8344FBD09F4862600C4EF69</string>
 										</array>
 									</dict>
 									<key>SplitCount</key>
@@ -428,8 +436,6 @@
 							<string>437pt</string>
 						</dict>
 						<dict>
-							<key>BecomeActive</key>
-							<true/>
 							<key>ContentConfiguration</key>
 							<dict>
 								<key>PBXProjectModuleGUID</key>
@@ -589,7 +595,7 @@
 	<key>StatusbarIsVisible</key>
 	<true/>
 	<key>TimeStamp</key>
-	<real>167018442.987571</real>
+	<real>167020070.571675</real>
 	<key>ToolbarDisplayMode</key>
 	<integer>1</integer>
 	<key>ToolbarIsVisible</key>
@@ -604,10 +610,10 @@
 	<integer>5</integer>
 	<key>WindowOrderList</key>
 	<array>
-		<string>D89DB8E40891F99100B26162</string>
-		<string>/Users/joe/TEST/joefilters-svn/fxscriptcompiler/Joe's FXScript Compiler.xcodeproj</string>
 		<string>D8CBBD0D08A147E9006FCD3E</string>
 		<string>1C0AD2B3069F1EA900FABCE6</string>
+		<string>D89DB8E40891F99100B26162</string>
+		<string>/Users/joe/TEST/joefilters-svn/fxscriptcompiler/Joe's FXScript Compiler.xcodeproj</string>
 	</array>
 	<key>WindowString</key>
 	<string>713 124 1105 744 0 0 1920 1178 </string>
