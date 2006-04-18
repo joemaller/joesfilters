@@ -59,6 +59,9 @@ on will finish launching theObject
 	(* output folder path *)
 	make new default entry at end of default entries of user defaults with properties {name:"outputFolderPath", contents:"~"}
 	
+	(* Subversion Repository *)
+	make new default entry at end of default entries of user defaults with properties {name:"svnRepository", contents:"file:///Users/joe/Documents/SVN/joesfilters/trunk"}
+	
 	
 	
 end will finish launching
@@ -177,6 +180,12 @@ on clicked theObject
 	
 	if name of theObject is "closer" then
 		close panel (window of theObject) with result 1
+	end if
+	
+	
+	if name of theObject is "shelltest" then
+		--		do shell script "Resources/./applyWatermark.sh > ~/booga.txt"
+		do shell script "pwd > ~/booga.txt"
 	end if
 	
 end clicked
@@ -348,8 +357,11 @@ end zeroPad
 
 
 on getVersion(theFile)
-	do shell script "cvs -d/usr/local/cvsrep status " & quoted form of theFile & " | awk '/Working/ {print $3}'"
+	--	do shell script "cvs -d/usr/local/cvsrep status " & quoted form of theFile & " | awk '/Working/ {print $3}'"
 	--do shell script "/usr/local/bin/./svn log  " & quoted form of theFile & " | grep -m1 -er[0-9] | awk '{print $1}'"
+	
+	return do shell script "/usr/local/bin/./svn log " & quoted form of theFile & " | grep -m1 -er[0-9] | awk '{print $1}'"
+	
 	
 end getVersion
 
@@ -401,10 +413,16 @@ on applyWatermark(theFile, outFolder, menuMark, fileMark)
 	
 	set outFile to ((outFolder as text) & "/" & name of (info for (POSIX file theFile)))
 	
+	-- `cvs -d/usr/local/cvsrep status " & quoted form of theFile & " | awk '/Working/ { print \"\\t//\\tVersion: \" $3 }'`;
 	set theScript to "
-	d=`cvs -d/usr/local/cvsrep status " & quoted form of theFile & " | awk '/Working/ { print \"\\t//\\tVersion: \" $3 }'`;
-	b=\"\\t//\\t" & thisBuild & "\";
-	echo -e \"$d\\n$b\\n\\t//\\t\"`date '+%B %d, %Y'` \"\\n\\n\" |
+	d=" & getVersion(theFile) & "
+	b=\"//\\t" & thisBuild & "\";
+	echo -e \"\\t//\\tVersion: $d\\n$b\\n\\t//\\t\"`date '+%B %d, %Y'` \"\\n\\n\" |
+
+	echo -e \"//\\t`date '+%B %d, %Y'` \" |
+	echo -e \"//\\t" & thisBuild & "\" |
+	echo -e \"//\\tVersion: " & getVersion(theFile) & "\\n\" |
+	echo -e '' |
 
 	tee " & quoted form of POSIX path of outFile & "; 
 	
@@ -420,6 +438,7 @@ on applyWatermark(theFile, outFolder, menuMark, fileMark)
 		tee -a " & quoted form of outFile
 	end if
 	
+	log theScript as text
 	set outFileText to do shell script theScript without altering line endings
 	return outFileText
 	

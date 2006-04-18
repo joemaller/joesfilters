@@ -29,6 +29,7 @@
 		D80005400875B5FD00566F05 /* MyApplication.h in Headers */ = {isa = PBXBuildFile; fileRef = D800053E0875B5FD00566F05 /* MyApplication.h */; };
 		D80005E80875DDAB00566F05 /* MyApplication.m in Sources */ = {isa = PBXBuildFile; fileRef = D800053F0875B5FD00566F05 /* MyApplication.m */; };
 		D8097EDD0899D000007898DA /* panel.nib in Resources */ = {isa = PBXBuildFile; fileRef = D8097EDB0899D000007898DA /* panel.nib */; };
+		D81EDC3809F58B3600551FB2 /* applyWatermark.sh in Resources */ = {isa = PBXBuildFile; fileRef = D81EDC3709F58B3600551FB2 /* applyWatermark.sh */; };
 		D850FE9A0885972B00BA81DA /* folder16.tiff in Resources */ = {isa = PBXBuildFile; fileRef = D850FE990885972B00BA81DA /* folder16.tiff */; };
 		D850FED50886F36400BA81DA /* timesFourTransformer.h in Headers */ = {isa = PBXBuildFile; fileRef = D850FED30886F36400BA81DA /* timesFourTransformer.h */; };
 		D850FED60886F36400BA81DA /* timesFourTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = D850FED40886F36400BA81DA /* timesFourTransformer.m */; };
@@ -69,7 +70,7 @@
 		089C165DFE840E0CC02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
 		257572D5072881A4000BE9CA /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = Info.plist; sourceTree = "<group>"; };
-		257572D6072881A4000BE9CA /* Joes FXScript Compiler.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Joes FXScript Compiler.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		257572D6072881A4000BE9CA /* Joes FXScript Compiler.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Joes FXScript Compiler.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		29B97316FDCFA39411CA2CEA /* main.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		29B97319FDCFA39411CA2CEA /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/MainMenu.nib; sourceTree = "<group>"; };
 		29B97324FDCFA39411CA2CEA /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
@@ -78,6 +79,7 @@
 		D800053E0875B5FD00566F05 /* MyApplication.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = MyApplication.h; sourceTree = "<group>"; };
 		D800053F0875B5FD00566F05 /* MyApplication.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = MyApplication.m; sourceTree = "<group>"; };
 		D8097EDC0899D000007898DA /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/panel.nib; sourceTree = "<group>"; };
+		D81EDC3709F58B3600551FB2 /* applyWatermark.sh */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.script.sh; path = applyWatermark.sh; sourceTree = "<group>"; };
 		D850FE990885972B00BA81DA /* folder16.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = folder16.tiff; sourceTree = "<group>"; };
 		D850FED30886F36400BA81DA /* timesFourTransformer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = timesFourTransformer.h; sourceTree = "<group>"; };
 		D850FED40886F36400BA81DA /* timesFourTransformer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = timesFourTransformer.m; sourceTree = "<group>"; };
@@ -168,6 +170,7 @@
 				089C165CFE840E0CC02AAC07 /* InfoPlist.strings */,
 				65359356078DD41800E8BB2F /* AppleScriptKit.sdef */,
 				D850FE990885972B00BA81DA /* folder16.tiff */,
+				D81EDC3709F58B3600551FB2 /* applyWatermark.sh */,
 				D850FED30886F36400BA81DA /* timesFourTransformer.h */,
 				D850FED40886F36400BA81DA /* timesFourTransformer.m */,
 				D8097EDB0899D000007898DA /* panel.nib */,
@@ -267,6 +270,7 @@
 				D854D3D5087D99FF00054E17 /* To Do List in Resources */,
 				D850FE9A0885972B00BA81DA /* folder16.tiff in Resources */,
 				D8097EDD0899D000007898DA /* panel.nib in Resources */,
+				D81EDC3809F58B3600551FB2 /* applyWatermark.sh in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
