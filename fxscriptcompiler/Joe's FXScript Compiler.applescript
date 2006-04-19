@@ -185,7 +185,13 @@ on clicked theObject
 	
 	if name of theObject is "shelltest" then
 		--		do shell script "Resources/./applyWatermark.sh > ~/booga.txt"
-		do shell script "pwd > ~/booga.txt"
+		tell main bundle
+			set scriptPath to path for resource "applyWatermark" extension "sh"
+		end tell
+		log "SCRIPTPATH: " & quoted form of scriptPath
+		log scriptPath & " \"/Users/joe/Documents/Joe's Filters Development/joesfilters-svn/joesfilters/Joe's Filters/Joe's Aspect Matte.fxscript\""
+		log (do shell script quoted form of scriptPath & " \"/Users/joe/Documents/Joe's Filters Development/joesfilters-svn/joesfilters/Joe's Filters/Joe's Aspect Matte.fxscript\"")
+		
 	end if
 	
 end clicked

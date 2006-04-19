@@ -1,39 +1,46 @@
 #! /bin/sh
 
 
-
-
-# later change this to use named parameters or switches or whatever those little -n flags are in Unix
-
-d=r123;
-b="//\tbuild_20060418_1620";
-#echo -e "\t//\tVersion: $d\n$b\n\t//\t"`date '+%B %d, %Y'` "\n\n" |
-
-
-VERS=`/usr/local/bin/./svn log "$1" | grep -m1 -er[0-9] | awk '{print $1}'`
-echo
-echo $VERS
+#set -xv
+#exec 2>/dev/console
 
 
 
-echo -e "//\tCompiled `date '+%B %d, %Y'`"
-echo -e "//\tbuild_20060418_1620 ($VERS)"
-echo
+# f = source file to work with
+# o = output folder this is where the build folder basename is pulled from
+# b = the beta menu mark, a short text snippet to add to the displayed name of the FXScript effect, ie "[BETA]"
+# w = watermark source file, this is the text-bugger add-on which is added to the end of the source file
+
+while getopts ":f:o:m:w:b:" OPTS
+do
+  case "$OPTS" in
+    f) filePath="$OPTARG";;
+    o) outFolder="$OPTARG";;
+    b) betaMark="$OPTARG";;
+    w) watermarkSource="$OPTARG";;
+  esac
+done
+
+# File revision number from Subversion:
+VERS=`/usr/local/bin/./svn log --limit 1 -q --incremental "$filePath" |tail -n 1 | awk '{print $1}'`
+
+# build folder:
+BASE=`basename "$outFolder"`
+
+# compile-time headers:
+echo -e "//\t`date '+Compiled: %B %d, %Y %H:%M:%S'`"
+echo -e "//\t$BASE ($VERS)\n"
+
+# 
+#	sed -E -e "s/(([Gg]enerator|[Ff]ilter|[Tt]ransition)[\t ]*\"[^\"]*)/\1 $betaMark/g" "$filePath" 
+# add "|[Gg]roup" to the above pattern to add the $betamark to the group declaration as well
 
 
-echo $0
-echo $1
 
-head "$1"
+Need to check the length of watermarkSource to see if a valid file was given. 
 
-#tee '/Users/joe/Documents/Joe'\''s Filters Development/Builds/build_20060418_1620/full code/Joe'\''s Fade In-n-Out.fxscript'; 
-
-#sed -e 's/\\([fF]ilter[\t ]*"[^"]*\\)"/\\1 [BETA]"/' -e 's/\\([Tt]ransition[\t ]*"[^"]*\\)"/\\1 [BETA]"/' -e 's/\\([Gg]enerator[\t ]*"[^"]*\\)"/\\1 [BETA]"/' '/Users/joe/Documents/Joe'\''s Filters Development/joesfilters-svn/joesfilters/Joe'\''s Filters/Joe'\''s Fade In-n-Out.fxscript' | 
-#tee -a '/Users/joe/Documents/Joe'\''s Filters Development/Builds/build_20060418_1620/full code/Joe'\''s Fade In-n-Out.fxscript'; "
-
-
-
-#/Users/joe/Documents/Joe\'s\ Filters\ Development/Builds/build_20060418_1620/full\ code/Joe\'s\ Fade\ In-n-Out.fxscript
-
-
+if [ -e "$watermarkSource" ]
+	then
+	betaMark="DEMO $betaMark" # Add Demo to the menu tag. If $betaMark is empty, the tag will just say DEMO
+fi
 
