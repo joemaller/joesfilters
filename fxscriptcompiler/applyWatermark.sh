@@ -37,8 +37,7 @@ echo -e "//\t$BASE ($VERS)\n"
 
 
 
-Need to check the length of watermarkSource to see if a valid file was given. 
-
+# check whether $watermarkSource exists and if so prepend $betaMark with "DEMO" 
 if [ -e "$watermarkSource" ]
 	then
 	betaMark="DEMO $betaMark" # Add Demo to the menu tag. If $betaMark is empty, the tag will just say DEMO
