@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 
 
 #set -xv
@@ -27,19 +27,25 @@ VERS=`/usr/local/bin/./svn log --limit 1 -q --incremental "$filePath" |tail -n 1
 # build folder:
 BASE=`basename "$outFolder"`
 
+# check whether $watermarkSource exists and if so prepend $betaMark with "DEMO" 
+if [ -s "$watermarkSource" ]
+	then
+	betaMark="DEMO $betaMark" # Add Demo to the menu tag. If $betaMark is empty, the tag will just say DEMO
+fi
+
 # compile-time headers:
 echo -e "//\t`date '+Compiled: %B %d, %Y %H:%M:%S'`"
 echo -e "//\t$BASE ($VERS)\n"
 
-# 
-#	sed -E -e "s/(([Gg]enerator|[Ff]ilter|[Tt]ransition)[\t ]*\"[^\"]*)/\1 $betaMark/g" "$filePath" 
-# add "|[Gg]roup" to the above pattern to add the $betamark to the group declaration as well
+# Modify the FXScript Effect's display names to include $betaMark, add "|[Gg]roup" to the above pattern to add the $betamark to the group declaration as well
+sed -E -e "s/(([Gg]enerator|[Ff]ilter|[Tt]ransition)[\t ]*\"[^\"]*)/\1 $betaMark/g" "$filePath" 
 
-
-
-# check whether $watermarkSource exists and if so prepend $betaMark with "DEMO" 
-if [ -e "$watermarkSource" ]
+# if it exists, dump 
+if [ -s "$watermarkSource" ]
 	then
-	betaMark="DEMO $betaMark" # Add Demo to the menu tag. If $betaMark is empty, the tag will just say DEMO
+	echo -e "\n\n\n\n\n\n"
+	cat "$watermarkSource"
+	
 fi
+
 

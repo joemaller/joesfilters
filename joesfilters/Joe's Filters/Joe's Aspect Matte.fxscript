@@ -12,7 +12,7 @@ input framer, "Border On/Off", checkbox, 0;
 input framecolor, "Border Color", color, 255, 160, 160, 200;
 input framewidth, "Border Width", slider, 2, 1, 20;
 
-input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfcopyright, "Â© Joeâ€™s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 ProducesAlpha;

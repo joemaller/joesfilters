@@ -14,7 +14,7 @@ input pulldownOUT, "Output Pulldown", popup, 11, "None", " --- ", "Standard 3:2 
 // input showtext, "showtext", checkbox, 0;
 
 
-input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfcopyright, "Â© Joeâ€™s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 InformationFlag("YUVaware"); 	// enable this later on for YUV speed boost, will need to fix all colors first.

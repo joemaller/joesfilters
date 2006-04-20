@@ -19,7 +19,7 @@ input easing, "Easing ", slider, 0, -100, 100;
 input label1, "Transition Settings", label, "";
 input squish, "Squish", radiogroup, 3, "Horizontal", "Vertical", "Both";
 
-input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfcopyright, "Â© Joeâ€™s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 InformationFlag("YUVaware");
@@ -614,7 +614,7 @@ on flip3D(image _src1, image _src2, image _dest, image _LightMap, image _ShadowM
 			// standard rotation
 			Rotate3d(_box3D, _centerPt3D, _ratio * 360 * _doX, _ratio * 360 * _doY, _ratio * 360 * _doZ);
 	
-			// one side cube spin: (probably run this twice with a 90¡ offset for the incoming turn, that might require a change in incoming controls
+			// one side cube spin: (probably run this twice with a 90Ã¯Â¿Â½ offset for the incoming turn, that might require a change in incoming controls
 	//		_centerPt3d.z -= _w/2; Rotate3d(_box3D, _centerPt3D, _ratio * 180 * _doX, _ratio * 180 * _doY, _ratio * 180 * _doZ); _centerPt3d.z += _w/2;
 	
 			// corner flip:

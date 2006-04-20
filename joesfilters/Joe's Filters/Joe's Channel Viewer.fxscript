@@ -5,7 +5,7 @@ input output, "Output", RadioGroup, 1, "All Channels (4-up)", "Alpha", "Luma (Y)
 input showcolors, "Show Colors", checkbox, 0;
 input RGBorYUV, "RGB or YUV", popup, 3, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
 
-input jfcopyright, "� Joe's Filters", Label,"";
+input jfcopyright, "© Joe’s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 InformationFlag("YUVaware");

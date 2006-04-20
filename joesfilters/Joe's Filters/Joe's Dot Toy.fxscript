@@ -22,7 +22,7 @@ input FadeDirection, "Fade Direction", checkbox, 0;
 
 input shape, "Shape", Popup, 1, "Circle","Square",  "Diamond";
 
-input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfcopyright, "Â© Joeâ€™s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 AlphaType(kalpha);

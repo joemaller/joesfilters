@@ -17,7 +17,7 @@ input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
 input label3, "Fade With Original", label, "";
 input opacity, "Opacity", slider, 100, 0, 100;
 
-input jfcopyright, "© Joe's Filters", Label,"";
+input jfcopyright, "Â© Joeâ€™s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 

@@ -28,7 +28,7 @@ input scaleValue, "Scale Output", slider, 100, 10, 300  ramp 80 label "%";
 // input inputH, "Height", slider, 240, 1, 480;
 
 
-input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfcopyright, "Â© Joeâ€™s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 producesAlpha

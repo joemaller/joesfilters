@@ -7,7 +7,7 @@ input fade1, "Fast Fade Source 1", checkbox, 0;
 // input easing, "Easing", slider, 50, -100, 100;
 // input easeMethod, "Easing Method", popup, 2,  "Ease In", "Ease Out", "S-Curve", "None";
 
-input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfcopyright, "Â© Joeâ€™s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 InformationFlag("YUVaware");

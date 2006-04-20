@@ -15,7 +15,7 @@ input maskcolor, "Mask Color", color, 255, 128, 0, 255;
 input maskopacity, "Color Opacity", slider, 60, 0, 100 label "%";
 
 
-input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfcopyright, "Â© Joeâ€™s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 ProducesAlpha

@@ -32,8 +32,8 @@ input Opacity, "Opacity", slider, 100, 0, 100;
 input colorSpace, "ColorSpace", popup, 3, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
 
 
-input title, "Joe's Filters", Label,"";
-input title1, "www.joesfilters.com", Label,"";
+input jfcopyright, "© Joe’s Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
 
 RenderEachFrameWhenStill
 InformationFlag("YUVaware");

@@ -11,7 +11,7 @@ input output, "Output", popup, 3, "Show all Cameras in order", "TimeStretch Came
 input stretchCam, "Timestretch Camera #", slider, 1, 1, 64;
 //input sampleoffset, "sampleoffset", slider, 0.4, 0.33, 0.9;
 
-input jfcopyright, "©ÊJoe's Filters", Label,"";
+input jfcopyright, "Â© Joeâ€™s Filters", Label,"";
 input jfurl, "www.joesfilters.com", Label,"";
 
 

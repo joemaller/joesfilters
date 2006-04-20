@@ -31,6 +31,8 @@ input debug, "Debug", checkbox, 0;
 input showEasing, "Show Easing Graph", checkbox, 1;
 input graphSize, "Graph Size", slider, 220, 50, 400
 
+input jfcopyright, "© Joe’s Filters", Label,"";
+input jfurl, "www.joesfilters.com", Label,"";
 
 
 ProducesAlpha

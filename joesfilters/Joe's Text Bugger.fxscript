@@ -76,6 +76,6 @@ on addWatermark(string _line1, string _line2)
 
 end
 
-addWatermark("JoeÕs Filters Demo", "www.joesfilters.com");
+addWatermark("Joeâ€™s Filters Demo", "www.joesfilters.com");
 
 
