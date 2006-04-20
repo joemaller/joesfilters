@@ -25,7 +25,8 @@ done
 VERS=`/usr/local/bin/./svn log --limit 1 -q --incremental "$filePath" |tail -n 1 | awk '{print $1}'`
 
 # build folder:
-BASE=`basename "$outFolder"`
+BASE=`dirname "$outFolder"`
+BASE=`basename "$BASE"`
 
 # check whether $watermarkSource exists and if so prepend $betaMark with "DEMO" 
 if [ -s "$watermarkSource" ]
