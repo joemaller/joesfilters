@@ -184,13 +184,21 @@ on clicked theObject
 	
 	
 	if name of theObject is "shelltest" then
+		log
 		--		do shell script "Resources/./applyWatermark.sh > ~/booga.txt"
-		tell main bundle
+		(*	tell main bundle
 			set scriptPath to path for resource "applyWatermark" extension "sh"
 		end tell
 		log "SCRIPTPATH: " & quoted form of scriptPath
 		log scriptPath & " \"/Users/joe/Documents/Joe's Filters Development/joesfilters-svn/joesfilters/Joe's Filters/Joe's Aspect Matte.fxscript\""
 		log (do shell script quoted form of scriptPath & " \"/Users/joe/Documents/Joe's Filters Development/joesfilters-svn/joesfilters/Joe's Filters/Joe's Aspect Matte.fxscript\"")
+	*)
+		
+		
+		log "waterMarkSource:" & fetchUserDefaults("waterMarkSource")
+		log "waterMarkText:" & fetchUserDefaults("waterMarkText")
+		
+		--	log applyWatermark("/Users/joe/Documents/Joe's Filters Development/joesfilters-svn/joesfilters/Joe's Filters/Joe's Color Glow.fxscript", "/Users/joe/Documents/Joe's Filters Development/Builds/build_20060420_1447/demo code", fetchUserDefaults("watermarkMenuString"), fetchUserDefaults("waterMarkSource"))
 		
 	end if
 	
@@ -263,6 +271,7 @@ on doCompile(fileList)
 		showStatus("Compiling demo source code for: " & |fileName| of theFile, true)
 		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
 		
+		log "waterMarkSource:" & fetchUserDefaults("waterMarkSource")
 		set demoplugSource to applyWatermark(|fullPath| of theFile, |fullPath| of item 4 of outputFolders, fetchUserDefaults("watermarkMenuString"), fetchUserDefaults("waterMarkSource"))
 		
 		
@@ -395,60 +404,40 @@ end makeFolders
 
 
 
-on applyWatermark(theFile, outFolder, menuMark, fileMark)
+on applyWatermark(filePath, outFolder, betaMark, waterMarkSource)
 	
-	-- the following shell script reads a text file into a variable, adds "menuMark" to the title of the effect
-	-- and appends the contents of "fileMark" to the end of the file
-	-- menuMark is usually something like "[BETA]"
-	-- fileMark is a file containing code to watermark an effect (should be self-contained)
+	-- all input should be unescaped POSIX paths 
+	-- there is nothing here to handle double-quotes in a file name, "quoted form of" wasn't working because AppleScript was adding an extra backslash
 	
-	-- send a blank or non-existant fileMark to skip over "DEMO"-izing the files
+	log "
+===========================
+= NOW IN APPLYWATERMARK() =
+===========================
+"
+	tell main bundle
+		set scriptPath to path for resource "applyWatermark" extension "sh"
+	end tell
 	
-	-- source files are prefixed with version, build name and date	
+	set scriptPath to "\"" & scriptPath & "\""
+	set outFile to (outFolder as text) & "/" & name of (info for (POSIX file filePath))
+	set filePath to " -f\"" & filePath & "\""
+	set outFolder to " -o\"" & outFolder & "\""
+	set betaMark to " -b\"" & betaMark & "\""
+	set waterMarkSource to " -w\"" & waterMarkSource & "\""
 	
-	set doBeta to false
-	try
-		POSIX file fileMark as alias -- check that the watermark file exists. if this fails, it's not a DEMO compile
-		set menuMark to "DEMO " & menuMark --  update the contents of the menu add-on string 
-		set doBeta to true
-	end try
+	log "scriptPath: " & scriptPath
+	log "filePath" & filePath
+	log "outFolder" & outFolder
+	log "betaMark: " & betaMark
+	log "waterMarkSource: " & waterMarkSource
+	log "outFile: " & outFile
 	
-	--	tell application "Finder" to set thisBuild to name of container of outFolder
-	
-	set thisBuild to name of (info for alias (POSIX file (outFolder & "/../"))) -- back up one level from the output folder to recover the build folder name
-	
-	set outFile to ((outFolder as text) & "/" & name of (info for (POSIX file theFile)))
-	
-	-- `cvs -d/usr/local/cvsrep status " & quoted form of theFile & " | awk '/Working/ { print \"\\t//\\tVersion: \" $3 }'`;
-	set theScript to "
-	d=" & getVersion(theFile) & "
-	b=\"//\\t" & thisBuild & "\";
-	echo -e \"\\t//\\tVersion: $d\\n$b\\n\\t//\\t\"`date '+%B %d, %Y'` \"\\n\\n\" |
-
-	echo -e \"//\\t`date '+%B %d, %Y'` \" |
-	echo -e \"//\\t" & thisBuild & "\" |
-	echo -e \"//\\tVersion: " & getVersion(theFile) & "\\n\" |
-	echo -e '' |
-
-	tee " & quoted form of POSIX path of outFile & "; 
-	
-	sed -e 's/\\([fF]ilter[\\t ]*\"[^\"]*\\)\"/\\1 " & menuMark & "\"/' -e 's/\\([Tt]ransition[\\t ]*\"[^\"]*\\)\"/\\1 " & menuMark & "\"/' -e 's/\\([Gg]enerator[\\t ]*\"[^\"]*\\)\"/\\1 " & menuMark & "\"/' " & quoted form of theFile & " | 
-	tee -a " & quoted form of outFile & "; "
-	
-	if doBeta is true then
-		set theScript to theScript & "
-		echo -e \"\\n\\n\\n\\n\" | 
-		tee -a " & quoted form of outFile & ";
-		
-		cat " & quoted form of fileMark & "| 
-		tee -a " & quoted form of outFile
-	end if
-	
-	log theScript as text
-	set outFileText to do shell script theScript without altering line endings
-	return outFileText
+	set theScript to scriptPath & filePath & outFolder & betaMark & waterMarkSource & " | tee \"" & outFile & "\""
+	log return & "theScript:" & return & theScript & return & return
+	do shell script theScript
 	
 end applyWatermark
+
 
 
 

@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/sh
 
 
 #set -xv
@@ -45,7 +45,6 @@ if [ -s "$watermarkSource" ]
 	then
 	echo -e "\n\n\n\n\n\n"
 	cat "$watermarkSource"
-	
 fi
 
 
