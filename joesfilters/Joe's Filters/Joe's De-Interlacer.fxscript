@@ -456,7 +456,6 @@ if (clipDUR > 0)
 		DifferenceMask(halfbuffer, dest, dest, threshold, 1, soften );	//  reuses pre-deinterlaced field
 	
 	else if (motiondiff == 3)	// surrounding fields
-		DebugText("frame", frame, "frames: ", -clipOFFSET + frame + ((theField ^1) * 2 - 1);
 		getField(clip1, -clipOFFSET + frame + ((theField ^ 1) * 2 - 1), halfbuffer, Nw, Nh, theField ^ 1, false);
 		DeInterlaceFast(src1, halfbuffer2, theField ^ 1,false);
 
