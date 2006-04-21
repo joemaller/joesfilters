@@ -101,13 +101,13 @@ on RandomNoiseScaled(image _dest, value _noise, value _r, value _g, value _b, va
 		_bFloor = b - bRange/2;
 	end if
 
-	DebugText("**********************");
-	DebugText("_rCeil", _rCeil);
-	DebugText("_rFloor", _rFloor);
-	DebugText("_gCeil", _gCeil);
-	DebugText("_gFloor", _gFloor);
-	DebugText("_bCeil", _bCeil);
-	DebugText("_bFloor", _bFloor);
+	//	DebugText("**********************");
+	//	DebugText("_rCeil", _rCeil);
+	//	DebugText("_rFloor", _rFloor);
+	//	DebugText("_gCeil", _gCeil);
+	//	DebugText("_gFloor", _gFloor);
+	//	DebugText("_bCeil", _bCeil);
+	//	DebugText("_bFloor", _bFloor);
 	
 RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil, 1)
 	//	RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, ((_colorspace==3)?128-g/2:0), ((_colorspace==3)?128+g/2:g), _bFloor, _bCeil, 1);	// yuv
@@ -132,7 +132,7 @@ point noiseRect[4], noiseRect2[4];
 
 dimensionsOf(Dest, w, h);
 float zoomfactor; zoomfactor = w/720;
-float iFPS = fps * (fieldprocessing+1);		// interlace-corrected FPS
+float trueFPS = fps * (fieldprocessing+1);		// interlace-corrected FPS
 
 
 image xbuffer[w][h];
@@ -144,13 +144,21 @@ image xbuffer[w][h];
 //	boundsof(dest, noiseRect);
 //	boundsof(scalebuffer, noiseRect2);
 
-on RandomSeedFPS(value _outFPS, value _inFPS)
-	// uses Duration and Ratio?
-	// use ratio of target clip to prevent
-	float _fps;
-		if (_outFPS > 0)
-		_fps = _outFPS/_inFPS; // find output fps as percentage of _inFPS
-		randomseed(integer(ratio * integer(_fps * duration)+1)/integer(_fps * duration)); // use fps modified ratio for RandomSeed
+on RandomSeedFPS(value _fakeFPS, value _baseFPS, value _baseDuration, value _baseRatio)
+	// this sets randomseed based on the completion of the clip calculated against the fakeFPS
+// this is accomplished by recreating ratio using the fake values
+// first determine a new fakeDuration, this is from the ration of fakeFPS/realFPS * duration
+// next calculate a fake frame number based
+// in most cases _baseDuration and _baseRatio are just duration and ratio, but better to keep them malleable
+
+	float _fpsRatio, _fakeDuration;
+float _debug
+	if (_fakeFPS > 0)
+		_fpsRatio = _fakeFPS/_baseFPS; // find output fps as percentage of _baseFPS
+		_fakeDuration = integer(_fpsRatio * duration)
+		_debug = integer(_baseRatio * _fakeDuration + 1)/_fakeDuration
+		DebugText("value for randomseed", _debug);
+		randomseed(_debug); // use fps modified ratio for RandomSeed
 	else
 		randomseed(0);
 	end if
@@ -160,7 +168,7 @@ end
 //	DebugText("ifps", iFPS);
 //	DebugText("duration", duration);
 
-RandomSeedFPS(noiseFPS, iFPS);
+RandomSeedFPS(noiseFPS, trueFPS, duration, ratio);
 
 RandomNoiseScaled(dest, NoiseAmount, r, g, b, 100/noiseScale, softnoise, noiseAspect, colorSpace);
 
