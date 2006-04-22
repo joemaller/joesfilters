@@ -1,0 +1,86 @@
+filter "Joe’s Dispacement Noise";
+group "Joe’s Filters [BETA]";
+
+input noiseFPS, "Noise FPS", Slider, 24, 0, 60;
+
+input noiseScale, "Scale Noise", slider, 200, 100, 1000 label "%";
+input softNoise, "Blur Noise", Slider, 0, 0, 50 ramp 80;
+input noiseAspect, "Noise Aspect", Slider, 1, 0, 2 detent 1;
+
+input hOffset, "Horizontal Offset", Slider, 100, 0, 200;
+input vOffset, "Vertical Offset", Slider, 100, 0, 200;
+
+input outset, "Outset", Slider, 1, 0, 10;
+
+RenderEachFrameWhenStill;
+InformationFlag("YUVaware");
+producesAlpha;
+
+
+code
+
+exposedBackground = 1;
+
+
+
+on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, value _gFloor, value _gCeil, value _bFloor, value _bCeil, value _scale, value _blur, value _aspect, value _colorspace)
+	// 	_noise is a 0.1...400 vallue to match Photoshop's controls
+	//	_scale is a floating 0-1 value
+	//	_r, _g, _b are 0-255 values
+	// 	_colorspace is 1-3 to match the numeric equivalents for the color space constants: kFormatRGB255=1, kFormatRGB219=2, kFormatYUV219=3;
+	float _w, _h;
+	point _box0[4], _box1[4];
+	
+	dimensionsOf(_dest, _w, _h);
+	image _img0[(_w-1) * _scale * (_aspect > 1 ? (2 - _aspect): 1) + 1][(_h-1) * _scale *(_aspect < 1 ? _aspect : 1) + 1];
+
+	ConvertImage(_img0, _img0, _colorspace);
+
+	boundsof(_dest, _box0);
+	boundsof(_img0, _box1);
+	
+	RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil, 1)
+
+	if (_blur > 0);
+		dimensionsOf(_img0, _w, _h);
+		image _blurIMG[_w][_h];	
+		ConvertImage(_img0, _img0, _colorspace);
+		
+				
+		_blurIMG = _img0;
+		blurChannel(_img0, _blurIMG, _blur * _scale, 1, 1, 1, 1, 1);
+		blitRect(_blurIMG, _box1, _dest, _box0);
+	else
+		blitRect(_img0, _box1, _dest, _box0);
+	end if;
+
+end 
+
+
+
+on RandomSeedFPS(value _fakeFPS, value _baseFPS, value _baseDuration, value _baseRatio)
+	// this sets randomseed based on the completion of the clip calculated against the fakeFPS
+	// this is accomplished by recreating ratio using the fake values
+	// first determine a new fakeDuration, this is from the ration of fakeFPS/realFPS * duration
+	// next calculate a fake frame number based
+	// in most cases _baseDuration and _baseRatio are just duration and ratio, but better to keep them malleable
+
+	if (_fakeFPS > 0)
+		float _fpsRatio, _fakeDuration, _fakeRatio, _fakeFrame;
+		_fpsRatio = _fakeFPS/_baseFPS; // find output fps as percentage of _baseFPS
+		_fakeDuration = integer(_fpsRatio * duration);
+		_fakeFrame = integer(_baseRatio * _fakeDuration + 1)
+		_fakeRatio = _fakeFrame/_fakeDuration;
+		randomseed(_fakeRatio); // use fps modified ratio for RandomSeed
+	else
+		randomseed(0);
+	end if
+end
+
+float trueFPS = fps * (fieldprocessing+1);		// interlace-corrected FPS
+RandomSeedFPS(noiseFPS, trueFPS, duration, ratio);
+
+RandomNoiseScaled(dest, 400, 0, hOffset, 0, vOffset, 0,0, 100/noiseScale, softnoise, noiseAspect, 2);
+
+Displace(src1, dest, dest, 1, outset/100,outset/100, 0, AspectOf(dest));
+

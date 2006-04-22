@@ -1,12 +1,11 @@
-filter "Joe's Color Noise";
-group "Joe's Noise Filters";
+filter "Joe’s Color Noise";
+group "Joe’s Filters [BETA]";
 
-input _r2, "_r2", Slider, 0, -1, 1;
 
 input noiseFPS, "Noise FPS", slider, 24, 0, 60;
 
 
-input NoiseAmount, "Amount", slider, 400, 0.1, 400 ramp 80;
+input NoiseAmount, "Amount", slider, 400, 0, 400 ramp 80 detent 100;
 input fixedNoise, "Fixed Noise", checkbox, 0
 
 input noiseScale, "Scale Noise", slider, 200, 100, 1000 label "%";
@@ -17,19 +16,22 @@ input noiseAspect, "Noise Aspect", Slider, 1, 0, 2 detent 1;
 input note1, "Color Mix:", Label,"";
 input monochrome, "Monochrome", checkbox, 0;
 
-input r, "Red/Gray", Slider, 127, 0, 255 detent 127;
-input rRange, "R/Y Value Range", Slider, 255, 0, 255;
+input rFloor, "R/Y Floor", Slider, 0, 0, 255;
+input rCeil, "R/Y Ceil", Slider, 255, 0, 255;
 
-input g, "Green", Slider, 127, 0, 255 detent 127;
-input gRange, "G/U Value Range", Slider, 255, 0, 255;
+input gFloor, "G/cR Floor", Slider, 0, 0, 255;
+input gCeil, "G/cR Ceil", Slider, 255, 0, 255;
 
-input b, "Blue", Slider, 127, 0, 255 detent 127;
-input bRange, "B/V Value Range", Slider, 255, 0, 255;
+input bFloor, "B/cB Floor", Slider, 0, 0, 255;
+input bCeil, "B/cB Ceil", Slider, 255, 0, 255;
 
-input ApplyAs, "Mode", Popup, 1, "Normal", "Multiply", "Screen", "Overlay", "Lighten", "Darken", "Add", "Subtract", "Difference";
+input ApplyAs, "Mode", Popup, 1, "Normal", "Multiply", "Screen", "Overlay", "Lighten", "Darken", "Add", "Subtract", "Difference", "Bump";
 input Opacity, "Opacity", slider, 100, 0, 100;
 
-input colorSpace, "ColorSpace", popup, 3, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
+input colorSpace, "ColorSpace", popup, 2, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
+
+input dir, "Direction", angle, 10, -360, 360 detent 10
+input outset, "outset", slider, 0.25, 0,3;
 
 
 input jfcopyright, "© Joe’s Filters", Label,"";
@@ -46,84 +48,37 @@ exposedBackground=1;
 
 
 
-on RandomNoiseScaled(image _dest, value _noise, value _r, value _g, value _b, value _scale, value _blur, value _aspect, value _colorspace)
-	// 	_noise is a 0.1...400 vallue to match Photoshop's controls
-	//	_scale is a floating 0-1 value
-	//  _r, _g, _b are 0-255 values
-	//  _RGBorYUV is 1-3 to match the numeric equivalents for the color space constants: kFormatRGB255=1, kFormatRGB219=2, kFormatYUV219=3;
+on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, value _gFloor, value _gCeil, value _bFloor, value _bCeil, value _scale, value _blur, value _aspect, value _colorspace)
+	// 	_noise is a 0...400 vallue to match Photoshop's controls
+	//	_scale is value >100 (there's no point in down-scaling)
+	//	_rFloor, _rCeil, _g..., _b... are 0-255 values
+	// 	_colorspace is 1-3 to match the numeric equivalents for the color space constants: kFormatRGB255=1, kFormatRGB219=2, kFormatYUV219=3;
 	float _w, _h;
 	point _box0[4], _box1[4];
 
 	dimensionsOf(_dest, _w, _h);
-	image _img0[(_w-1) * _scale * (_aspect > 1 ? (2 - _aspect): 1) + 1][(_h-1) * _scale *(_aspect < 1 ? _aspect : 1) + 1];
-
+	image _img0[(_w-1) / _scale * (_aspect > 1 ? (2 - _aspect): 1) + 1][(_h-1) / _scale * (_aspect < 1 ? _aspect : 1) + 1];
 	ConvertImage(_img0, _img0, _colorspace);
 
 	boundsof(_dest, _box0);
 	boundsof(_img0, _box1);
 	
-	float _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil;
-
-	if(rRange/2 > r)
-
-		_rCeil = 2*r;
-		_rFloor = 0;
-	else if (255 - rRange/2 < r)
-		_rCeil = 255;
-		_rFloor = 255 - (255-r)*2;
-	else
-		_rCeil = r + rRange/2;
-		_rFloor = r - rRange/2;
-	end if
-
-	if(gRange/2 > g)
-		DebugText("******** first G option");
-		_gCeil = 2*g;
-		_gFloor = 0;
-	else if (255 - gRange/2 < g)
-		DebugText("******** second G option");
-		_gCeil = 255;
-		_gFloor = 255 - (255-g)*2;
-	else
-		DebugText("******** third G option");
-		_gCeil = g + gRange/2;
-		_gFloor = g - gRange/2;
-	end if
-
-	if(bRange/2 > b)
-		_bCeil = 2*b;
-		_bFloor = 0;
-	else if (255 - bRange/2 < b)
-		_bCeil = 255;
-		_bFloor = 255 - (255-b)* 2;
-	else
-		_bCeil = b + bRange/2;
-		_bFloor = b - bRange/2;
-	end if
-
-	//	DebugText("**********************");
-	//	DebugText("_rCeil", _rCeil);
-	//	DebugText("_rFloor", _rFloor);
-	//	DebugText("_gCeil", _gCeil);
-	//	DebugText("_gFloor", _gFloor);
-	//	DebugText("_bCeil", _bCeil);
-	//	DebugText("_bFloor", _bFloor);
-	
-RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil, 1)
-	//	RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, ((_colorspace==3)?128-g/2:0), ((_colorspace==3)?128+g/2:g), _bFloor, _bCeil, 1);	// yuv
+	RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil, 1)
 
 	if (_blur > 0);
 		dimensionsOf(_img0, _w, _h);
+		DebugText(_w,_h);
 		image _blurIMG[_w][_h];	
+		ConvertImage(_img0, _img0, _colorspace);
+		
 				
 		_blurIMG = _img0;
-		blurChannel(_img0, _blurIMG, _blur * _scale, 1, 1, 1, 1, 1);
+		blurChannel(_img0, _blurIMG, _blur / _scale, 1, 1, 1, 1, 1);
 		blitRect(_blurIMG, _box1, _dest, _box0);
 	else
 		blitRect(_img0, _box1, _dest, _box0);
 	end if;
 
-//	DebugText("_img0.w",_w, "_img0.h", _h );
 end 
 
 
@@ -167,7 +122,7 @@ end
 RandomSeedFPS(noiseFPS, trueFPS, duration, ratio);
 if (fixedNoise); randomseed((noiseFPS + 1)/trueFPS); end if
 
-RandomNoiseScaled(dest, NoiseAmount, r, g, b, 100/noiseScale, softnoise, noiseAspect, colorSpace);
+RandomNoiseScaled(dest, NoiseAmount, rFloor, rCeil, gFloor, gCeil, bFloor, bCeil, noiseScale/100, softnoise, noiseAspect, colorSpace);
 
 if ApplyAs == 1; Matte(dest, src1, dest, opacity/100, kalpha); end if
 if ApplyAs == 2; Multiply(src1, xbuffer, dest, opacity/100, kalpha); end if
@@ -186,3 +141,8 @@ if ApplyAs == 9;
 		Matte(dest, src1,  dest, opacity/100, knone); 
 end if;
 
+if ApplyAs == 10;
+		Displace(src1, dest, dest, 1, outset,outset, opacity/100, AspectOf(dest));
+		
+		//	BumpMap(src1, dest, dest, true, -dir, outset, opacity/100, AspectOf(dest));
+end if

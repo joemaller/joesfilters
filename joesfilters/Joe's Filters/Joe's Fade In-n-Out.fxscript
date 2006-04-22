@@ -1,5 +1,5 @@
-filter "Joe's Fade In-n-Out";
-group "Joe's Filters [BETA]";
+filter "Joe’s Fade In-n-Out";
+group "Joe’s Filters [BETA]";
 
 
 input fadeInTime, "Fade In", slider, 20, 0, 360 ramp 80 label "Frames";
