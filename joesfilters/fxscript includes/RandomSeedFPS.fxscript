@@ -1,3 +1,5 @@
+float trueFPS = fps * (fieldprocessing+1);		// interlace-corrected FPS
+
 on RandomSeedFPS(value _fakeFPS, value _baseFPS, value _baseDuration, value _baseRatio)
 	// this sets randomseed based on the completion of the clip calculated against the fakeFPS
 	// this is accomplished by recreating ratio using the fake values

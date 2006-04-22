@@ -48,6 +48,9 @@ exposedBackground=1;
 
 
 
+
+// INCLUDE "RandomNoiseScaled.fxscript" r157
+
 on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, value _gFloor, value _gCeil, value _bFloor, value _bCeil, value _scale, value _blur, value _aspect, value _colorspace)
 	// 	_noise is a 0...400 vallue to match Photoshop's controls
 	//	_scale is value >100 (there's no point in down-scaling)
@@ -71,7 +74,6 @@ on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, val
 		image _blurIMG[_w][_h];	
 		ConvertImage(_img0, _img0, _colorspace);
 		
-				
 		_blurIMG = _img0;
 		blurChannel(_img0, _blurIMG, _blur / _scale, 1, 1, 1, 1, 1);
 		blitRect(_blurIMG, _box1, _dest, _box0);
@@ -80,6 +82,33 @@ on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, val
 	end if;
 
 end 
+
+// END "RandomNoiseScaled.fxscript"
+
+
+
+// INCLUDE "RandomSeedFPS.fxscript" r157
+
+on RandomSeedFPS(value _fakeFPS, value _baseFPS, value _baseDuration, value _baseRatio)
+	// this sets randomseed based on the completion of the clip calculated against the fakeFPS
+	// this is accomplished by recreating ratio using the fake values
+	// first determine a new fakeDuration, this is from the ration of fakeFPS/realFPS * duration
+	// next calculate a fake frame number based
+	// in most cases _baseDuration and _baseRatio are just duration and ratio, but better to keep them malleable
+
+	if (_fakeFPS > 0)
+		float _fpsRatio, _fakeDuration, _fakeRatio, _fakeFrame;
+		_fpsRatio = _fakeFPS/_baseFPS; // find output fps as percentage of _baseFPS
+		_fakeDuration = integer(_fpsRatio * duration);
+		_fakeFrame = integer(_baseRatio * _fakeDuration + 1)
+		_fakeRatio = _fakeFrame/_fakeDuration;
+		randomseed(_fakeRatio); // use fps modified ratio for RandomSeed
+	else
+		randomseed(0);
+	end if
+end
+
+// END "RandomSeedFPS.fxscript"
 
 
 float w, h, amin, amax;
@@ -91,32 +120,7 @@ float trueFPS = fps * (fieldprocessing+1);		// interlace-corrected FPS
 
 
 image xbuffer[w][h];
-//	image scalebuffer[w * 100/noiseScale * 1/zoomfactor][h * 100/noiseScale * 1/zoomfactor * aspectof(dest)];
-//	
-//	amin = noiseamount < 100 ? noiseamount/100 * 255 : 255;
-//	amax = noiseamount > 100 ? (noiseamount-100)/300 * 255 : 0;
-//	
-//	boundsof(dest, noiseRect);
-//	boundsof(scalebuffer, noiseRect2);
 
-on RandomSeedFPS(value _fakeFPS, value _baseFPS, value _baseDuration, value _baseRatio)
-	// this sets randomseed based on the completion of the clip calculated against the fakeFPS
-	// this is accomplished by recreating ratio using the fake values
-	// first determine a new fakeDuration, this is from the ration of fakeFPS/realFPS * duration
-	// next calculate a fake frame number based
-	// in most cases _baseDuration and _baseRatio are just duration and ratio, but better to keep them malleable
-
-	float _fpsRatio, _fakeDuration, _fakeRatio, _fakeFrame;
-	if (_fakeFPS > 0)
-		_fpsRatio = _fakeFPS/_baseFPS; // find output fps as percentage of _baseFPS
-		_fakeDuration = integer(_fpsRatio * duration);
-		_fakeFrame = integer(_baseRatio * _fakeDuration + 1)
-		_fakeRatio = _fakeFrame/_fakeDuration;
-		randomseed(_fakeRatio); // use fps modified ratio for RandomSeed
-	else
-		randomseed(0);
-	end if
-end
 
 
 RandomSeedFPS(noiseFPS, trueFPS, duration, ratio);
