@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Point, ${3:X}, ${4:Y}, ${5:Z};
+	<string>ChannelCopy(${1:srcIMG}, ${2:destIMG}, ${3:channel2Alpha}, ${4:channel2Red}, ${5:channel2Green}, ${6:channel2Blue});
 </string>
 	<key>name</key>
-	<string>Point3D</string>
+	<string>ChannelCopy</string>
 	<key>scope</key>
-	<string></string>
+	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>input</string>
+	<string>channelcopy</string>
 	<key>uuid</key>
-	<string>4CF35F63-CD67-4021-A04F-ADC21EDFA378</string>
+	<string>E445C3D8-A47A-4766-BC3A-5B661110EEEB</string>
 </dict>
 </plist>

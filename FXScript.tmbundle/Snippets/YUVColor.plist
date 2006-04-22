@@ -3,7 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", YUVColor, ${3:A}, ${4:Y}, ${5:U}, ${6:V};</string>
+	<string>input ${1:varname}, "${2:text label}", YUVColor, ${3:A}, ${4:Y}, ${5:U}, ${6:V};
+</string>
 	<key>name</key>
 	<string>YUVColor</string>
 	<key>scope</key>

@@ -120,7 +120,7 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>(?i:AlphaType|EffectID|FullFrame|Group|InformationFlag|InvalEntireItem|KeyType|ProducesAlpha|QTEffect|RenderEachFrameWhenStill|WipeCode)</string>
+			<string>/b(?i:AlphaType|EffectID|FullFrame|Group|InformationFlag|InvalEntireItem|KeyType|ProducesAlpha|QTEffect|RenderEachFrameWhenStill|WipeCode)/b</string>
 			<key>name</key>
 			<string>keyword.definition-statements.fxscript</string>
 		</dict>
@@ -162,7 +162,7 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>(?i:false|kAlpha|kNone|kUndefined|true)</string>
+			<string>(?i:false|kAlpha|kNone|kUndefined|true)\b</string>
 			<key>name</key>
 			<string>constant.general.fxscript</string>
 		</dict>
@@ -244,7 +244,7 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>\b(?i:Add|AddOffset|Darken|Difference|ImageAnd|ImageOr|ImageXor|Invert|InvertChannel|Lighten|Matte|Multiply|Overlay|Screen|Subtract|UnMultiply)</string>
+			<string>\b(?i:Add|AddOffset|Darken|Difference|ImageAnd|ImageOr|ImageXor|Invert|InvertChannel|Lighten|Matte|Multiply|Overlay|Screen|Subtract|UnMultiply)\b</string>
 			<key>name</key>
 			<string>support.function.composite.fxscript</string>
 		</dict>

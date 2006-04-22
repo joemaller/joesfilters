@@ -3,15 +3,14 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Point, ${3:X}, ${4:Y}, ${5:Z};
-</string>
+	<string>Screen(${1:srcImage1}, ${2:srcImage2}, ${3:destImage}, ${4:amount}, ${5:kAlpha});</string>
 	<key>name</key>
-	<string>Point3D</string>
+	<string>Screen</string>
 	<key>scope</key>
-	<string></string>
+	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>input</string>
+	<string>screen</string>
 	<key>uuid</key>
-	<string>4CF35F63-CD67-4021-A04F-ADC21EDFA378</string>
+	<string>EC5EE9C6-52D7-406F-8D2D-17112DA8D674</string>
 </dict>
 </plist>

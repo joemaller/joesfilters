@@ -3,15 +3,14 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Point, ${3:X}, ${4:Y}, ${5:Z};
-</string>
+	<string>Lighten(${1:srcImage1}, ${2:srcImage2}, ${3:destImage}, ${4:amount}, ${5:kAlpha});</string>
 	<key>name</key>
-	<string>Point3D</string>
+	<string>Lighten</string>
 	<key>scope</key>
-	<string></string>
+	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>input</string>
+	<string>lighten</string>
 	<key>uuid</key>
-	<string>4CF35F63-CD67-4021-A04F-ADC21EDFA378</string>
+	<string>CB07B4F7-E612-47F0-B148-34E70EFA1825</string>
 </dict>
 </plist>

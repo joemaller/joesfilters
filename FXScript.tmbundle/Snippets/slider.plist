@@ -3,7 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Slider, ${3:default value}, ${4:min value}, ${5:max value}${6: ramp ${7:number}}${8: detent ${9:number}};</string>
+	<string>input ${1:varname}, "${2:text label}", Slider, ${3:default value}, ${4:min value}, ${5:max value}${6: ramp ${7:number}}${8: detent ${9:number}};
+</string>
 	<key>name</key>
 	<string>Slider</string>
 	<key>scope</key>

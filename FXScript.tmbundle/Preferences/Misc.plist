@@ -8,6 +8,8 @@
 	<string>source.fxscript</string>
 	<key>settings</key>
 	<dict>
+		<key>decreaseIndentPattern</key>
+		<string>^\s*(end|next|else)\b</string>
 		<key>highlightPairs</key>
 		<array>
 			<array>
@@ -27,6 +29,8 @@
 				<string>]</string>
 			</array>
 		</array>
+		<key>increaseIndentPattern</key>
+		<string>^\s*(if|else|on|for)\b.*$</string>
 		<key>shellVariables</key>
 		<array>
 			<dict>

@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Point, ${3:X}, ${4:Y}, ${5:Z};
+	<string>InformationFlag("YUVaware");
 </string>
 	<key>name</key>
-	<string>Point3D</string>
+	<string>InformationFlag("YUVaware")</string>
 	<key>scope</key>
-	<string></string>
+	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>input</string>
+	<string>infoflag</string>
 	<key>uuid</key>
-	<string>4CF35F63-CD67-4021-A04F-ADC21EDFA378</string>
+	<string>2526F035-4131-468E-9CAA-A9E8FE42D17B</string>
 </dict>
 </plist>

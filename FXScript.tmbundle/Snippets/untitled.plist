@@ -3,15 +3,16 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Point, ${3:X}, ${4:Y}, ${5:Z};
-</string>
+	<string>float ${1:w}, ${2:h};
+DimensionsOf(${3:dest}, $1, $2);
+image ${4:img0}[$1][$2];</string>
 	<key>name</key>
-	<string>Point3D</string>
+	<string>DimensionsOf() w/ float vars</string>
 	<key>scope</key>
-	<string></string>
+	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>input</string>
+	<string>dimsof</string>
 	<key>uuid</key>
-	<string>4CF35F63-CD67-4021-A04F-ADC21EDFA378</string>
+	<string>1E65AC5C-A779-42C8-809C-0AA198107A6E</string>
 </dict>
 </plist>

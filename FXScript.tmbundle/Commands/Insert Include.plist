@@ -5,7 +5,7 @@
 	<key>beforeRunningCommand</key>
 	<string>nop</string>
 	<key>command</key>
-	<string>includePath="/Users/joe/SVNTEST/tempDir2/joesfilters/fxscript includes/"
+	<string>includePath="/Users/joe/Documents/Joe's Filters Development/joesfilters-svn/joesfilters/fxscript includes/"
 
 includeFiles=$(osascript 	&lt;&lt; END
 set includePath to POSIX file "$includePath"

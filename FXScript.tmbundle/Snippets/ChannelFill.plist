@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Point, ${3:X}, ${4:Y}, ${5:Z};
+	<string>ChannelFill(${1:destImage}, ${2:a0-255}, ${3:r0-255}, ${4:g0-255}, ${5:b0-255});
 </string>
 	<key>name</key>
-	<string>Point3D</string>
+	<string>ChannelFill</string>
 	<key>scope</key>
-	<string></string>
+	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>input</string>
+	<string>channelfill</string>
 	<key>uuid</key>
-	<string>4CF35F63-CD67-4021-A04F-ADC21EDFA378</string>
+	<string>E3BCB1BC-7AB9-4EEF-B995-5145ED3C80C7</string>
 </dict>
 </plist>
