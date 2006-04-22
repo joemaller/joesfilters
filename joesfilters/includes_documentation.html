@@ -4,17 +4,70 @@
 <head>
 	<meta http-equiv="content-type" content="text/html; charset=utf-8" />
 	<title>Untitled</title>
-</head>
+	<style type="text/css" media="screen">
+code {color: green;}
+
+</style></head>
 <body>
 
 
 <p>This is a preliminary outline, use a script to dump all includes into a file with source code. This is for comments.
 
 
-<h2>whatType()</h2>
-<p>This returns a 0, 1 or 2 depending on the type of effect it's placed into. The function works by using the return-error handling behavior to check for the existence of src1 and src2. If both exist, it's a transition, it only Src1 exists, it's a filter. If neither exist, it's a generator.</p>
+##whatType()
+Returns a 0, 1 or 2 depending on the type of effect it's placed into. The function works by using the return-error handling behavior to check for the existence of src1 and src2. If both exist, it's a transition, it only Src1 exists, it's a filter. If neither exist, it's a generator.
+
+
+
+
+
+
+
+
+
+## RandomSeedFPS()
+    RandomSeedFPS(value _fakeFPS, value _baseFPS, value _baseDuration, value _baseRatio)
+Sets randomseed based on the calculated difference between _fakeFPS and _baseFPS. _baseFPS is usually the FPS of the current clip, however it doens't have to be.  _baseDuration and _baseRatio are usually the host-clip's Ratio and Duration, but again, these could be anything. 
+
+_baseFPS should be interlace compensated. The following line corrects the reported FPS to be equal to the field-rate instead of the frame rate.
+
+    float trueFPS = fps * (fieldprocessing+1);		// interlace-corrected FPS
+
+using this, any random effect can have its freuqency tied to a virtual frame rate.
+
+
+
+
+
+
+
+
+##RandomNoiseScaled()
+     RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, value _gFloor, value _gCeil, value _bFloor, value _bCeil, value _scale, value _blur, value _aspect, value _colorspace)
+
+This is something of an encapsulation function which brings my scaling and blurring features into a portable replacement for RandomNoise.
+
+The Amount value is set to match the noise filter in Photoshop. Values 0...100 set the top-end opacity, so the particle opacity ranges from 0-Amount.  At 100, particles exist at all opacities. From 100...400 the particle opacities range from amount...100, so there is always some degree of color affecting the image for values in this range.
+
+Not sure why Adobe did that, but it's become something of a convention. I may modify that at some future date to de-cruft the intenal math.
+
+Blurring is done in a size-optimized buffer, before scaling back to full size. A blur radius of 5 is acutally processed at 2.5. This is faster on two levels, one it uses smaller blurring kernels, and two, the blur operates on fewer pixels.
+
+Since there's no point in scaling pixel-noise below 100%, the standard range of scale values is 1...100+ (integers corresponding to percentages). Those values are inverted inside the function and used to create smaller buffers. The function seems to handle very large values, but there's not much point beyond 1000%. The standard Blur input looks like:
+
+     input noiseScale, "Scale Noise", slider, 200, 100, 1000 label "%";
+
+That's send to the function as `noiseScale/100`.
+
+
+
+
+
 
 </body>
 </html>
+
+
+
 
 

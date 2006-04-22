@@ -1,0 +1,18 @@
+on RandomSeedFPS(value _fakeFPS, value _baseFPS, value _baseDuration, value _baseRatio)
+	// this sets randomseed based on the completion of the clip calculated against the fakeFPS
+	// this is accomplished by recreating ratio using the fake values
+	// first determine a new fakeDuration, this is from the ration of fakeFPS/realFPS * duration
+	// next calculate a fake frame number based
+	// in most cases _baseDuration and _baseRatio are just duration and ratio, but better to keep them malleable
+
+	if (_fakeFPS > 0)
+		float _fpsRatio, _fakeDuration, _fakeRatio, _fakeFrame;
+		_fpsRatio = _fakeFPS/_baseFPS; // find output fps as percentage of _baseFPS
+		_fakeDuration = integer(_fpsRatio * duration);
+		_fakeFrame = integer(_baseRatio * _fakeDuration + 1)
+		_fakeRatio = _fakeFrame/_fakeDuration;
+		randomseed(_fakeRatio); // use fps modified ratio for RandomSeed
+	else
+		randomseed(0);
+	end if
+end
