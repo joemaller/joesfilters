@@ -1,0 +1,9 @@
+Updating Joe's Filters working files
+
+FCP_plug_fixer.command
+In the dock and at the top level of the joesfilters directory in the SVN repository.
+
+This exports the most recent copy of the Joe's Filters folder from the repository into ~/Documents/Joe's Filters Development/Plugins
+
+The original plugins folder in the FCP Application Support folder was moved and replaced with a link to the Development Plugins folder.
+FCP will reference the Dev folder and automatically load the updated plugins

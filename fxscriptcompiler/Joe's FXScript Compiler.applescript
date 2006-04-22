@@ -545,6 +545,7 @@ on FXBuilderBringToFront() -- makes sure frontmost window is FXBuilder
 			
 			if value of attribute "AXEnabled" of menu item "FXBuilder" of menu "Tools" of menu bar 1 is false then
 				log "FXBuilder menu disabled. loopcount: " & loopcount
+				log "loopcount: " & loopcount
 				if loopcount < 200 then my FCPdismissStartupWindows()
 			end if
 			click menu item "FXBuilder" of menu "Tools" of menu bar 1
@@ -577,14 +578,38 @@ on FXBuilderSaveEncodedPlugin(plugSource, destName, destFolder)
 	FXBuilderPasteText(plugSource) -- send source code to the FXBuilder window
 	
 	try
+		tell application "Final Cut Pro" to activate
 		tell application "System Events"
 			tell process "Final Cut Pro"
 				
 				repeat 5 times -- check for gibberish in the save default box...
 					with timeout of 10 seconds
+						
+						log "CLICKING CREATE ENCODED"
 						click menu item "Create Encoded Plugin..." of menu "FXBuilder" of menu bar item "FXBuilder" of menu bar 1
-						set theSaveExtensions to value of text field 1 of window 1 as text
+						
+						log "clicked, should be the save dialog"
 					end timeout
+					
+					tell window "Save"
+						
+						if not (exists checkbox 2) then
+							click checkbox 1 -- make sure hide extension is visible
+							delay 1 -- let the interface catch up...
+						end if
+						
+						if get value of checkbox 2 is 1 then -- checkbox 2 is the "Hide extension" option
+							click checkbox 2 -- make sure hide extension is not checked
+							delay 1 -- if the extension was hidden, wait one second for the UI to catch up with the script
+						end if
+						
+						set theSaveExtensions to value of text field 1 as text
+					end tell
+					
+					log theSaveExtensions
+					log text -6 through -1 of theSaveExtensions
+					log text -6 through -1 of theSaveExtensions is ".fcfcc"
+					
 					if text -6 through -1 of theSaveExtensions is ".fcfcc" then exit repeat -- clean default name, continue
 					
 					-- the existing text did not register correctly, so it probably contained crap characters
@@ -597,8 +622,8 @@ on FXBuilderSaveEncodedPlugin(plugSource, destName, destFolder)
 		end tell
 		
 		FXBuilderSetSaveDialogOutputFolder(destFolder)
-		FXBuilderSetSaveDialogFileName(destName)
-		tell application "System Events" to click button "Save" of window 1 of process "Final Cut Pro"
+		FXBuilderSetSaveDialogFileNameSaveFile(destName)
+		--	tell application "System Events" to click button "Save" of window 1 of process "Final Cut Pro"
 		
 	on error the error_message number the error_number
 		log "Error: " & the error_number & ". " & the error_message
@@ -611,7 +636,7 @@ end FXBuilderSaveEncodedPlugin
 
 
 
-on FXBuilderSetSaveDialogFileName(theFileName)
+on FXBuilderSetSaveDialogFileNameSaveFile(theFileName)
 	log "FXBuilderSetSaveDialogFileName(" & theFileName & ")"
 	-- used to simplify entering the outgoing filename when saving files
 	
@@ -619,33 +644,41 @@ on FXBuilderSetSaveDialogFileName(theFileName)
 		tell process "Final Cut Pro"
 			tell window 1
 				set the clipboard to theFileName as text
-				set checkVal to false
-				repeat while checkVal is false
+				repeat 5 times -- safety max loop value
 					tell application "Final Cut Pro" to activate
 					keystroke "av" using {command down} -- select all, paste
 					set checkVal to (value of text field 1 is equal to theFileName as text)
+					set checkVal to (value of text field 1 as text)
+					
+					if checkVal is equal to (theFileName as text) then exit repeat
+					
 				end repeat
+				
+				click button "Save" -- click save
 			end tell
 		end tell
 	end tell
-end FXBuilderSetSaveDialogFileName
+end FXBuilderSetSaveDialogFileNameSaveFile
 
 on FXBuilderSetSaveDialogOutputFolder(thePath)
 	log "FXBuilderSetSaveDialogOutputFolder(" & thePath & ")"
 	-- used to simplify entering the destination path when saving FXScripts
+	-- assumes that the FXBuilder save dialog is already frontmost
+	-- flashes twice because the path would occasionally be entered incorrectly, the second flash is a safety check
+	-- added a safety max-loop value of 5 in case the folder doesn't exist or something else breaks
 	
 	if dirExists(thePath) then
 		tell application "System Events"
 			tell process "Final Cut Pro"
 				tell window 1
 					set the clipboard to thePath as text
-					set checkVal to false
-					repeat while checkVal is false
+					repeat 5 times -- safety max loop value
 						tell application "Final Cut Pro" to activate
 						keystroke "g" using {command down, shift down} -- Open path entry dialog
 						keystroke "av" using {command down} -- select all, paste
-						set checkVal to (value of text field 1 is equal to thePath as text)
+						set checkVal to (value of text field 1 as text)
 						keystroke return -- close path entry dialog
+						if checkVal is equal to (thePath as text) then exit repeat
 					end repeat
 				end tell
 			end tell

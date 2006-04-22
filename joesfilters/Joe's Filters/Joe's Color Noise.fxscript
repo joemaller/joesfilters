@@ -7,7 +7,7 @@ input noiseFPS, "Noise FPS", slider, 24, 0, 60;
 
 
 input NoiseAmount, "Amount", slider, 400, 0.1, 400 ramp 80;
-input ScatterDance, "Fixed Noise", checkbox, 0
+input fixedNoise, "Fixed Noise", checkbox, 0
 
 input noiseScale, "Scale Noise", slider, 200, 100, 1000 label "%";
 input softnoise, "Blur Noise", slider, 0, 0, 50 ramp 80; 
@@ -146,29 +146,26 @@ image xbuffer[w][h];
 
 on RandomSeedFPS(value _fakeFPS, value _baseFPS, value _baseDuration, value _baseRatio)
 	// this sets randomseed based on the completion of the clip calculated against the fakeFPS
-// this is accomplished by recreating ratio using the fake values
-// first determine a new fakeDuration, this is from the ration of fakeFPS/realFPS * duration
-// next calculate a fake frame number based
-// in most cases _baseDuration and _baseRatio are just duration and ratio, but better to keep them malleable
+	// this is accomplished by recreating ratio using the fake values
+	// first determine a new fakeDuration, this is from the ration of fakeFPS/realFPS * duration
+	// next calculate a fake frame number based
+	// in most cases _baseDuration and _baseRatio are just duration and ratio, but better to keep them malleable
 
-	float _fpsRatio, _fakeDuration;
-float _debug
+	float _fpsRatio, _fakeDuration, _fakeRatio, _fakeFrame;
 	if (_fakeFPS > 0)
 		_fpsRatio = _fakeFPS/_baseFPS; // find output fps as percentage of _baseFPS
-		_fakeDuration = integer(_fpsRatio * duration)
-		_debug = integer(_baseRatio * _fakeDuration + 1)/_fakeDuration
-		DebugText("value for randomseed", _debug);
-		randomseed(_debug); // use fps modified ratio for RandomSeed
+		_fakeDuration = integer(_fpsRatio * duration);
+		_fakeFrame = integer(_baseRatio * _fakeDuration + 1)
+		_fakeRatio = _fakeFrame/_fakeDuration;
+		randomseed(_fakeRatio); // use fps modified ratio for RandomSeed
 	else
 		randomseed(0);
 	end if
 end
 
 
-//	DebugText("ifps", iFPS);
-//	DebugText("duration", duration);
-
 RandomSeedFPS(noiseFPS, trueFPS, duration, ratio);
+if (fixedNoise); randomseed((noiseFPS + 1)/trueFPS); end if
 
 RandomNoiseScaled(dest, NoiseAmount, r, g, b, 100/noiseScale, softnoise, noiseAspect, colorSpace);
 
