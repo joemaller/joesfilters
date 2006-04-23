@@ -17,7 +17,6 @@ on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, val
 
 	if (_blur > 0);
 		dimensionsOf(_img0, _w, _h);
-		DebugText(_w,_h);
 		image _blurIMG[_w][_h];	
 		ConvertImage(_img0, _img0, _colorspace);
 		
