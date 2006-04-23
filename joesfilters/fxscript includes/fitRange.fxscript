@@ -1,0 +1,20 @@
+on fitRange(value _rangeFloor, value _rangeCeil, value _centerPoint, value _range, float _floor, float _ceiling )
+	
+	//	fitRange(0, 15, 4, 10, rFloor, rCeil); // would set rFloor to 0 and rCeil to 8
+	//	_rangeFloor and _rangeCeil are the top and bottom of the available span of values.
+	
+	//	_centerPoint and _range are trying to define a subset of values between _rangeFloor and _rangeCeil
+	
+	_floor = _centerPoint - integer(_range/2);	
+	_ceiling = _centerPoint  + integer(_range/2);
+	
+	if (_ceiling > _rangeCeil)		// _range is too wide range is too wide, need to compress to fit
+		_floor += _ceiling - _rangeCeil;	// subtracts from the bottom the difference between the desired top and the actual top
+		_ceiling = _rangeCeil;				// sets the top to 255
+	end if
+	
+	if (_floor < 0)		// _range is too wide, need to compress to fit
+		_ceiling -= _floor - _rangeFloor;
+		_floor = _rangeFloor;		
+	end if
+end
