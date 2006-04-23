@@ -59,10 +59,16 @@ Since there's no point in scaling pixel-noise below 100%, the standard range of 
 
 That's send to the function as `noiseScale/100`.
 
+_colorSpace matches the numeric equivalents of the formatting constants kFormatRGB255, kFormatRGB219 and kFormatYUV219, or just send the constant.
 
 
 
+##fitRange
+     fitRange(value _rangeFloor, value _rangeCeil, value _centerPoint, value _range, float _floor, float _ceiling )
 
+This is anotehr portability function for a feature I've used in several places. A range of values within another range of values is specified by a center point and range around that center. What this does is limit the range based on proximity to either end of the parent range of values. In a range from 0 to 50, the desired centerpoint is set to 10 and the range is 22. This function would set the bottom of the range to 0 and the top to 20 (center point + distance from center to edge of values).
+
+The two last float arguments are assigned the edge values for the range.
 
 </body>
 </html>
