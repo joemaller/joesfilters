@@ -1,4 +1,4 @@
-filter "Joe’s Color Noise";
+filter "Joe’s RGB Color Noise";
 group "Joe’s Filters [BETA]";
 
 
@@ -25,13 +25,10 @@ input gCeil, "G/cR Ceil", Slider, 255, 0, 255;
 input bFloor, "B/cB Floor", Slider, 0, 0, 255;
 input bCeil, "B/cB Ceil", Slider, 255, 0, 255;
 
-input ApplyAs, "Mode", Popup, 1, "Normal", "Multiply", "Screen", "Overlay", "Lighten", "Darken", "Add", "Subtract", "Difference", "Bump";
+input ApplyAs, "Mode", Popup, 1, "Normal", "Multiply", "Screen", "Overlay", "Lighten", "Darken", "Add", "Subtract", "Difference";
 input Opacity, "Opacity", slider, 100, 0, 100;
 
-input colorSpace, "ColorSpace", popup, 2, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
-
-input dir, "Direction", angle, 10, -360, 360 detent 10
-input outset, "outset", slider, 0.25, 0,3;
+//	input colorSpace, "ColorSpace", popup, 2, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
 
 
 input jfcopyright, "© Joe’s Filters", Label,"";
@@ -87,7 +84,10 @@ end
 
 
 
-// INCLUDE "RandomSeedFPS.fxscript" r157
+
+// INCLUDE "RandomSeedFPS.fxscript" r158
+
+float trueFPS = fps * (fieldprocessing+1);		// interlace-corrected FPS
 
 on RandomSeedFPS(value _fakeFPS, value _baseFPS, value _baseDuration, value _baseRatio)
 	// this sets randomseed based on the completion of the clip calculated against the fakeFPS
@@ -111,42 +111,26 @@ end
 // END "RandomSeedFPS.fxscript"
 
 
-float w, h, amin, amax;
-point noiseRect[4], noiseRect2[4]; 
-
-dimensionsOf(Dest, w, h);
-float zoomfactor; zoomfactor = w/720;
-float trueFPS = fps * (fieldprocessing+1);		// interlace-corrected FPS
-
-
-image xbuffer[w][h];
-
 
 
 RandomSeedFPS(noiseFPS, trueFPS, duration, ratio);
 if (fixedNoise); randomseed((noiseFPS + 1)/trueFPS); end if
 
-RandomNoiseScaled(dest, NoiseAmount, rFloor, rCeil, gFloor, gCeil, bFloor, bCeil, noiseScale/100, softnoise, noiseAspect, colorSpace);
+RandomNoiseScaled(dest, NoiseAmount, rFloor, rCeil, gFloor, gCeil, bFloor, bCeil, noiseScale/100, softnoise, noiseAspect, 2);
 
 if ApplyAs == 1; Matte(dest, src1, dest, opacity/100, kalpha); end if
-if ApplyAs == 2; Multiply(src1, xbuffer, dest, opacity/100, kalpha); end if
-if ApplyAs == 3; Screen(src1, xbuffer, dest, opacity/100, kalpha); end if
-if ApplyAs == 4; Overlay(src1, xbuffer, dest, opacity/100, kalpha); end if
-if ApplyAs == 5; Lighten(src1, xbuffer, dest, opacity/100, kalpha); end if
-if ApplyAs == 6; Darken(src1, xbuffer, dest, opacity/100, kalpha); end if
-if ApplyAs == 7; add(src1, xbuffer, dest, opacity/100, kalpha); end if;
+if ApplyAs == 2; Multiply(src1, dest, dest, opacity/100, kalpha); end if
+if ApplyAs == 3; Screen(src1, dest, dest, opacity/100, kalpha); end if
+if ApplyAs == 4; Overlay(src1, dest, dest, opacity/100, kalpha); end if
+if ApplyAs == 5; Lighten(src1, dest, dest, opacity/100, kalpha); end if
+if ApplyAs == 6; Darken(src1, dest, dest, opacity/100, kalpha); end if
+if ApplyAs == 7; add(src1, dest, dest, opacity/100, kalpha); end if;
 if ApplyAs == 8; 
-		subtract(src1, xbuffer, dest, opacity/100, kalpha);
+		subtract(src1, dest, dest, opacity/100, kalpha);
 		ChannelCopy(src1, dest, kalpha, knone, knone, knone); 
  end if;
 if ApplyAs == 9; 
-		Difference(src1, xbuffer, dest, kalpha); 
+		Difference(src1, dest, dest, kalpha); 
 		ChannelCopy(src1, dest, kalpha, knone, knone, knone); 
 		Matte(dest, src1,  dest, opacity/100, knone); 
 end if;
-
-if ApplyAs == 10;
-		Displace(src1, dest, dest, 1, outset,outset, opacity/100, AspectOf(dest));
-		
-		//	BumpMap(src1, dest, dest, true, -dir, outset, opacity/100, AspectOf(dest));
-end if
