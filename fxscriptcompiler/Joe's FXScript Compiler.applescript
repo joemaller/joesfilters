@@ -461,12 +461,6 @@ on FCPdismissStartupWindows()
 	-- check for window "Offline Files"
 	tell application "Final Cut Pro" to activate -- bring FCP to front
 	
-	(* try this inside a tell process "Final Cut Pro" block:
-    
-    set frontmost to true
-
-*)
-	
 	tell application "System Events"
 		tell process "Final Cut Pro"
 			
