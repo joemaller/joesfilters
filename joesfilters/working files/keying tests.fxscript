@@ -9,7 +9,7 @@ input Tolerance, "Tolerance", Slider, 100, 0, 511;
 input cTolerance, "cTolerance", Slider, 100, 0, 511;
 input Soften, "Edge Soften", Slider, 0, 0, 255;
 
-input RGBorYUV, "RGB or YUV", RadioGroup, 1, "RGB", "YUV";
+input RGBorYUV, "RGB or YUV", RadioGroup, 1, "RGB", "YUV", "makeKeyMapBez";
 
 input doit, "Color convert to YUV", Checkbox, 0;
 
@@ -106,15 +106,13 @@ if (RGBorYUV == 1)
 	RGBColorKey(dest, dest, aRGBcolor.r, Tolerance, aRGBcolor.g, Tolerance, aRGBcolor.b, Tolerance, Soften, true)
 else
 	if (getPixelFormat(src1) != kFormatYUV219)
-	ConvertImage(src1, dest, kFormatYUV219);
-			DebugText("converted to YUV");
-
+		ConvertImage(src1, dest, kFormatYUV219);
+		DebugText("converted to YUV");
 	else
 		dest = src1;
 	end if
-if (doit);	RGBtoYUVcolor(aRGBcolor); end if
-
-YUVColorKey(dest, dest, aRGBcolor.r, Tolerance, aRGBcolor.g, cTolerance, aRGBcolor.b, cTolerance, Soften, true)
+	if (doit);RGBtoYUVcolor(aRGBcolor); end if
+	YUVColorKey(dest, dest, aRGBcolor.r, Tolerance, aRGBcolor.g, cTolerance, aRGBcolor.b, cTolerance, Soften, true)
 end if
 
 ColorReporter(dest, aRGBcolor, "aRGBcolor", kfloat2, 0, 32, kcenterJustify)

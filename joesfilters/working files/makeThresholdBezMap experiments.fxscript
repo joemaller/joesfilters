@@ -1,15 +1,26 @@
+// next step: Integrate YUV + RGB keying into the same function.
+
+
+
+
 filter "testing makeThresholdBezMap";
 group "nopthing";
 
+input keyColor, "Key Color", Color, 255, 22, 22, 255;
 
-input threshold, "Threshold", slider, 100, 0, 255;
-input steps, "Steps", slider, 2, 2, 255
+//	input rthreshold, "Threshold", slider, 100, 0, 255;
+//	input gthreshold, "Threshold", slider, 100, 0, 255;
+//	input bthreshold, "Threshold", slider, 100, 0, 255;
+
 input width, "width", slider, 10, 1, 255
 input softness, "softness", slider, 25, 0, 255
+input showOriginal, "Show Original", radiogroup, 1, "Original", "Red", "Green", "Blue", "Red-Green", "!r-g";
 
-input arLength, "Ar Length", Slider, 255, 10, 255;
+input doRGBkey, "doRGBkey", checkbox, 0;
+input softadjuster, "RGBKey Softness adjust", slider, 1, 0, 10;
+input wadjuster, "RGBKey Width adjust", slider, 1, 0, 10;
 
-
+InformationFlag("YUVaware");
 
 
 code
@@ -24,6 +35,23 @@ on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_
 on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
 
 // END "basic_math.fxscript"
+
+
+
+
+// INCLUDE "RGBtoYUVcolor.fxscript" r160
+
+on RGBtoYUVcolor(color _rgbColor)
+	color _temp;
+	_temp = _rgbColor
+	_rgbColor.r = _temp.r * 0.299 + _temp.g * 0.587 + _temp.b * 0.114 
+	_rgbColor.g = _temp.r * -0.169 + _temp.g * -0.332 + _temp.b * 0.500 + 128; 
+	_rgbColor.b = _temp.r * 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
+end 
+
+// END "RGBtoYUVcolor.fxscript"
+
+
 
 
 // INCLUDE "makeThresholdMapBez.fxscript" r130
@@ -56,49 +84,49 @@ on makeKeyMapBez(float _kmap, value _center, value _width, value _softness, valu
 		// _th is the point to threshold around, _steps are the number of grays around _th
 		// mapLength is 255 for 8-bit maps
 		
+		// _width is the space between softness. The plateau between _startSoft+_softness/2 and _endSoft-softness/2
+		
 	point _p1, _p2;
-	float _startSoft, _startWidth, _endWidth, _endSoft;
+	float _startSoft, _startWidth, _endWidth, _endSoft, _inHeight, _outHeight;
 	
 	_startWidth = _center - _width/2;
 	_startSoft = integer(_startWidth - _softness/2);
 	if (_startWidth > 0)
 		_startWidth = integer(_startWidth)
-		if (_startSoft <= 0)
+		if (_startSoft < 0)
+			_inHeight = -_startSoft/(_softness/2);
 			_startSoft = 0;
 		end if
 	else
 		_startWidth = 0;
 		_startSoft = 0;
+		_inHeight = 1;
 	end if
 	
 	_endWidth = _center + _width/2;
 	_endSoft = integer(_endWidth + _softness/2); 
 	if (_endWidth < _mapLength)
 		_endWidth = integer(_endWidth);
-		if (_endSoft >= _mapLength)
+		if (_endSoft > _mapLength)
+			_outHeight = (_endSoft-_mapLength)/(_softness/2);
 			_endSoft = _mapLength;
 		end if
 	else
 		_endWidth = _mapLength; 
 		_endSoft = _mapLength;
+		_outHeight = 1;
 	end if
 			
-	DebugText("_center", _center);
-	DebugText("startSoft", _startSoft, "startWidth", _startWidth, "endWidth", _endWidth, "endSoft", _endSoft );
 	_kmap *=0; // zero out array, zero-indexes will not be reassigned.
 	
-	_p1 = {0, 0};
+	_p1 = {0, _inHeight};
 	_p2 = {(_softness/2)/(_softness/2 + _width), 1};
-// =========================================================================
-// = THERE IS A BUG HERE WHICH IS NOT ASSIGNING _p2 TO THE CORRECT X POINT =
-// =========================================================================
-float debug = _p2.x;
-DebugText("_p2.x", debug);
+
 	// first assignment goes from beginning of softness through end of width
 	BezToLevelMap(_kmap, _p1, _p1, _p2, _p2, _startSoft, _endWidth, TRUE);
 
 	_p1 = {0, 1};
-	_p2 = {1, 0};
+	_p2 = {1, _outHeight};
 
 	// second assignment is only the trailing softness falloff
 	BezToLevelMap(_kmap, _p1, _p1, _p2, _p2, _endWidth, _endSoft, TRUE);
@@ -106,12 +134,62 @@ DebugText("_p2.x", debug);
 end
 
 
+on joesColorKey(image _src, image _dest, value _keyRed, width, value _keyGreen, width, value _keyBlue, width, value _softness, 1)
 
 
 
-float LUT[256]
-//LUT = linearRamp;
-//makeThresholdMapBez(LUT, threshold, steps, arLength);
-makeKeyMapBez(LUT, threshold, width, softness, 255);
-levelMap(src1, dest, linearRamp, LUT, linearRamp, linearRamp);
-channelFill(dest, 255, -1, 0, 0);
+
+
+float rMap[256], gMap[256], bMap[256];
+
+float w, h;
+DimensionsOf(dest, w, h);
+image rImg[w][h];
+image gImg[w][h];
+image bImg[w][h];
+
+ConvertImage(rIMG, rImg, 2);
+ConvertImage(gIMG, gImg, 2);
+ConvertImage(bIMG, bImg, 2);
+
+RGBtoYUVcolor(keyColor);
+
+makeKeyMapBez(rMap, keyColor.r, width, softness, 255);
+makeKeyMapBez(gMap, keyColor.g, width, softness, 255);
+makeKeyMapBez(bMap, keyColor.b, width, softness, 255);
+
+levelMap(src1, rImg, linearRamp, rMap, linearRamp, linearRamp);
+levelMap(src1, gImg, linearRamp, linearRamp, gMap, linearRamp);
+levelMap(src1, bImg, linearRamp, linearRamp, linearRamp, bMap);
+                              
+ChannelCopy(rImg, rImg, kalpha, kred, kred, kred);
+ChannelCopy(gImg, gImg, kalpha, kgreen, kgreen, kgreen);
+ChannelCopy(bImg, bImg, kalpha, kblue, kblue, kblue);
+
+
+if (showOriginal == 1)
+	dest =src1;
+else if (showOriginal == 2)
+	dest = rImg;
+else if (showOriginal == 3)
+	dest = gImg;
+else if	(showOriginal == 4)
+	dest = bImg;
+else if	(showOriginal == 5)
+//	add(rImg, gImg, dest, 128, kalpha);
+	ImageAND(rImg, gImg, gImg)
+	ImageAND(gImg, bImg, dest)
+else if (showOriginal == 6)
+
+	//Difference(rImg, gImg, dest, kAlpha);
+	AddOffset(gImg, bImg, dest, -128)
+end if
+
+if (doRGBkey)
+
+	width = wadjuster
+	softness *= softadjuster
+//	RGBColorKey(src1, dest, keyColor.r, width, keyColor.g, width, keyColor.b, width, softness, 1)
+	YUVColorKey(src1, dest, keyColor.r, width, keyColor.g, width, keyColor.b, width, softness, 1)
+	Invert(dest, dest)
+end if
