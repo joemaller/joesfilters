@@ -6,7 +6,7 @@
 	<string>ImageAnd(${1:srcImage1}, ${2:srcImage2}, ${3:destImage});
 </string>
 	<key>name</key>
-	<string>Difference copy</string>
+	<string>ImageAnd</string>
 	<key>scope</key>
 	<string>source.fxscript</string>
 	<key>tabTrigger</key>

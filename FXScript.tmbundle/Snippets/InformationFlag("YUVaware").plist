@@ -10,7 +10,7 @@
 	<key>scope</key>
 	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>infoflag</string>
+	<string>info</string>
 	<key>uuid</key>
 	<string>2526F035-4131-468E-9CAA-A9E8FE42D17B</string>
 </dict>
