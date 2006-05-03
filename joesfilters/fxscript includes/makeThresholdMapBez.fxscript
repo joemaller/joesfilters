@@ -1,7 +1,10 @@
 on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
+		// requires basic_math.fxscript
+		
 		// a fast thresholding function using BezToLevelMap instead of for:next loops
 		// _th is the point to threshold around, _steps are the number of grays around _th
 		// mapLength is 255 for 8-bit maps
+		
 		
 	point _p1, _p2;
 	
