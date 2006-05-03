@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Color, ${3:A}, ${4:R}, ${5:G}, ${6:B};
+	<string>ImageAnd(${1:srcImage1}, ${2:srcImage2}, ${3:destImage});
 </string>
 	<key>name</key>
-	<string>Color (RGB)</string>
+	<string>Difference copy</string>
 	<key>scope</key>
 	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>input</string>
+	<string>imageand</string>
 	<key>uuid</key>
-	<string>45428D9B-CD3E-432C-A421-6C0A7019C806</string>
+	<string>B878BD4C-21A2-4F3A-8A45-636EC899DF4A</string>
 </dict>
 </plist>

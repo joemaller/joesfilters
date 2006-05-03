@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Point, ${3:X}, ${4:Y}, ${5:Z};
+	<string>BumpMap(${1:srcImage}, ${2:destImage}, ${3:mapImage}, ${4:repeatEdges}, ${5:angle}, ${6:scale}, ${7:lumaScale}, ${8:AspectOf($2)});
 </string>
 	<key>name</key>
-	<string>Point3D</string>
+	<string>BumpMap</string>
 	<key>scope</key>
-	<string></string>
+	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>input</string>
+	<string>bumpmap</string>
 	<key>uuid</key>
-	<string>4CF35F63-CD67-4021-A04F-ADC21EDFA378</string>
+	<string>0203808F-1EF2-47DA-9D18-C2C878AD0031</string>
 </dict>
 </plist>

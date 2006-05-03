@@ -3,15 +3,14 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>input ${1:varname}, "${2:text label}", Color, ${3:A}, ${4:R}, ${5:G}, ${6:B};
-</string>
+	<string>InformationFlag("requiresYUV")</string>
 	<key>name</key>
-	<string>Color (RGB)</string>
+	<string>InformationFlag("requiresYUV")</string>
 	<key>scope</key>
 	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>input</string>
+	<string>infoflag</string>
 	<key>uuid</key>
-	<string>45428D9B-CD3E-432C-A421-6C0A7019C806</string>
+	<string>0472BDC3-16AA-42F9-ADDE-1ABA30C0B348</string>
 </dict>
 </plist>

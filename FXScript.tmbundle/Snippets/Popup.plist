@@ -8,7 +8,7 @@
 	<key>name</key>
 	<string>Popup</string>
 	<key>scope</key>
-	<string></string>
+	<string>source.fxscript</string>
 	<key>tabTrigger</key>
 	<string>input</string>
 	<key>uuid</key>
