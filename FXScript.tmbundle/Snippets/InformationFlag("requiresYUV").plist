@@ -3,7 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>InformationFlag("requiresYUV")</string>
+	<string>InformationFlag("requiresYUV");
+</string>
 	<key>name</key>
 	<string>InformationFlag("requiresYUV")</string>
 	<key>scope</key>

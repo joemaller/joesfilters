@@ -3,15 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>InformationFlag("hasfields");
+	<string>point ${1:w};
+DimensionsOf(${2:dest}, $1.x, $1.y);
+image ${3:img0}[$1.x][$1.y];
 </string>
 	<key>name</key>
-	<string>InformationFlag("hasfields")</string>
+	<string>DimensionsOf() w/ point vars</string>
 	<key>scope</key>
 	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>info</string>
+	<string>dimsofp</string>
 	<key>uuid</key>
-	<string>DE0C3E02-E0D3-458C-BCC6-FD6B865919BC</string>
+	<string>7353C10B-D130-432F-96BD-4A769A22D0BC</string>
 </dict>
 </plist>

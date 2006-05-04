@@ -3,15 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>InformationFlag("hasfields");
+	<string>if (${1:Condition})
+	${0: // insert code here}
+end if
 </string>
 	<key>name</key>
-	<string>InformationFlag("hasfields")</string>
+	<string>if ... end</string>
 	<key>scope</key>
 	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>info</string>
+	<string>if</string>
 	<key>uuid</key>
-	<string>DE0C3E02-E0D3-458C-BCC6-FD6B865919BC</string>
+	<string>2A9F9CFB-9853-4652-BF39-C1CA15E31D12</string>
 </dict>
 </plist>

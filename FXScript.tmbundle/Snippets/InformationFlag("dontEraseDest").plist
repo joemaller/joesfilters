@@ -3,7 +3,8 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>InformationFlag("dontEraseDest")</string>
+	<string>InformationFlag("dontEraseDest");
+</string>
 	<key>name</key>
 	<string>InformationFlag("dontEraseDest")</string>
 	<key>scope</key>

@@ -3,15 +3,15 @@
 <plist version="1.0">
 <dict>
 	<key>content</key>
-	<string>InformationFlag("hasfields");
+	<string>BlitRect(${1:sourceImage}, ${2:sourcePoly}, ${3:destImage}, ${4:destPoly});
 </string>
 	<key>name</key>
-	<string>InformationFlag("hasfields")</string>
+	<string>BlitRect</string>
 	<key>scope</key>
 	<string>source.fxscript</string>
 	<key>tabTrigger</key>
-	<string>info</string>
+	<string>blitrect</string>
 	<key>uuid</key>
-	<string>DE0C3E02-E0D3-458C-BCC6-FD6B865919BC</string>
+	<string>5F1E25B9-E356-4B1F-9BA0-9B3ACB045523</string>
 </dict>
 </plist>

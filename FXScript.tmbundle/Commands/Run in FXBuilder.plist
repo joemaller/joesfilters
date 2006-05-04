@@ -130,7 +130,7 @@ on FXBuilderPasteText(sourceText) -- places sourceText into an FXBuilder window
 			tell application "Final Cut Pro" to activate
 			keystroke "a" using command down -- select all
 			key code 51 -- (delete key) delete current selected text
-			keystroke "va" using command down -- paste and select all			
+			keystroke "v" using command down -- paste and select all			
 		end tell
 	end tell
 end FXBuilderPasteText

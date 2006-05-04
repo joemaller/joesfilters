@@ -5,7 +5,8 @@
 	<key>content</key>
 	<string>float ${1:w}, ${2:h};
 DimensionsOf(${3:dest}, $1, $2);
-image ${4:img0}[$1][$2];</string>
+image ${4:img0}[$1][$2];
+</string>
 	<key>name</key>
 	<string>DimensionsOf() w/ float vars</string>
 	<key>scope</key>
