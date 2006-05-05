@@ -16,18 +16,21 @@ code
 
 
 on extendFrame(image _src, image _dest, value _edges)
-	
-		// REQUIRES: FastRotate
 		
 		// need to build in an option to trim in on the source frame to clip messy edges
 
 		// _edges: (matches RadioGroup input)
 		//		1: wrap around
-		//		2: stretch to corners (4 stretched blits)
 		//		3: 8 tiles	(8 blits)
 
-
-	point _srcBox[4], _destBox[4], _outBox[4];
+		// this works, but there are several rounds of optimization left to do:
+		//	1. Truncate both boxes to only copy the visible result. Will require some logic to determine when  one box exceeds the other
+		//	2. Second row is a copy of the first row. Copy larger areas to save blits.
+		//	 		example based on calculator keypad: 
+		//			copy 4 7 & 8. 9 & 6 are a copy of 4 & 7, saving one blit
+		//			1,2 & 3 are a copy of 7, 8 & 9, saving two blits.
+		
+	point _srcBox[4], _destBox[4], _outBox[4], _shifter;
 	BoundsOf(_src, _srcBox);
 	BoundsOf(_dest, _destBox);
 
@@ -36,67 +39,68 @@ on extendFrame(image _src, image _dest, value _edges)
 	else 
 		BlitRect(_src, _srcBox, _dest, _srcBox);
 
-		_outBox[0] = _srcBox[0];
-		_outBox[1] = _srcBox[1];
-		_outBox[2] = _destBox[1];
-		_outBox[3] = _destBox[0];
-		if (_edges == 1 || _edges == 3 )
-			_outBox[2].x = _srcBox[1].x;
-			_outBox[3].x = _srcBox[0].x;
-			if (_edges == 1)
-				//	fastRotate(_outBox, 180, aspectOf(dest));
-				mirrorRect(_outBox, 0, 1);
-			end if
-			
+		_shifter = {0, (_srcBox[3].y - _srcBox[0].y)} //	vertical shift
+		_outBox = _srcBox;
+		_outBox -= _shifter;
+		if (_edges == 2)
+			mirrorRect(_outBox, 0, 1);
 		end if
 		BlitRect(_src, _srcBox, _dest, _outBox);
 
-		_outBox[0] = _destBox[1];
-		_outBox[1] = _srcBox[1];
-		_outBox[2] = _srcBox[2];
-		_outBox[3] = _destBox[2];
-		if (_edges == 1 || _edges == 3 )
-			_outBox[0].y = _srcBox[0].y;	
-			_outBox[3].y = _srcBox[2].y;	
-			if (_edges == 1)
-				//	fastRotate(_outBox, 180, aspectOf(dest));
-				mirrorRect(_outBox, 1, 0);
-			end if
-			
-		end if		
+		_outBox = _srcBox;
+		_outBox += _shifter;
+		if (_edges == 2)
+			mirrorRect(_outBox, 0, 1);
+		end if
 		BlitRect(_src, _srcBox, _dest, _outBox);
 		
-		_outBox[0] = _destBox[3];
-		_outBox[1] = _destBox[2];
-		_outBox[2] = _srcBox[2];
-		_outBox[3] = _srcBox[3];
-		if (_edges == 1 || _edges == 3 )
-			_outBox[0].x = _srcBox[0].x;
-			_outBox[1].x = _srcBox[1].x;
-			if (_edges == 1)
-				//	fastRotate(_outBox, 180, aspectOf(dest));
-				mirrorRect(_outBox, 0, 1);
-			end if
-			
+		_shifter = {(_srcBox[1].x - _srcBox[0].x), 0}; //	horizontal shift
+		_outBox = _srcBox;
+		_outBox -= _shifter;
+		if (_edges == 2)
+			mirrorRect(_outBox, 1, 0);
 		end if
 		BlitRect(_src, _srcBox, _dest, _outBox);
 
-		_outBox[0] = _srcBox[0];
-		_outBox[1] = _destBox[0];
-		_outBox[2] = _destBox[3];
-		_outBox[3] = _srcBox[3];
-		if (_edges == 1 || _edges == 3 )
-			_outBox[1].y = _srcBox[0].y;	
-			_outBox[2].y = _srcBox[2].y;	
-			if (_edges == 1)
-				//	fastRotate(_outBox, 180, aspectOf(dest));
-				mirrorRect(_outBox, 1, 0);
-			end if
-			
+		_outBox = _srcBox;
+		_outBox += _shifter;
+		if (_edges == 2)
+			mirrorRect(_outBox, 1, 0);
 		end if
 		BlitRect(_src, _srcBox, _dest, _outBox);
-
-
+		
+		_shifter = {(_srcBox[1].x - _srcBox[0].x), (_srcBox[3].y - _srcBox[0].y)}; //	diagonal shift
+		_outBox = _srcBox;
+		_outBox += _shifter;
+		if (_edges == 2)
+			mirrorRect(_outBox, 1, 1);
+		end if
+		BlitRect(_src, _srcBox, _dest, _outBox);
+		
+		_outBox = _srcBox;
+		_outBox -= _shifter;
+		if (_edges == 2)
+			mirrorRect(_outBox, 1, 1);
+		end if
+		BlitRect(_src, _srcBox, _dest, _outBox);
+		
+		_shifter = {(_srcBox[1].x - _srcBox[0].x), -(_srcBox[3].y - _srcBox[0].y)}; //	reverse diagonal shift
+		
+		_outBox = _srcBox;
+		_outBox += _shifter;
+		if (_edges == 2)
+			mirrorRect(_outBox, 1, 1);
+		end if
+		BlitRect(_src, _srcBox, _dest, _outBox);
+		
+		_outBox = _srcBox;
+		_outBox -= _shifter;
+		if (_edges == 2)
+			mirrorRect(_outBox, 1, 1);
+		end if
+		BlitRect(_src, _srcBox, _dest, _outBox);
+		
+		
 	end if
 
 
@@ -135,72 +139,6 @@ end
 
 
 
-// INCLUDE "FastRotate.fxscript" r169
-
-on FastRotate(point _srcPoly, value _rotation, value _aspect)
-	// REQUIRES: CenterOfPoly
-	
-	// a quick tool for rotating a polygon around a centerpoint.
-	// saves the step of having to define an extra point variable and call the centerOf function first
-	point _centerPt;
-	centerOfPoly(_srcPoly, _centerPt);
-	Rotate(_srcPoly, _centerPt, _rotation, _aspect)
-end
-
-// END "FastRotate.fxscript"
-
-
-// INCLUDE "ArrayPointCount.fxscript" r45
-
-on indexExistsPt(value _i, point _ar);return(_ar[_i] == true); end
-
-on ArrayPointCount(point _ar)
-	float _l, _r, _seed, _step, _counter;
-	_seed = 7; // somewhat arbitrary, chosen after lots of performance testing
-	_step = _seed;	// store seed for later
-	 
-	_l = 1 // set this to save a loop checking the zeroth index
-	_r = _l + _seed;
-
-	repeat while true
-		_counter++;
-
-		if (indexExistsPt(_l, _ar) && indexExistsPt(_r, _ar))	// both values in array
-			_l = _r+1;	// start at _r+1 to prevent double-checking values
-			_r = _l + _step;
-			_step += _seed * _counter;
-
-		else if (!indexExistsPt(_l, _ar) && !indexExistsPt(_r, _ar))	// no values in array
-			return _l;	// stepped one over _r previously, last index must be _l-1, return _l to compenstate for count vs. index off-by-one
-
-		else 	// bottom value in array, top not. Half top and step bottom
-			_step = _r; // temporary storage of the _r variable
-			_l = _l+1; // increment _l to prevent double-checking values
-			_r = _l + integer((_r - _l)/2);	// half the distance between _l and _r
-			_step -= _r; // difference between old _r and new _r
-
-		end if
-	end repeat;
-end
-
-// END "ArrayPointCount.fxscript"
-
-
-// INCLUDE "CenterOfPoly.fxscript" r60
-
-on CenterOfPoly(point _poly, point _center)
-	// requires arrayPointCount.fxscript
-	
-	float _x, _arLength;
-	_arLength = arrayPointCount(_poly);
-	_center = _poly[0];
-	for _x = 1 to _arLength - 1
-		_center += _poly[_x]
-	next;
-	_center /= _arLength
-end
-
-// END "CenterOfPoly.fxscript"
 
 
 
