@@ -4,8 +4,10 @@ group "BETA FUNCTIONS";
 
 
 
-input method, "Method", RadioGroup, 1, "Wrap Around", "Stretch to Corners", "Tile Corners";
-input doCorners, "do corners", Checkbox, 1;
+input method, "Method", RadioGroup, 1, "Wrap Around", "Mirror Edges";
+input frameScaler, "FrameScaler", Slider, 1.75, 1, 4;
+
+input cropper, "cropper", Slider, 1, 0.1, 1;
 
 
 
@@ -15,14 +17,19 @@ code
 
 
 
-on extendFrame(image _src, image _dest, value _edges)
+on extendFrame(image _src, image _dest, value _edges, value _crop)
+		
+		// REQUIRES: MirrorRect
 		
 		// need to build in an option to trim in on the source frame to clip messy edges
-
+		// that would just scale the initial box and sample from a smaller source frame
+		
 		// _edges: (matches RadioGroup input)
 		//		1: wrap around
 		//		3: 8 tiles	(8 blits)
 
+		// _crop is a percentage of the frame to crop in
+		
 		// this works, but there are several rounds of optimization left to do:
 		//	1. Truncate both boxes to only copy the visible result. Will require some logic to determine when  one box exceeds the other
 		//	2. Second row is a copy of the first row. Copy larger areas to save blits.
@@ -30,9 +37,13 @@ on extendFrame(image _src, image _dest, value _edges)
 		//			copy 4 7 & 8. 9 & 6 are a copy of 4 & 7, saving one blit
 		//			1,2 & 3 are a copy of 7, 8 & 9, saving two blits.
 		
-	point _srcBox[4], _destBox[4], _outBox[4], _shifter;
+		// currently only supports extending frames by up to 300% (two full frames added to each dimension)
+		
+	point _srcBox[4], _destBox[4], _inBox[4], _outBox[4], _shifter;
 	BoundsOf(_src, _srcBox);
 	BoundsOf(_dest, _destBox);
+	
+	_srcBox *= _crop;
 
 	if (_srcBox[2] == _destBox[2])
 		_dest = _src;
@@ -46,60 +57,53 @@ on extendFrame(image _src, image _dest, value _edges)
 			mirrorRect(_outBox, 0, 1);
 		end if
 		BlitRect(_src, _srcBox, _dest, _outBox);
+		
+		if (_edges == 1)	// wrap edges, start opposite side
+			MakeRect(_inBox, _srcBox[2].x, _srcBox[2].y, -(_srcBox[3].x - _destBox[0].x), -(_srcBox[3].y - _destBox[0].y));
+			_shifter = {_srcBox[0].x - _srcBox[1].x, 0}
+		else 
+			MakeRect(_inBox, _srcBox[3].x, _srcBox[3].y, (_srcBox[3].x - _destBox[0].x), -(_srcBox[3].y - _destBox[0].y));
+			_shifter = {_inBox[0].x - _inBox[1].x, 0}
+		end if
+		_outBox = _inBox;
+		_outBox += _shifter;
+		if (_edges == 2)
+			mirrorRect(_inBox, 1, 0);
+		end if
+		
+		BlitRect(_dest, _inBox, _dest, _outBox);
+		
+		if (_edges == 1)	// wrap edges, start opposite side
+			MakeRect(_inBox, _srcBox[3].x, _srcBox[3].y, (_destBox[1].x - _srcBox[1].x), -(_srcBox[2].y - _destBox[1].y));
+			_shifter = {_srcBox[1].x - _srcBox[0].x, 0}
+		else 
+			MakeRect(_inBox, _srcBox[2].x, _srcBox[2].y, -(_destBox[2].x - _srcBox[2].x), -(_srcBox[2].y - _destBox[1].y));
+			_shifter = {_inBox[0].x - _inBox[1].x, 0}
+		end if
+		
+		_outBox = _inBox;
+		_outBox += _shifter;
+		if (_edges == 2)
+			mirrorRect(_inBox, 1, 0);
+		end if
+		
+		BlitRect(_dest, _inBox, _dest, _outBox);
+		
+		if (_edges == 1)	// wrap edges, start opposite side
+			MakeRect(_inBox, _destBox[0].x, _srcBox[0].y, (_destBox[1].x - _destBox[0].x), (_srcBox[1].y - _destBox[1].y));
+			_shifter = {0, _srcBox[3].y - _srcBox[0].y}
+		else
+			MakeRect(_inBox, _destBox[0].x, _srcBox[3].y, (_destBox[1].x - _destBox[0].x), -(_srcBox[1].y - _destBox[1].y));
+			_shifter = {0 ,_inBox[0].y - _inBox[3].y}
+		end if
+		
+		_outBox = _inBox;
+		_outBox += _shifter;
+		if (_edges == 2)
+			mirrorRect(_inBox, 0 , 1);
+		end if
+		BlitRect(_dest, _inBox, _dest, _outBox);
 
-		_outBox = _srcBox;
-		_outBox += _shifter;
-		if (_edges == 2)
-			mirrorRect(_outBox, 0, 1);
-		end if
-		BlitRect(_src, _srcBox, _dest, _outBox);
-		
-		_shifter = {(_srcBox[1].x - _srcBox[0].x), 0}; //	horizontal shift
-		_outBox = _srcBox;
-		_outBox -= _shifter;
-		if (_edges == 2)
-			mirrorRect(_outBox, 1, 0);
-		end if
-		BlitRect(_src, _srcBox, _dest, _outBox);
-
-		_outBox = _srcBox;
-		_outBox += _shifter;
-		if (_edges == 2)
-			mirrorRect(_outBox, 1, 0);
-		end if
-		BlitRect(_src, _srcBox, _dest, _outBox);
-		
-		_shifter = {(_srcBox[1].x - _srcBox[0].x), (_srcBox[3].y - _srcBox[0].y)}; //	diagonal shift
-		_outBox = _srcBox;
-		_outBox += _shifter;
-		if (_edges == 2)
-			mirrorRect(_outBox, 1, 1);
-		end if
-		BlitRect(_src, _srcBox, _dest, _outBox);
-		
-		_outBox = _srcBox;
-		_outBox -= _shifter;
-		if (_edges == 2)
-			mirrorRect(_outBox, 1, 1);
-		end if
-		BlitRect(_src, _srcBox, _dest, _outBox);
-		
-		_shifter = {(_srcBox[1].x - _srcBox[0].x), -(_srcBox[3].y - _srcBox[0].y)}; //	reverse diagonal shift
-		
-		_outBox = _srcBox;
-		_outBox += _shifter;
-		if (_edges == 2)
-			mirrorRect(_outBox, 1, 1);
-		end if
-		BlitRect(_src, _srcBox, _dest, _outBox);
-		
-		_outBox = _srcBox;
-		_outBox -= _shifter;
-		if (_edges == 2)
-			mirrorRect(_outBox, 1, 1);
-		end if
-		BlitRect(_src, _srcBox, _dest, _outBox);
-		
 		
 	end if
 
@@ -184,8 +188,8 @@ end
 
 float w, h;
 DimensionsOf(dest, w, h);
-image img0[w*1.75][h*1.75];
+image img0[w*frameScaler][h*frameScaler];
 
 
-extendFrame(src1, img0, method);
+extendFrame(src1, img0, method, cropper);
 ChannelCopyFit(img0, dest, kalpha, kred, kgreen, kblue);
