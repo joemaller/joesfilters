@@ -304,9 +304,9 @@
 		</dict>
 		<dict>
 			<key>match</key>
-			<string>\b(?i:CurveTo|DrawSoftDot|FillArc|FillOval|FillPoly|FillRegion|FrameArc|FrameOval|FramePoly|FrameRegion|Line|MakeRect|MakeRegion|OvalRegion|RegionIsEmpty)</string>
+			<string>\b(?i:CurveTo|DrawSoftDot|FillArc|FillOval|FillPoly|FillRegion|FrameArc|FrameOval|FramePoly|FrameRegion|Line|MakeRect|MakeRegion|OvalRegion|RegionIsEmpty)\b</string>
 			<key>name</key>
-			<string>support.shapes.process.fxscript</string>
+			<string>support.function.shapes.process.fxscript</string>
 		</dict>
 		<dict>
 			<key>match</key>
