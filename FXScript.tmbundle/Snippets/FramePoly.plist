@@ -6,7 +6,7 @@
 	<string>FramePoly(${1:poly}, ${2:image}, ${3:color}, ${4:width});
 </string>
 	<key>name</key>
-	<string>untitled</string>
+	<string>FramePoly</string>
 	<key>scope</key>
 	<string>source.fxscript</string>
 	<key>tabTrigger</key>
