@@ -7,10 +7,14 @@ input noiseScale, "Scale Noise", slider, 200, 100, 1000 label "%";
 input softNoise, "Blur Noise", Slider, 0, 0, 50 ramp 80;
 input noiseAspect, "Noise Aspect", Slider, 1, 0, 2 detent 1;
 
+input offsetAngle, "Offset Angle", Angle, 30, -360, 360;
+
 input hOffset, "Horizontal Offset", Slider, 100, 0, 200;
 input vOffset, "Vertical Offset", Slider, 100, 0, 200;
 
 input outset, "Outset", Slider, 1, 0, 10;
+input method, "Method", RadioGroup, 1, "Bumpmap", "Displacement";
+
 
 RenderEachFrameWhenStill;
 InformationFlag("YUVaware");
@@ -82,5 +86,9 @@ RandomSeedFPS(noiseFPS, trueFPS, duration, ratio);
 
 RandomNoiseScaled(dest, 400, 0, hOffset, 0, vOffset, 0,0, 100/noiseScale, softnoise, noiseAspect, 2);
 
-Displace(src1, dest, dest, 1, outset/100,outset/100, 0, AspectOf(dest));
 
+if (method==1)
+	BumpMap(src1, dest, dest, true, offsetAngle, outset/100, hOffset, AspectOf(dest));
+else if (method==2)
+	Displace(src1, dest, dest, 1, outset/100,outset/100, 0, AspectOf(dest));
+end if
