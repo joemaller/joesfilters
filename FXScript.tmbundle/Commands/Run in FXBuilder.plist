@@ -7,6 +7,8 @@
 	<key>command</key>
 	<string># this takes the current selection in a TextMate document and runs it in FXBuilder. Anything in the existing FXBuilder window will be overwritten.
 
+# The keystroke command-K matches FXBuilder's Run keystroke in FCP, differing from TextMate's run = command-R convention
+
 
 echo "Sending current document to FXBuilder..."
 

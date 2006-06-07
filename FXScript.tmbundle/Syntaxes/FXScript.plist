@@ -100,7 +100,7 @@
 						</dict>
 					</dict>
 					<key>match</key>
-					<string>\b(\w+),[ \t]+("[^"]+"),[ \t]+(?i:Angle|CheckBox|Clip|Color|FontList|Label|Point|Popup|RadioGroup|Slider|Text),</string>
+					<string>\b(\w+),[ \t]+("[^"]+"),[ \t]+(?i:Angle|CheckBox|Clip|Color|FontList|Label|Point|Popup|RadioGroup|Slider|Text),?</string>
 				</dict>
 			</array>
 		</dict>
