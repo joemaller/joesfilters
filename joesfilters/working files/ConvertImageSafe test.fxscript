@@ -1,0 +1,29 @@
+filter "ConvertImageSafe() Test";
+group "BETA";
+
+
+input colorspace1, "ColorSpace", popup, 3, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
+input colorspace2, "ColorSpace", popup, 3, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
+
+
+//InformationFlag("YUVaware");
+
+
+
+
+
+code
+
+on conv(image _i, value _cs)
+	convertImage(_i, _cs)
+end
+
+
+float w, h;
+DimensionsOf(dest, w, h);
+image img0[w][h];	
+dest = src1;
+	
+	
+conv(dest, dest, colorspace1);
+	

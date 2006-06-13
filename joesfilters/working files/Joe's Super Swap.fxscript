@@ -1,0 +1,51 @@
+transition "Joe's Super Swap";
+group "Beta";
+
+input superClip, "Super", Clip;
+input superW, "Super Width", Slider, 300, 10, 4000 label "px";
+input superH, "Super Height", Slider, 300, 10, 4000 label "px";
+
+input useFiltered, "Use FilteredBlitRect", Checkbox, 0;
+
+code
+
+float w, h, tRatio, clipDURATION, clipOFFSET; 	// define the floating point variables
+point inBox[4], outBox[4];	// define the point variables
+
+getLimits(superClip, clipDURATION, clipOFFSET);		// get the offset and duration of the clip in the well
+
+DimensionsOf(dest, w, h);		// dimensions of dest
+ChannelFill(dest, 0, 0, 0, 0);	// clear dest with invisible pixels to prevent compositing oddities
+
+if (superH/superW > w/h)	// compare frame aspect of the clip to the output frame aspect. if true, the logo-clip is taller
+	image superIMG[h * superW/superH * aspectOf(dest)][h];	// set super buffer's width based on maximum output height * aspect
+else
+	image superIMG[w][w * superH/superW / aspectOf(dest)];	// set super buffer's height based on maximum output width / aspect
+end if
+
+BoundsOf(superIMG, inBox);		// set inBox to bounds of superIMG
+
+tRatio = (ratio < 0.5) ? ratio * 2 : (1 - ratio) * 2;	// set a variable that goes from 0 to 1 and back to 0 (50% = 1)
+	
+outBox = inBox;		// copy inBox to outBox
+outBox *= tRatio;	// scale outBox by tRatio
+
+
+if (clipDURATION > 0)		// zero duration means there is no clip to work with
+	GetVideo(superClip, -clipOFFSET + (frame/(fieldprocessing+1)), superIMG);	// get the super, if video, playback the video...
+
+	if (useFiltered)	// a switch to enable FCP5's new FilteredBlitRect function (it looks better)
+		FilteredBlitRect(superIMG, inBox, dest, outBox, 11);
+	else 
+		BlitRect(superIMG, inBox, dest, outBox);	
+	end if
+
+end if
+
+
+if (ratio < 0.5)	// matte over different backgrounds based on how much of the effect is completed
+	Matte(dest, src1, dest, 1, kAlpha);
+else 
+	Matte(dest, src2, dest, 1, kAlpha);
+end if
+

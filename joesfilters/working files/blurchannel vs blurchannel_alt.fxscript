@@ -1,0 +1,113 @@
+scriptid "Gaussian Blur" //DO NOT LOCALIZE
+filter "Gaussian Blur";
+group "Blur";
+
+//	fast blur (gaussian) channels
+
+input Channel, "Channel", popup, 1, "Alpha+RGB", "Alpha", "RGB", "Red", "Green", "Blue", "Luminance";
+input Radius, "Radius", slider, 2, 0, 100 ramp 80 detent 2;
+
+
+
+input do_alt, "do blurChannel_alt", Checkbox, 1;
+
+input iterations, "Iterations", Slider, 1, 1, 100000 ramp 99.9;
+
+input debug, "show debug info", Checkbox, 0;
+
+
+InformationFlag("YUVaware")
+InformationFlag("modifiesSrc1")
+
+code
+
+
+
+// INCLUDE "NumReporter.fxscript" r124
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "NumReporter.fxscript"
+
+
+
+float r, w, h, mask, format
+float startTime, endTime;
+
+format = GetPixelFormat(dest)
+r = radius/renderRes;
+
+if Channel == 7		//	luminance
+	ConvertImage(src1, src1, kFormatYUV219);
+	// No need to set dest's format, because it will automatically be promoted to kFormatYUV219 when the "dest = src1" line is executed.
+	mask = 0x04		//  Y
+else if (channel >= 3) && (channel <= 6)		// RGB, R, G, or B
+	if (format == kFormatYUV219)
+		ConvertImage(src1, src1, kFormatRGB219)	// Convert src1 into the RGB-219 space.
+		SetPixelFormat(dest, kFormatRGB219)	// Set dest's format *without* converting the data.
+	end if
+
+	if channel == 6
+		mask = 0x01		//  B
+	else if channel == 5
+		mask = 0x02		//  G
+	else if channel == 4
+		mask = 0x04		//  R
+	else if channel == 3
+		mask = 0x07		//  RGB
+	end if
+else if channel == 2
+	mask = 0x08			// alpha
+else if channel == 1
+	mask = 0x0F			// all
+end if
+
+
+//	the dest=src1 copy is included in the timed iterations because it has to happen for BlurChannel where it apparently doesn't for BlurChannel_alt
+
+
+
+startTime = systime;
+for w = 1 to iterations
+	if (do_alt)
+		// blurchannel_alt is faster than blurchannel because _alt does the copy and blur in one pass through memory
+		blurChannel_alt(src1, dest, r, mask&0x8, mask&0x4, mask&0x2, mask&0x1, aspectof(dest));
+	else
+		dest = src1;
+		BlurChannel(src1, dest, r, (channel < 2), (channel != 2 && channel != 5 && channel != 6 ), (channel == 1 || channel == 3 || channel == 5), (channel == 1 || channel == 3 || channel == 6) , AspectOf(dest));
+	end if
+next;
+endTime = systime - startTime;
+
+if (debug)
+	
+	numreporter(dest, endTime, "Total Elapsed", kfloat6, -60, 40, kcenterjustify);
+	numreporter(dest, endTime/Iterations, "per Iteration", kfloat6, -40, 40, kcenterjustify);
+	
+	
+	numreporter(dest, mask, "mask", kfloat2, 0, 32, kcenterjustify);
+	
+	numreporter(dest, mask&0x8, "alpha", kfloat2, 20, 32, kcenterjustify);
+	numreporter(dest, mask&0x4, "red", kfloat2, 40, 32, kcenterjustify);
+	numreporter(dest, mask&0x2, "green", kfloat2, 60, 32, kcenterjustify);
+	numreporter(dest, mask&0x1, "blue", kfloat2, 80, 32, kcenterjustify);
+end if

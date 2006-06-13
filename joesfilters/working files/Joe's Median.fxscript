@@ -1,0 +1,44 @@
+filter "Joe's Median";
+group "BETA";
+
+
+input matWidth, "Matrix Width", Slider, 1, 1, 10;
+input matMethod, "Method", RadioGroup, 2, "Interlaced", "Standard", "H Variable", "Variable";
+
+input iterations, "Iterations", Slider, 1, 1, 25;
+
+
+code
+
+
+
+float w, h, mat[3][3], mdiv;
+
+DimensionsOf(dest, w, h);
+image img0[w][h];
+
+
+if (matMethod == 1)
+	mat = {1, 1, 1, 4, 0, 4, 1, 1, 1} 	// interlaced median kernal
+	mdiv = 14; 							// convolve divisor, total of median kernal
+else if (matMethod == 2)
+	mat = {1, 1, 1, 1, 0, 1, 1, 1, 1} 	// standard median kernal
+	mdiv = 8; 							// convolve divisor, total of median kernal
+else if (matMethod == 3)
+	mat = {1,1,1,matWidth, 0, matWidth, 1, 1, 1};
+	mdiv = 6 + 2 * matWidth;
+else
+	mat = {matWidth, matWidth, matWidth, matWidth, 0, matWidth, matWidth, matWidth, matWidth};
+	mdiv = 8 * matWidth;
+end if
+
+img0 = src1;
+
+for w = 1 to iterations
+
+	Convolve(img0, dest, mat, mdiv, 0);
+	channelcopy(src1, dest, kalpha, knone, knone, knone);
+	img0 = dest;
+next;
+
+
