@@ -6,7 +6,7 @@ input noiseFPS, "Noise FPS", slider, 24, 0, 60;
 
 
 input NoiseAmount, "Amount", slider, 400, 0, 400 ramp 80 detent 100;
-input fixedNoise, "Fixed Noise", checkbox, 0
+input fixedNoise, "Fixed Noise", checkbox, 1
 
 input noiseScale, "Scale Noise", slider, 200, 100, 1000 label "%";
 input softnoise, "Blur Noise", slider, 0, 0, 50 ramp 80; 
@@ -20,15 +20,27 @@ input rFloor, "R/Y Floor", Slider, 0, 0, 255;
 input rCeil, "R/Y Ceil", Slider, 255, 0, 255;
 
 input gFloor, "G/cR Floor", Slider, 0, 0, 255;
-input gCeil, "G/cR Ceil", Slider, 255, 0, 255;
+input gCeil, "G/cR Ceil", Slider, 0, 0, 255;
 
 input bFloor, "B/cB Floor", Slider, 0, 0, 255;
-input bCeil, "B/cB Ceil", Slider, 255, 0, 255;
+input bCeil, "B/cB Ceil", Slider, 0, 0, 255;
 
 input ApplyAs, "Mode", Popup, 1, "Normal", "Multiply", "Screen", "Overlay", "Lighten", "Darken", "Add", "Subtract", "Difference";
 input Opacity, "Opacity", slider, 100, 0, 100;
 
 //	input colorSpace, "ColorSpace", popup, 2, "kFormatRGB255", "kFormatRGB219", "kFormatYUV219";
+
+
+input doDisplace, "Displace", Checkbox, 1;
+input lumascale, "lumascale", Slider, 0, 0, 1;
+input mystery, "mystery", Slider, 640, 0.1, 1000;
+
+
+input hscale, "Horizontal Scale", slider, 10, -200, 200 ramp 90 detent 10
+input vscale, "Vertical Scale", slider, 10, -200, 200 ramp 90 detent 10
+
+
+input displacement, "Displacement", Slider, 0, -0.5, 0.5 ramp 90;
 
 
 input jfcopyright, "© Joe’s Filters", Label,"";
@@ -37,7 +49,6 @@ input jfurl, "www.joesfilters.com", Label,"";
 RenderEachFrameWhenStill
 InformationFlag("YUVaware");
 producesAlpha
-
 code
 
 exposedBackground=1;
@@ -57,7 +68,7 @@ on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, val
 	point _box0[4], _box1[4];
 
 	dimensionsOf(_dest, _w, _h);
-	image _img0[(_w-1) / _scale * (_aspect > 1 ? (2 - _aspect): 1) + 1][(_h-1) / _scale * (_aspect < 1 ? _aspect : 1) + 1];
+	image _img0[(_w-1) / _scale * (_aspect > 1 ? 1/_aspect : 1) + 1][(_h-1) / _scale * (_aspect < 1 ? _aspect : 1) + 1];
 	ConvertImage(_img0, _img0, _colorspace);
 
 	boundsof(_dest, _box0);
@@ -83,6 +94,49 @@ end
 // END "RandomNoiseScaled.fxscript"
 
 
+
+
+// INCLUDE "basic_math.fxscript" r128
+
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
+
+// END "basic_math.fxscript"
+
+
+// INCLUDE "makeThresholdMapBez.fxscript" r167
+
+on makeThresholdMapBez(float _lmap, value _th, value _steps, value _mapLength)
+		// requires basic_math.fxscript
+		
+		// a fast thresholding function using BezToLevelMap instead of for:next loops
+		// _th is the point to threshold around, _steps are the number of grays around _th
+		// mapLength is 255 for 8-bit maps
+		
+		
+	point _p1, _p2;
+	
+	if (_th - _steps/2 < 0)
+		_steps = _th * 2;
+	else if (_th + _steps/2 > _mapLength)
+		_steps = (_mapLength - _th) * 2;
+	end if
+	
+	if (_th & 1 == 0)	// even
+		_p1 = {floor(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {floor(_th + _steps/2)/_mapLength, 1};		
+	else // _th is odd
+		_p1 = {ceil(_th - _steps/2)/_mapLength, 0};		
+		_p2 = {ceil(_th + _steps/2)/_mapLength, 1};		
+	end if
+
+	BezToLevelMap(_lmap, _p1, _p1, _p2, _p2, 0, _mapLength, TRUE);
+
+end
+
+// END "makeThresholdMapBez.fxscript"
 
 
 // INCLUDE "RandomSeedFPS.fxscript" r158
@@ -118,6 +172,16 @@ if (fixedNoise); randomseed((noiseFPS + 1)/trueFPS); end if
 
 RandomNoiseScaled(dest, NoiseAmount, rFloor, rCeil, gFloor, gCeil, bFloor, bCeil, noiseScale/100, softnoise, noiseAspect, 2);
 
+if (doDisplace)
+	float w, h;
+	DimensionsOf(dest, w, h);
+	image displaceIMG[w][h];
+	displaceIMG = dest;	// if this works, just run noise to another buffer to clean up the code.
+end if
+
+
+
+
 if ApplyAs == 1; Matte(dest, src1, dest, opacity/100, kalpha); end if
 if ApplyAs == 2; Multiply(src1, dest, dest, opacity/100, kalpha); end if
 if ApplyAs == 3; Screen(src1, dest, dest, opacity/100, kalpha); end if
@@ -134,3 +198,16 @@ if ApplyAs == 9;
 		ChannelCopy(src1, dest, kalpha, knone, knone, knone); 
 		Matte(dest, src1,  dest, opacity/100, knone); 
 end if;
+
+
+
+if (doDisplace)
+	//	float dkey[256];
+	//	makeThresholdMapBez(dkey, 128, 2, 255);	
+//	LevelMap(displaceIMG, displaceIMG, linearRamp, dkey, dkey, dkey);
+//	Displace(dest, dest, displaceIMG, 1, -hscale/100*h/mystery, vscale/100*h/mystery, lumascale, AspectOf(dest));
+	Displace(dest, displaceIMG, displaceIMG, 1, -hscale/100*h/mystery, displacement, lumascale, AspectOf(dest));
+	dest = displaceIMG
+	
+	
+end if

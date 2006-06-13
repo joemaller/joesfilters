@@ -13,7 +13,18 @@ input keyColor, "Key Color", Color, 255, 22, 22, 255;
 //	input bthreshold, "Threshold", slider, 100, 0, 255;
 
 input width, "width", slider, 10, 1, 255
-input softness, "softness", slider, 25, 0, 255
+input softness, "softness", slider, 25, 0, 255;
+
+input rWidth, "rWidth", Slider, 10, 1, 255;
+input gWidth, "gWidth", Slider, 10, 1, 255;
+input bWidth, "bWidth", Slider, 10, 1, 255;
+
+input yWidth, "Luma Width", Slider, 10, 1, 255;
+input cWidth, "Chroma Width", Slider, 5, 1, 255;
+
+input fillRGB, "fillRGB", checkbox, 0;
+
+
 input showOriginal, "Show Original", radiogroup, 1, "Original", "Red", "Green", "Blue", "Red-Green", "!r-g";
 
 input doRGBkey, "doRGBkey", checkbox, 0;
@@ -24,6 +35,39 @@ InformationFlag("YUVaware");
 
 
 code
+
+
+
+
+// INCLUDE "ColorReporter.fxscript" r124
+
+on ColorReporter(image _destIMG, color _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string _reporterA, _reporterR, _reporterG, _reporterB;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.a, _reporterA, _numberformat);
+	NumToString(_data.r, _reporterR, _numberformat);
+	NumToString(_data.g, _reporterG, _numberformat);
+	NumToString(_data.b, _reporterB, _numberformat);
+	_reporterR = _label + " = {" + _reporterA + "," + _reporterR + "," + _reporterG + "," + _reporterB + "}";
+	DrawString(_reporterR, -1, _h - 1, 1.25,  _destIMG, fontColor, aspectof(_destIMG));
+	DrawString(_reporterR, 1, _h + 1, 1.25,  _destIMG, kblack, aspectof(_destIMG));
+	DrawString(_reporterR, 0, _h, 1.25,  _destIMG, _data, aspectof(_destIMG));
+
+end 
+
+// END "ColorReporter.fxscript"
 
 
 
@@ -50,6 +94,49 @@ on RGBtoYUVcolor(color _rgbColor)
 end 
 
 // END "RGBtoYUVcolor.fxscript"
+
+
+
+// INCLUDE "ChannelCopyFit.fxscript" r49
+
+on ChannelCopyFit(image _src, image _dest, value _A, value _R, value _G, value _B)
+	// a combination of channelcopy and blitrect, scales any specified channel to fit the target
+	// specifically for cases where a channel source is not the same size as the channel destination
+	// _A, _R, _G & _B work just like Channelcopy and are of the set {kalpha, kred, kgreen, kblue}
+	// This is meant to be a more versatile drop-in replacement for ChannelCopy
+	
+	point _srcBox[4], _destBox[4];
+	boundsOf(_src, _srcBox);
+	boundsOf(_dest, _destBox);
+
+	if (_srcBox[2] == _destBox[2])
+		// sizes are equal, normal channelcopy...
+		channelCopy(_src, _dest, _A, _R, _G, _B);
+
+	else	// sizes are unequal, do blit then channel
+		
+		
+		//		check for size differences
+		// 		do channelcopy on larger image to preserve resolution 
+				
+		if (_srcBox[2].x * _srcBox[2].y < _destBox[2].x * _destBox[2].y)	// _src is smaller than _dest
+			image _temp[_destBox[1].x - _destBox[0].x][_destBox[3].y - _destBox[0].y]; // create second dest-sized image buffer
+			blitRect(_src, _srcBox, _temp, _destBox);
+			channelCopy(_temp, _dest, _A, _R, _G, _B);
+		
+		else // _src is larger than _dest
+			image _temp[_srcBox[1].x - _srcBox[0].x][_srcBox[3].y - _srcBox[0].y]; // create second src-sized image buffer
+			blitRect(_dest, _destBox, _temp, _srcBox);
+			channelCopy(_src, _temp, _A, _R, _G, _B);
+			blitRect(_temp, _srcBox, _dest, _destBox);
+		
+		end if
+	end if
+end
+
+// END "ChannelCopyFit.fxscript"
+
+
 
 
 
@@ -134,62 +221,87 @@ on makeKeyMapBez(float _kmap, value _center, value _width, value _softness, valu
 end
 
 
-on joesColorKey(image _src, image _dest, value _keyRed, width, value _keyGreen, width, value _keyBlue, width, value _softness, 1)
+on joesColorKey(image _src, image _dest, color _keyColorRGB, value _rWidth, value _gWidth, value _bWidth, value _yWidth, value _cbWidth, value _crWidth, value _softness, value _fillRGB)
+// DEPENDENCIES:
+//		channelcopyfit()
+//		makeKeyMapBez()
+
+// this isn't a dropin replacement for RGBColorKey
+// Is there a good reason to use three value-floats for the color values instead of just sending a color?
+
+// conciously not recycling image buffers in here to be sure everything is working. Probably should do that later.
+
+	float _w, _h, _rMap[256], _gMap[256], _bMap[256], _yMap[256], _cbMap[256], _crMap[256];
+	color _keyColorYUV;
+	DimensionsOf(dest, _w, _h);
+	image _rgbIMG[_w][_h];
+	image _yuvIMG[_w][_h];
+
+	_keyColorYUV = _keyColorRGB;
+	RGBtoYUVcolor(_keyColorYUV);
+
+	makeKeyMapBez(_rMap, _keyColorRGB.r, _rWidth, _softness, 255);
+	makeKeyMapBez(_gMap, _keyColorRGB.g, _gWidth, _softness, 255);
+	makeKeyMapBez(_bMap, _keyColorRGB.b, _bWidth, _softness, 255);
+
+	makeKeyMapBez(_yMap, _keyColorYUV.r, _yWidth, _softness, 255);
+	makeKeyMapBez(_cbMap, _keyColorYUV.g, _cbWidth, _softness, 255);
+	makeKeyMapBez(_crMap, _keyColorYUV.b, _crWidth, _softness, 255);
+
+	convertImage(_src, _rgbIMG, kFormatRGB219);
+	convertImage(_src, _yuvIMG, kFormatYUV219);
+	
+	levelMap(_rgbIMG, _rgbIMG, linearRamp, _rMap, _gMap, _bMap);
+	levelMap(_yuvIMG, _yuvIMG, linearRamp, _yMap, _cbMap, _crMap);
+
+	// 	ImageAND(_rgbIMG, _yuvIMG, _dest)	// RY, GU, BV
+	//	ChannelCopy(_dest, _rgbIMG, kalpha, kgreen, knone, knone);
+	//	ChannelCopy(_dest, _yuvIMG, kalpha, kblue, knone, knone);
+	//	ImageAnd(_dest, _rgbIMG, _dest);	// RYGU, ??, ??
+	//	ImageAnd(_dest, _yuvIMG, _dest);	// RYGUBV, ??, ??
+//		
+	//	channelfill(_dest, 255, -1, 128, 128);
+	_dest = _rgbIMG;
+end
 
 
 
 
-
-float rMap[256], gMap[256], bMap[256];
-
-float w, h;
-DimensionsOf(dest, w, h);
-image rImg[w][h];
-image gImg[w][h];
-image bImg[w][h];
-
-ConvertImage(rIMG, rImg, 2);
-ConvertImage(gIMG, gImg, 2);
-ConvertImage(bIMG, bImg, 2);
-
-RGBtoYUVcolor(keyColor);
-
-makeKeyMapBez(rMap, keyColor.r, width, softness, 255);
-makeKeyMapBez(gMap, keyColor.g, width, softness, 255);
-makeKeyMapBez(bMap, keyColor.b, width, softness, 255);
-
-levelMap(src1, rImg, linearRamp, rMap, linearRamp, linearRamp);
-levelMap(src1, gImg, linearRamp, linearRamp, gMap, linearRamp);
-levelMap(src1, bImg, linearRamp, linearRamp, linearRamp, bMap);
-                              
-ChannelCopy(rImg, rImg, kalpha, kred, kred, kred);
-ChannelCopy(gImg, gImg, kalpha, kgreen, kgreen, kgreen);
-ChannelCopy(bImg, bImg, kalpha, kblue, kblue, kblue);
+joesColorKey(src1, dest, keyColor, rWidth, gWidth, bWidth, yWidth, cWidth, cWidth, softness, fillRGB);
 
 
 if (showOriginal == 1)
-	dest =src1;
+	dest = src1;
 else if (showOriginal == 2)
-	dest = rImg;
+		
+	ChannelCopy(dest, dest, kalpha, kred, kred, kred);
+	if (fillRGB); channelfill(dest, 255, -1, 128, 128); end if
+
 else if (showOriginal == 3)
-	dest = gImg;
+	ChannelCopy(dest, dest, kalpha, kgreen, kgreen, kgreen);
+	if (fillRGB); channelfill(dest, 255, 128, -1, 128); end if
+
 else if	(showOriginal == 4)
-	dest = bImg;
+	ChannelCopy(dest, dest, kalpha, kblue, kblue, kblue);
+	if (fillRGB); channelfill(dest, 255, 128, 128, -1); end if
+
 else if	(showOriginal == 5)
-//	add(rImg, gImg, dest, 128, kalpha);
-	ImageAND(rImg, gImg, gImg)
-	ImageAND(gImg, bImg, dest)
+	// passthrough
+
 else if (showOriginal == 6)
 
 	//Difference(rImg, gImg, dest, kAlpha);
 	AddOffset(gImg, bImg, dest, -128)
 end if
 
+
+
+
 if (doRGBkey)
 
 	width = wadjuster
 	softness *= softadjuster
-//	RGBColorKey(src1, dest, keyColor.r, width, keyColor.g, width, keyColor.b, width, softness, 1)
-	YUVColorKey(src1, dest, keyColor.r, width, keyColor.g, width, keyColor.b, width, softness, 1)
+	RGBColorKey(src1, dest, keyColor.r, width, keyColor.g, width, keyColor.b, width, softness, 1)
+//	YUVColorKey(src1, dest, keyColor.r, width, keyColor.g, width, keyColor.b, width, softness, 1)
 	Invert(dest, dest)
 end if

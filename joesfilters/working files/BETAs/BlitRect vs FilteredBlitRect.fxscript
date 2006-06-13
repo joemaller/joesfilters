@@ -5,11 +5,20 @@ group "FXScript Reference";
 input method, "Method", radioGroup, 3, "Blit", "BlitRect", "FilteredBlitRect";
 input scaler, "Scale", slider, 0.76, 0.1, 3;
 // input filterquality, "Filter Quality", Popup, 2, "Fastest (linear)", "Normal", "Best"; // from Apple's Spin Filter
-input filterquality, "Filter Quality", slider, 0, 0,  100 detent 20;
+input filterquality, "Filter Quality", slider, 0, 0, 	40 detent 0, 8, 10, 20, 25, 30;
 
 
 code
 
+
+// INCLUDE "basic_math.fxscript" r128
+
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
+
+// END "basic_math.fxscript"
 
 point inbox[4], outBox[4];
 
@@ -30,3 +39,6 @@ end if
 
 
 
+Repeat While (true)
+	somethign
+End Repeat;
