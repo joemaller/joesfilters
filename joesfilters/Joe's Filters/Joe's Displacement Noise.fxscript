@@ -12,7 +12,7 @@ input offsetAngle, "Offset Angle", Angle, 30, -360, 360;
 input hOffset, "Horizontal Offset", Slider, 100, 0, 200;
 input vOffset, "Vertical Offset", Slider, 100, 0, 200;
 
-input outset, "Outset", Slider, 1, -100, 100;
+input outset, "Outset", Slider, 1, -4, 4;
 input method, "Method", RadioGroup, 2, "Bumpmap", "Displacement", "bypass";
 
 input repeatEdges, "Repeat Edges", Checkbox, 1;
@@ -22,6 +22,7 @@ input noiseVal, "NoiseVal", Slider, 400, 0.1, 400;
 input gOffset, "Green Offset", Slider, 128, 0, 255;
 
 input dofill, "dofill", Checkbox, 1;
+
 
 RenderEachFrameWhenStill;
 InformationFlag("YUVaware");
@@ -82,7 +83,6 @@ on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, val
 	end if;
 
 end 
-
 
 // END "RandomNoiseScaled.fxscript"
 
@@ -116,21 +116,25 @@ end
 
 RandomSeedFPS(noiseFPS, trueFPS, duration, ratio);
 
-RandomNoiseScaled(dest, noiseVal, 0, hOffset, 0, vOffset, 0,0, noiseScale/100, softnoise, noiseStretch, 2);
+RandomNoiseScaled(dest, noiseVal, 128 - hOffset * 1.28, 128 + hOffset * 1.27, 0, vOffset, 0,0, noiseScale/100, softnoise, noiseStretch, 2);
 
+
+DebugText("fieldcheck", fieldprocessing, fps, trueFPS);
 
 float w, h;
 DimensionsOf(dest, w, h);
 image img0[w][h];
 
 img0 = dest;
+
+if (dofill)
+	ChannelFill(dest, -1, -1, gOffset, -1);
+end if
+
+
 if (method==1)
 	BumpMap(src1, dest, dest, true, offsetAngle, outset/100, hOffset, AspectOf(dest));
 else if (method==2)
-
-	if (dofill)
-		ChannelFill(dest, -1, -1, gOffset, -1);
-	end if
 	
 	Displace(src1, dest, dest, repeatEdges, outset, outset, 0, AspectOf(dest));
 end if
