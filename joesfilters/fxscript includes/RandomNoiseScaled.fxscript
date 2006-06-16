@@ -15,31 +15,26 @@ on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, val
 		_h *= 1 + _stretch;
 		if (_h < 1); _h = 1; end if
 	else if (_stretch > 0)
-		_w *= 1-_stretch
+		_w *= 1-_stretch;
 		if (_w < 1); _w = 1; end if
 	end if
-	DebugText(_stretch, _w, _h);
 	
-	image _img0[_w][_h];
-//	image _img0[(_w-1) / _scale * (_aspect > 1 ? (2 - _aspect): 1) + 1][(_h-1) / _scale * (_aspect < 1 ? _aspect : 1) + 1];
+	image _img0[_w + _blur*2][_h + _blur*2];	// increase the size of the noise buffer by the _blur radius
 	ConvertImage(_img0, _img0, _colorspace);
 
 	boundsof(_dest, _box0);
-	boundsof(_img0, _box1);
+	MakeRect(_box1, -_w/2, -_h/2, _w, _h);	// do this instead of BoundOf to compensate for blurring outside the frame
 
 	RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil, 1)
 
 	if (_blur > 0);
 		dimensionsOf(_img0, _w, _h);
 		image _blurIMG[_w][_h];	
-		ConvertImage(_img0, _img0, _colorspace);
-		
-		_blurIMG = _img0;
+		ConvertImage(_blurIMG, _blurIMG, _colorspace);
 		blurChannel(_img0, _blurIMG, _blur / _scale, 1, 1, 1, 1, 1);
 		blitRect(_blurIMG, _box1, _dest, _box0);
 	else
 		blitRect(_img0, _box1, _dest, _box0);
 	end if;
 
-end 
-
+end
