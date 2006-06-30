@@ -1,27 +1,22 @@
 filter "Joe’s Dispacement Noise";
 group "Joe’s Filters [BETA]";
 
-input noiseFPS, "Noise FPS", Slider, 24, 0, 60;
+input l1, "Displacement Options", Label, "";
 
-input noiseScale, "Scale Noise", slider, 200, 100, 1000 label "%";
-input softNoise, "Blur Noise", Slider, 0, 0, 50 ramp 80;
-input noiseStretch, "Noise Stretch", Slider, 0, -1, 1 detent 0;
+input hOffset, "Horizontal Offset", Slider, 5, 0, 100;
+input vOffset, "Vertical Offset", Slider, 5, 0, 200;
 
-input offsetAngle, "Offset Angle", Angle, 30, -360, 360;
-
-input hOffset, "Horizontal Offset", Slider, 100, 0, 200;
-input vOffset, "Vertical Offset", Slider, 100, 0, 200;
-
-input outset, "Outset", Slider, 1, -4, 4;
-input method, "Method", RadioGroup, 2, "Bumpmap", "Displacement", "bypass";
+input multiplier, "Multiplier", Slider, 0.25, 0, 5 ramp 90;
 
 input repeatEdges, "Repeat Edges", Checkbox, 1;
 
-input noiseVal, "NoiseVal", Slider, 400, 0.1, 400;
+input l0, "Noise Options", Label, "";
+input noiseScale, "Scale Noise", slider, 200, 100, 1000 label "%";
+input softNoise, "Blur Noise", Slider, 0, 0, 50 ramp 80;
+input noiseStretch, "Noise Stretch", Slider, 0, -1, 1 detent 0;
+input noiseFPS, "Noise FPS", Slider, 24, 0, 60;
+input showNoise, "ShowNoise", checkbox, 0;
 
-input gOffset, "Green Offset", Slider, 128, 0, 255;
-
-input dofill, "dofill", Checkbox, 1;
 
 
 RenderEachFrameWhenStill;
@@ -37,7 +32,8 @@ exposedBackground = 1;
 
 
 
-// INCLUDE "RandomNoiseScaled.fxscript" r187
+
+// INCLUDE "RandomNoiseScaled.fxscript" r190
 
 on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, value _gFloor, value _gCeil, value _bFloor, value _bCeil, value _scale, value _blur, value _stretch, value _colorspace)
 	// 	_noise is a 0...400 vallue to match Photoshop's controls
@@ -56,33 +52,29 @@ on RandomNoiseScaled(image _dest, value _noise, value _rFloor, value _rCeil, val
 		_h *= 1 + _stretch;
 		if (_h < 1); _h = 1; end if
 	else if (_stretch > 0)
-		_w *= 1-_stretch
+		_w *= 1-_stretch;
 		if (_w < 1); _w = 1; end if
 	end if
-	DebugText(_stretch, _w, _h);
 	
-	image _img0[_w][_h];
-//	image _img0[(_w-1) / _scale * (_aspect > 1 ? (2 - _aspect): 1) + 1][(_h-1) / _scale * (_aspect < 1 ? _aspect : 1) + 1];
+	image _img0[_w + _blur*2][_h + _blur*2];	// increase the size of the noise buffer by the _blur radius
 	ConvertImage(_img0, _img0, _colorspace);
 
 	boundsof(_dest, _box0);
-	boundsof(_img0, _box1);
+	MakeRect(_box1, -_w/2, -_h/2, _w, _h);	// do this instead of BoundOf to compensate for blurring outside the frame
 
 	RandomNoise(_img0, ((_noise < 100) ? _noise/100 * 255 : 255), ((_noise > 100) ? (_noise-100)/300 * 255 : 0), _rFloor, _rCeil, _gFloor, _gCeil, _bFloor, _bCeil, 1)
 
 	if (_blur > 0);
 		dimensionsOf(_img0, _w, _h);
 		image _blurIMG[_w][_h];	
-		ConvertImage(_img0, _img0, _colorspace);
-		
-		_blurIMG = _img0;
+		ConvertImage(_blurIMG, _blurIMG, _colorspace);
 		blurChannel(_img0, _blurIMG, _blur / _scale, 1, 1, 1, 1, 1);
 		blitRect(_blurIMG, _box1, _dest, _box0);
 	else
 		blitRect(_img0, _box1, _dest, _box0);
 	end if;
 
-end 
+end
 
 // END "RandomNoiseScaled.fxscript"
 
@@ -114,12 +106,12 @@ end
 
 // END "RandomSeedFPS.fxscript"
 
+
+
 RandomSeedFPS(noiseFPS, trueFPS, duration, ratio);
 
-RandomNoiseScaled(dest, noiseVal, 128 - hOffset * 1.28, 128 + hOffset * 1.27, 0, vOffset, 0,0, noiseScale/100, softnoise, noiseStretch, 2);
+RandomNoiseScaled(dest, 400, 128 - hOffset * 1.28, 128 + hOffset * 1.27, 128 - vOffset * 1.28, 128 + vOffset * 1.27, 0,0, noiseScale/100, softnoise, noiseStretch, 2);
 
-
-DebugText("fieldcheck", fieldprocessing, fps, trueFPS);
 
 float w, h;
 DimensionsOf(dest, w, h);
@@ -127,14 +119,9 @@ image img0[w][h];
 
 img0 = dest;
 
-if (dofill)
-	ChannelFill(dest, -1, -1, gOffset, -1);
+
+if (!showNoise)
+	ConvertImage(dest, img0, kformatrgb219);
+	Displace(src1, dest, img0, repeatEdges, multiplier, multiplier, 0, AspectOf(dest));	
 end if
 
-
-if (method==1)
-	BumpMap(src1, dest, dest, true, offsetAngle, outset/100, hOffset, AspectOf(dest));
-else if (method==2)
-	
-	Displace(src1, dest, dest, repeatEdges, outset, outset, 0, AspectOf(dest));
-end if
