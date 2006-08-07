@@ -21,12 +21,19 @@ property startTime : missing value
 global paused
 set paused to false
 
+global functs
+set myPath to (path to me)
+copy (load script ((myPath & "Contents:Resources:Scripts:FXScript Functions.scpt") as string as alias)) to functs
+functs's LogTester()
 
 
 property panelWIndow : missing value
 
 
+
 on will finish launching theObject
+	
+	
 	
 	set fileList to {}
 	set end of fileList to {|fullPath|:"/boogle/joe.gtml"}
@@ -62,12 +69,19 @@ on will finish launching theObject
 	(* Subversion Repository *)
 	make new default entry at end of default entries of user defaults with properties {name:"svnRepository", contents:"file:///Users/joe/Documents/SVN/joesfilters/trunk"}
 	
+	(* Location of the Last Build *)
+	make new default entry at end of default entries of user defaults with properties {name:"LastBuildPath", contents:""}
+	
+	(* CreateDMGs option *)
+	make new default entry at end of default entries of user defaults with properties {name:"createDMGs", contents:true}
 	
 	
 end will finish launching
 
 
 on awake from nib theObject
+	
+	
 	
 	if name of theObject is "watermarkView" then
 		tell theObject to register drag types {"file names", "text"}
@@ -81,6 +95,20 @@ on awake from nib theObject
 	
 	if name of theObject is "aPanel" then
 		log "New Panel Loaded"
+	end if
+	
+	if name of theObject is "PreviousBuildButton" then
+		log "PreviousBuildButton woke from NIB"
+		if fetchUserDefaults("LastBuildPath") is not "" then
+			
+			log "LastBuildPath is not empty"
+			if dirExists(fetchUserDefaults("LastBuildPath")) then
+				log "dir exists"
+				set enabled of theObject to true
+			end if
+		end if
+		
+		set enabled of theObject to false
 	end if
 end awake from nib
 
@@ -152,18 +180,18 @@ on clicked theObject
 		display open panel in directory fetchUserDefaults("watermarkChooseFilePath") with file name "SomeFile?" for file types {"txt", "css", "bin", "", "fxscript"}
 		if the result is 1 then
 			log path names of open panel as list
-			setUserDefaults(directory of open panel, "watermarkChooseFilePath")
+			setUserDefaults("watermarkChooseFilePath", directory of open panel)
 			set theFiles to path names of open panel as list
 			log theFiles
 			set theText to do shell script "cat " & (quoted form of item 1 of theFiles as text)
-			setUserDefaults(item 1 of theFiles, "waterMarkSource") -- save watermark source path
-			setUserDefaults(theText, "waterMarkText") -- store watermark source text (possibly lose this)
+			setUserDefaults("waterMarkSource", item 1 of theFiles) -- save watermark source path
+			setUserDefaults("waterMarkText", theText) -- store watermark source text (possibly lose this)
 		end if
 	end if
 	
 	if name of theObject is "chooseOutputPath" then
 		set theFolder to choose folder
-		setUserDefaults(theFolder, "outputFolderPath")
+		setUserDefaults("outputFolderPath", theFolder)
 	end if
 	
 	if name of theObject is "compile" then
@@ -182,25 +210,10 @@ on clicked theObject
 		close panel (window of theObject) with result 1
 	end if
 	
-	
-	if name of theObject is "shelltest" then
-		log
-		--		do shell script "Resources/./applyWatermark.sh > ~/booga.txt"
-		(*	tell main bundle
-			set scriptPath to path for resource "applyWatermark" extension "sh"
-		end tell
-		log "SCRIPTPATH: " & quoted form of scriptPath
-		log scriptPath & " \"/Users/joe/Documents/Joe's Filters Development/joesfilters-svn/joesfilters/Joe's Filters/Joe's Aspect Matte.fxscript\""
-		log (do shell script quoted form of scriptPath & " \"/Users/joe/Documents/Joe's Filters Development/joesfilters-svn/joesfilters/Joe's Filters/Joe's Aspect Matte.fxscript\"")
-	*)
-		
-		
-		log "waterMarkSource:" & fetchUserDefaults("waterMarkSource")
-		log "waterMarkText:" & fetchUserDefaults("waterMarkText")
-		
-		--	log applyWatermark("/Users/joe/Documents/Joe's Filters Development/joesfilters-svn/joesfilters/Joe's Filters/Joe's Color Glow.fxscript", "/Users/joe/Documents/Joe's Filters Development/Builds/build_20060420_1447/demo code", fetchUserDefaults("watermarkMenuString"), fetchUserDefaults("waterMarkSource"))
-		
+	if name of theObject is "CreateDMGButton" then
+		log " go do the DMG thing"
 	end if
+	
 	
 end clicked
 
@@ -240,9 +253,13 @@ on fetchUserDefaults(theKey)
 	return contents of default entry theKey of user defaults
 end fetchUserDefaults
 
-on setUserDefaults(theValue, theKey)
+on setUserDefaults(theKey, theValue)
 	set contents of default entry theKey of user defaults to theValue
 end setUserDefaults
+
+
+
+
 
 
 on doCompile(fileList)
@@ -290,8 +307,20 @@ on doCompile(fileList)
 	end repeat
 	
 	
-	-- check for "open on finished checkbox
+	-- check for "open on finished" checkbox
 	tell me to activate
+	
+	log "
+-- ==================
+-- = Ending Compile =
+-- ==================
+"
+	
+	log outputFolders
+	log |fullPath| of item 1 of outputFolders
+	log |fullPath| of item 1 of outputFolders as string
+	
+	setUserDefaults("LastBuildPath", |fullPath| of item 1 of outputFolders)
 	revealInFinder(|fullPath| of item 1 of outputFolders)
 	
 	set elapsedSeconds to ((current date) - startTime)
@@ -348,10 +377,10 @@ end resetFileList
 
 on resetOutputFolders()
 	log "resetting Output Folders"
-	setUserDefaults("full", "fullEncoded")
-	setUserDefaults("demo", "demoEncoded")
-	setUserDefaults("full code", "fullSourceCode")
-	setUserDefaults("demo code", "demoSourceCode")
+	setUserDefaults("fullEncoded", "full")
+	setUserDefaults("demoEncoded", "demo")
+	setUserDefaults("fullSourceCode", "full code")
+	setUserDefaults("demoSourceCode", "demo code")
 	--	return true
 end resetOutputFolders
 
@@ -717,3 +746,5 @@ on secondsToHMS(theSeconds)
 	end if
 	return outString
 end secondsToHMS
+
+

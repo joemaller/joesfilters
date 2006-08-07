@@ -13,6 +13,8 @@
 			contextName = "";
 			files = (
 				257572C5072881A4000BE9CA /* Joe's FXScript Compiler.applescript in AppleScript */,
+				D84343540A6EB6D3009D4C00 /* FXScript Functions.applescript in AppleScript */,
+				D8EF23B80A845BBE00CFCCC9 /* FXScript Disk Image Creator.applescript in AppleScript */,
 			);
 			isSharedContext = 0;
 			runOnlyForDeploymentPostprocessing = 0;
@@ -30,12 +32,14 @@
 		D80005E80875DDAB00566F05 /* MyApplication.m in Sources */ = {isa = PBXBuildFile; fileRef = D800053F0875B5FD00566F05 /* MyApplication.m */; };
 		D8097EDD0899D000007898DA /* panel.nib in Resources */ = {isa = PBXBuildFile; fileRef = D8097EDB0899D000007898DA /* panel.nib */; };
 		D81EDC3809F58B3600551FB2 /* applyWatermark.sh in Resources */ = {isa = PBXBuildFile; fileRef = D81EDC3709F58B3600551FB2 /* applyWatermark.sh */; };
+		D84343540A6EB6D3009D4C00 /* FXScript Functions.applescript in AppleScript */ = {isa = PBXBuildFile; fileRef = D84343530A6EB6D3009D4C00 /* FXScript Functions.applescript */; settings = {ATTRIBUTES = (Debug, ); }; };
 		D850FE9A0885972B00BA81DA /* folder16.tiff in Resources */ = {isa = PBXBuildFile; fileRef = D850FE990885972B00BA81DA /* folder16.tiff */; };
 		D850FED50886F36400BA81DA /* timesFourTransformer.h in Headers */ = {isa = PBXBuildFile; fileRef = D850FED30886F36400BA81DA /* timesFourTransformer.h */; };
 		D850FED60886F36400BA81DA /* timesFourTransformer.m in Sources */ = {isa = PBXBuildFile; fileRef = D850FED40886F36400BA81DA /* timesFourTransformer.m */; };
 		D850FEE40886FAD000BA81DA /* ApplicationDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = D850FEE20886FAD000BA81DA /* ApplicationDelegate.h */; };
 		D850FEE50886FAD000BA81DA /* ApplicationDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = D850FEE30886FAD000BA81DA /* ApplicationDelegate.m */; };
 		D854D3D5087D99FF00054E17 /* To Do List in Resources */ = {isa = PBXBuildFile; fileRef = D854D3D4087D99FF00054E17 /* To Do List */; };
+		D8EF23B80A845BBE00CFCCC9 /* FXScript Disk Image Creator.applescript in AppleScript */ = {isa = PBXBuildFile; fileRef = D8EF23B70A845BBE00CFCCC9 /* FXScript Disk Image Creator.applescript */; settings = {ATTRIBUTES = (Debug, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildStyle section */
@@ -80,12 +84,14 @@
 		D800053F0875B5FD00566F05 /* MyApplication.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = MyApplication.m; sourceTree = "<group>"; };
 		D8097EDC0899D000007898DA /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/panel.nib; sourceTree = "<group>"; };
 		D81EDC3709F58B3600551FB2 /* applyWatermark.sh */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.script.sh; path = applyWatermark.sh; sourceTree = "<group>"; };
+		D84343530A6EB6D3009D4C00 /* FXScript Functions.applescript */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.applescript; path = "FXScript Functions.applescript"; sourceTree = "<group>"; };
 		D850FE990885972B00BA81DA /* folder16.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = folder16.tiff; sourceTree = "<group>"; };
 		D850FED30886F36400BA81DA /* timesFourTransformer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = timesFourTransformer.h; sourceTree = "<group>"; };
 		D850FED40886F36400BA81DA /* timesFourTransformer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = timesFourTransformer.m; sourceTree = "<group>"; };
 		D850FEE20886FAD000BA81DA /* ApplicationDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ApplicationDelegate.h; sourceTree = "<group>"; };
 		D850FEE30886FAD000BA81DA /* ApplicationDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ApplicationDelegate.m; sourceTree = "<group>"; };
 		D854D3D4087D99FF00054E17 /* To Do List */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "To Do List"; sourceTree = "<group>"; };
+		D8EF23B70A845BBE00CFCCC9 /* FXScript Disk Image Creator.applescript */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.applescript; path = "FXScript Disk Image Creator.applescript"; sourceTree = "<group>"; };
 		DA206CF1015C4E2903C91932 /* AppleScriptKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppleScriptKit.framework; path = /System/Library/Frameworks/AppleScriptKit.framework; sourceTree = "<absolute>"; };
 		DA206CF3015C4E8B03C91932 /* Joe's FXScript Compiler.applescript */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.applescript; path = "Joe's FXScript Compiler.applescript"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -106,7 +112,9 @@
 		080E96DDFE201D6D7F000001 /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
+				D8EF23B70A845BBE00CFCCC9 /* FXScript Disk Image Creator.applescript */,
 				DA206CF3015C4E8B03C91932 /* Joe's FXScript Compiler.applescript */,
+				D84343530A6EB6D3009D4C00 /* FXScript Functions.applescript */,
 			);
 			name = Scripts;
 			sourceTree = "<group>";

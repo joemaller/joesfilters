@@ -1,0 +1,343 @@
+<!-- FXScript Codeless Language Module for BBEdit 8 -->
+<!-- version 1.2 -->
+<!-- February 1, 2005 -->
+<!-- Created by Joe Maller -->
+<!-- http://www.fxscriptreference.org -->
+<!-- http://www.joesfilters.com -->
+
+<!-- More Info: http://www.fxscriptreference.org -->
+
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>BBEditDocumentType</key>
+	<string>CodelessLanguageModule</string>
+	<key>BBLMColorsSyntax</key>
+	<true/>
+	<key>BBLMIsCaseSensitive</key>
+	<false/>
+	<key>BBLMKeywordList</key>
+	<array>
+		<string>Abs</string>
+		<string>ACos</string>
+		<string>Add</string>
+		<string>AddOffset</string>
+		<string>AlphaType</string>
+		<string>Angle</string>
+		<string>AngleTo</string>
+		<string>ASCIIOf</string>
+		<string>ASCIIToSTring</string>
+		<string>ASin</string>
+		<string>AspectOf</string>
+		<string>Assert</string>
+		<string>ATan</string>
+		<string>BezToLevelMap</string>
+		<string>BGDiff</string>
+		<string>Blend</string>
+		<string>Blit</string>
+		<string>BlitRect</string>
+		<string>BlueScreen</string>
+		<string>Blur</string>
+		<string>BlurChannel</string>
+		<string>BoundsOf</string>
+		<string>BumpMap</string>
+		<string>CenterOf</string>
+		<string>ChannelCopy</string>
+		<string>ChannelFill</string>
+		<string>ChannelMultiply</string>
+		<string>CharsOf</string>
+		<string>CheckBox</string>
+		<string>ChromaAngleKey</string>
+		<string>CircleLight</string>
+		<string>Clip</string>
+		<string>clip1</string>
+		<string>clip2</string>
+		<string>Code</string>
+		<string>Color</string>
+		<string>ColorOf</string>
+		<string>ColorTransform</string>
+		<string>Convert2dto3d</string>
+		<string>Convert3dto2d</string>
+		<string>ConvertImage</string>
+		<string>Convolve</string>
+		<string>Cos</string>
+		<string>CountTextLines</string>
+		<string>CurveTo</string>
+		<string>Cylinder</string>
+		<string>Darken</string>
+		<string>Data Types</string>
+		<string>Desaturate</string>
+		<string>dest</string>
+		<string>Difference</string>
+		<string>Diffuse</string>
+		<string>DiffuseOffset</string>
+		<string>DimensionsOf</string>
+		<string>Displace</string>
+		<string>DistTo</string>
+		<string>DrawSoftDot</string>
+		<string>DrawString</string>
+		<string>DrawStringPlain</string>
+		<string>duration</string>
+		<string>EffectID</string>
+		<string>Else</string>
+		<string>End</string>
+		<string>exit</string>
+		<string>Exp</string>
+		<string>exposedBackground</string>
+		<string>false</string>
+		<string>fieldNumber</string>
+		<string>fieldprocessing</string>
+		<string>FillArc</string>
+		<string>FillOval</string>
+		<string>FillPoly</string>
+		<string>FillRegion</string>
+		<string>Filter</string>
+		<string>FindString</string>
+		<string>Fisheye</string>
+		<string>float</string>
+		<string>FontList</string>
+		<string>for</string>
+		<string>fps</string>
+		<string>frame</string>
+		<string>FrameArc</string>
+		<string>FrameOval</string>
+		<string>FramePoly</string>
+		<string>FrameRegion</string>
+		<string>FullFrame</string>
+		<string>Functions</string>
+		<string>FXScript Bugs</string>
+		<string>FXScript Reference Bugs</string>
+		<string>Generator</string>
+		<string>GetConversionMatrix</string>
+		<string>GetLimits</string>
+		<string>getNativeAspect</string>
+		<string>getNativeSize</string>
+		<string>GetPixelFormat</string>
+		<string>GetReelName</string>
+		<string>GetTimeCode</string>
+		<string>GetTimeCodeStringFromClip</string>
+		<string>GetVideo</string>
+		<string>GreenScreen</string>
+		<string>Grid</string>
+		<string>Group</string>
+		<string>Highlight</string>
+		<string>If</string>
+		<string>image</string>
+		<string>ImageAnd</string>
+		<string>ImageOr</string>
+		<string>ImageXor</string>
+		<string>InformationFlag</string>
+		<string>Input</string>
+		<string>Integer</string>
+		<string>Interpolate</string>
+		<string>InvalEntireItem</string>
+		<string>Invert</string>
+		<string>InvertChannel</string>
+		<string>k16mm</string>
+		<string>k24fps</string>
+		<string>k25fps</string>
+		<string>k30df</string>
+		<string>k30fps</string>
+		<string>k35mm</string>
+		<string>k60df</string>
+		<string>k60fps</string>
+		<string>kAlpha</string>
+		<string>kBlack</string>
+		<string>kBlue</string>
+		<string>kbold</string>
+		<string>kbolditalic</string>
+		<string>kcenterjustify</string>
+		<string>kCyan</string>
+		<string>kDiamond</string>
+		<string>KeyType</string>
+		<string>kFloat2</string>
+		<string>kFloat4</string>
+		<string>kFloat6</string>
+		<string>kFormatRGB219</string>
+		<string>kFormatRGB255</string>
+		<string>kFormatYUV219</string>
+		<string>kGray</string>
+		<string>kGreen</string>
+		<string>kInteger</string>
+		<string>kitalic</string>
+		<string>kKeyAdd</string>
+		<string>kKeyDarken</string>
+		<string>kKeyDifference</string>
+		<string>kKeyHardLight</string>
+		<string>kKeyLighten</string>
+		<string>kKeyMultiply</string>
+		<string>kKeyNormal</string>
+		<string>kKeyOverlay</string>
+		<string>kKeyScreen</string>
+		<string>kKeySoftLight</string>
+		<string>kKeySubtract</string>
+		<string>kleftjustify</string>
+		<string>kMagenta</string>
+		<string>kNone</string>
+		<string>kplain</string>
+		<string>kRed</string>
+		<string>krightjustify</string>
+		<string>kRound</string>
+		<string>kSize</string>
+		<string>kSquare</string>
+		<string>kUndefined</string>
+		<string>kWhite</string>
+		<string>kYellow</string>
+		<string>Label</string>
+		<string>Length</string>
+		<string>LevelMap</string>
+		<string>Lighten</string>
+		<string>Line</string>
+		<string>linearRamp</string>
+		<string>Log</string>
+		<string>Log10</string>
+		<string>MakeRect</string>
+		<string>MakeRegion</string>
+		<string>MaskCopy</string>
+		<string>MatrixConcat</string>
+		<string>Matte</string>
+		<string>MeasureString</string>
+		<string>MeasureStringPlain</string>
+		<string>Mesh</string>
+		<string>MeshBlit</string>
+		<string>MeshBlit3D</string>
+		<string>MotionBlur</string>
+		<string>Multiply</string>
+		<string>next</string>
+		<string>NumToString</string>
+		<string>Offset</string>
+		<string>Offset3d</string>
+		<string>OffsetPixels</string>
+		<string>on</string>
+		<string>Outset3d</string>
+		<string>OvalRegion</string>
+		<string>Overlay</string>
+		<string>PagePeel</string>
+		<string>Point</string>
+		<string>point3d</string>
+		<string>PointTrack</string>
+		<string>PondRipple</string>
+		<string>Popup</string>
+		<string>Power</string>
+		<string>previewing</string>
+		<string>ProducesAlpha</string>
+		<string>QTEffect</string>
+		<string>RadialBlur</string>
+		<string>RadioGroup</string>
+		<string>Random</string>
+		<string>RandomNoise</string>
+		<string>RandomSeed</string>
+		<string>RandomTable</string>
+		<string>ratio</string>
+		<string>region</string>
+		<string>RegionCopy</string>
+		<string>RegionIsEmpty</string>
+		<string>RenderEachFrameWhenStill</string>
+		<string>renderRes</string>
+		<string>Repeat While</string>
+		<string>Repeat With Counter</string>
+		<string>Repeat With List</string>
+		<string>Repeat</string>
+		<string>ResetText</string>
+		<string>RGBColorKey</string>
+		<string>RGBtoYUV</string>
+		<string>Ripple</string>
+		<string>Rotate</string>
+		<string>Rotate3d</string>
+		<string>Scale</string>
+		<string>Scale3d</string>
+		<string>Screen</string>
+		<string>SetPixelFormat</string>
+		<string>SetTextFont</string>
+		<string>SetTextJustify</string>
+		<string>SetTextSize</string>
+		<string>SetTextStyle</string>
+		<string>Sign</string>
+		<string>Sin</string>
+		<string>Slider</string>
+		<string>Sqrt</string>
+		<string>src1</string>
+		<string>src2</string>
+		<string>srcIsGap1</string>
+		<string>srcIsGap2</string>
+		<string>srcType1</string>
+		<string>srcType2</string>
+		<string>string</string>
+		<string>StringToNum</string>
+		<string>Subroutines</string>
+		<string>Subtract</string>
+		<string>SysTime</string>
+		<string>Tan</string>
+		<string>Text</string>
+		<string>Transition</string>
+		<string>true</string>
+		<string>Truncate</string>
+		<string>UnMultiply</string>
+		<string>value</string>
+		<string>Wave</string>
+		<string>While</string>
+		<string>Whirlpool</string>
+		<string>WipeCode</string>
+		<string>YUVcolor</string>
+		<string>YUVColorKey</string>
+		<string>YUVtoRGB</string>
+	</array>
+	<key>BBLMLanguageCode</key>
+	<string>KeyG</string>
+	<key>BBLMLanguageDisplayName</key>
+	<string>FXScript</string>
+	<key>BBLMScansFunctions</key>
+	<true/>
+	<key>BBLMSuffixMap</key>
+	<array>
+		<dict>
+			<key>BBLMLanguageSuffix</key>
+			<string>.fxscript</string>
+		</dict>
+	</array>
+	<key>Language Features</key>
+	<dict>
+		
+		<key>Identifier and Keyword Characters</key>
+		<string>0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz</string>
+		
+		
+		
+		<key>Open Parameter Lists</key>
+		<string>(</string>
+		<key>Close Parameter Lists</key>
+		<string>)</string>
+	
+		<key>Open Statement Blocks</key>
+		<string>end</string>
+		<key>Close Statement Blocks</key>
+		<string> </string>
+
+
+		<key>Open Strings 1</key>
+		<string>"</string>
+		<key>Close Strings 1</key>
+		<string>"</string>
+
+		<key>Prefix for Functions</key>
+		<string>on</string>
+
+		<key>End-of-line Ends Strings 1</key>
+		<false/>
+		
+		<key>Open Line Comments</key>
+		<string>//</string>
+		
+		<key>Open Block Comments</key>
+		<string>//</string>
+		<key>Close Block Comments</key>
+		<string></string>
+
+		
+		
+		
+	</dict>
+</dict>
+</plist>
