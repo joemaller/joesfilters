@@ -292,3 +292,13 @@ BuildDiskImage(POSIX file tmpFolder, POSIX file outputDMG)
 log (current date) - startTime & " seconds"
 
 tell me to activate
+
+
+
+
+on LogTester()
+	
+	log "this was successfully called from the other script file"
+end LogTester
+
+

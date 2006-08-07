@@ -5,7 +5,7 @@
 --  Copyright 2005 __MyCompanyName__. All rights reserved.
 
 
-
+global dmgLibrary
 
 
 property preferredTypes : {"txt", "fxscript"}
@@ -18,13 +18,11 @@ property loopcount : 0
 property crashcount : 0
 property startTime : missing value
 
-global paused
-set paused to false
+property paused : false
 
-global functs
-set myPath to (path to me)
-copy (load script ((myPath & "Contents:Resources:Scripts:FXScript Functions.scpt") as string as alias)) to functs
-functs's LogTester()
+property buildFolder : ""
+
+
 
 
 property panelWIndow : missing value
@@ -33,7 +31,8 @@ property panelWIndow : missing value
 
 on will finish launching theObject
 	
-	
+	-- load external library:
+	set dmgLibrary to load script file (((path to me from user domain) & "Contents:Resources:Scripts:" & "FXScript Disk Image Creator" & ".scpt") as text)
 	
 	set fileList to {}
 	set end of fileList to {|fullPath|:"/boogle/joe.gtml"}
@@ -214,6 +213,11 @@ on clicked theObject
 		log " go do the DMG thing"
 	end if
 	
+	if name of theObject is "fLib" then
+		
+		LogTester() of dmgLibrary
+	end if
+	
 	
 end clicked
 
@@ -320,7 +324,8 @@ on doCompile(fileList)
 	log |fullPath| of item 1 of outputFolders
 	log |fullPath| of item 1 of outputFolders as string
 	
-	setUserDefaults("LastBuildPath", |fullPath| of item 1 of outputFolders)
+	log buildFolder
+	setUserDefaults("LastBuildPath", buildFolder)
 	revealInFinder(|fullPath| of item 1 of outputFolders)
 	
 	set elapsedSeconds to ((current date) - startTime)
@@ -474,7 +479,7 @@ on revealInFinder(thePath)
 	-- reveals a file in the Finder, takes a POSIX path as input
 	
 	tell application "Finder"
-		activate
+		--	activate
 		open container of (POSIX file thePath as alias)
 		select (POSIX file thePath as alias)
 	end tell
@@ -494,7 +499,8 @@ on FCPdismissStartupWindows()
 		tell process "Final Cut Pro"
 			
 			try
-				with timeout of 300 seconds
+				with timeout of 30 seconds
+					
 					set windowList to name of every window
 					(* FCP will occasionally fail to respond to System Events during launch and restoration of exising projects. I've never had a 5 minute wait, but who knows... *)
 				end timeout
@@ -509,11 +515,15 @@ on FCPdismissStartupWindows()
 					my FCPdismissStartupWindows()
 				end if
 				
+				if button "Replace" of window 1 exists then click button "Replace" of window 1
+				
 			on error the error_message number the error_number
 				-- i don't think is is ever getting called...
 				log "FAILED on: " & loopcount & ", " & error_number & " (" & error_number & ") retrying..."
 				
-				if loopcount < 100 then my FCPdismissStartupWindows() -- loopcount is a check to prevent runaway loops
+				
+				log loopcount
+				if loopcount < 25 then my FCPdismissStartupWindows() -- loopcount is a check to prevent runaway loops
 				
 			end try
 			
