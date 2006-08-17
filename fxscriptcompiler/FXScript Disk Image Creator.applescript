@@ -297,7 +297,6 @@ tell me to activate
 
 
 on LogTester()
-	
 	log "this was successfully called from the other script file"
 end LogTester
 

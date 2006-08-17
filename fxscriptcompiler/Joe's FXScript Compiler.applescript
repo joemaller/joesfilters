@@ -218,6 +218,13 @@ on clicked theObject
 		LogTester() of dmgLibrary
 	end if
 	
+	if name of theObject is "openLastBuild" then
+		
+		log (fetchUserDefaults("LastBuildPath"))
+		log (fetchUserDefaults("outputFolderPath"))
+		do shell script "open " & quoted form of (fetchUserDefaults("outputFolderPath") & "/" & fetchUserDefaults("LastBuildPath"))
+		
+	end if
 	
 end clicked
 
