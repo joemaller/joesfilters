@@ -205,6 +205,8 @@ on clicked theObject
 	end if
 	
 	if name of theObject is "closer" then
+		-- this is the continue button...
+		set paused to false
 		close panel (window of theObject) with result 1
 	end if
 	
@@ -241,13 +243,6 @@ on doPausePanel() -- this shows the pause panel
 end doPausePanel
 
 
-on panel ended theObject with result withResult
-	-- add handler for quitting, etc...
-	log withResult
-	set paused to false
-end panel ended
-
-
 
 
 
@@ -271,11 +266,7 @@ end setUserDefaults
 on doCompile(fileList)
 	
 	
-	-- show progress panel:
-	set visible of window "ProgressPanel" to true
-	set level of window "ProgressPanel" to 3
-	set hides when deactivated of window "ProgressPanel" to false
-	
+	ShowProgressPanel(true)
 	
 	
 	set completedProgress to 0 -- reset progress bar for new iteration.
@@ -334,8 +325,11 @@ on doCompile(fileList)
 -- = Ending Compile =
 -- ==================
 "
+	showStatus("Finished compiling, revealing build in Finder", true)
+	makeProgress(1)
 	
-	set visible of window "ProgressPanel" to false
+	ShowProgressPanel(false)
+	
 	log outputFolders
 	log |fullPath| of item 1 of outputFolders
 	log |fullPath| of item 1 of outputFolders as string
@@ -358,6 +352,7 @@ on showStatus(theMessage, theStatus)
 	set contents of text field "ProgressStatus" of window "ProgressPanel" to theMessage
 	return theStatus
 end showStatus
+
 
 on makeProgress(progressValue)
 	set contents of progress indicator "theProgressBar" of window "main" to progressValue
@@ -414,7 +409,6 @@ on getVersion(theFile)
 	
 	return do shell script "/usr/local/bin/./svn log " & quoted form of theFile & " | grep -m1 -er[0-9] | awk '{print $1}'"
 	
-	
 end getVersion
 
 
@@ -446,11 +440,8 @@ on applyWatermark(filePath, outFolder, betaMark, waterMarkSource)
 	-- all input should be unescaped POSIX paths 
 	-- there is nothing here to handle double-quotes in a file name, "quoted form of" wasn't working because AppleScript was adding an extra backslash
 	
-	log "
-===========================
-= NOW IN APPLYWATERMARK() =
-===========================
-"
+	log "applyWatermark(" & filePath & ", " & outFolder & ", " & betaMark & ", " & waterMarkSource & ")"
+	
 	tell main bundle
 		set scriptPath to path for resource "applyWatermark" extension "sh"
 	end tell
@@ -505,7 +496,7 @@ on FCPdismissStartupWindows()
 				with timeout of 30 seconds
 					
 					set windowList to name of every window
-					(* FCP will occasionally fail to respond to System Events during launch and restoration of exising projects. I've never had a 5 minute wait, but who knows... *)
+					(* FCP will occasionally fail to respond to System Events during launch and restoration of exising projects. this can take a while *)
 				end timeout
 				
 				if windowList contains "External A/V" then
@@ -529,7 +520,6 @@ on FCPdismissStartupWindows()
 				if loopcount < 25 then my FCPdismissStartupWindows() -- loopcount is a check to prevent runaway loops
 				
 			end try
-			
 		end tell
 	end tell
 	return true
@@ -761,3 +751,13 @@ on secondsToHMS(theSeconds)
 end secondsToHMS
 
 
+
+on ShowProgressPanel(showHide)
+	if showHide is true then
+		set visible of window "ProgressPanel" to true
+		set level of window "ProgressPanel" to 3
+		set hides when deactivated of window "ProgressPanel" to false
+	else
+		set visible of window "ProgressPanel" to false
+	end if
+end ShowProgressPanel
