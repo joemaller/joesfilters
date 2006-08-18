@@ -13,7 +13,6 @@
 			contextName = "";
 			files = (
 				257572C5072881A4000BE9CA /* Joe's FXScript Compiler.applescript in AppleScript */,
-				D84343540A6EB6D3009D4C00 /* FXScript Functions.applescript in AppleScript */,
 				D8EF23B80A845BBE00CFCCC9 /* FXScript Disk Image Creator.applescript in AppleScript */,
 			);
 			isSharedContext = 0;
@@ -31,7 +30,6 @@
 		D80005E80875DDAB00566F05 /* MyApplication.m in Sources */ = {isa = PBXBuildFile; fileRef = D800053F0875B5FD00566F05 /* MyApplication.m */; };
 		D8097EDD0899D000007898DA /* panel.nib in Resources */ = {isa = PBXBuildFile; fileRef = D8097EDB0899D000007898DA /* panel.nib */; };
 		D81EDC3809F58B3600551FB2 /* applyWatermark.sh in Resources */ = {isa = PBXBuildFile; fileRef = D81EDC3709F58B3600551FB2 /* applyWatermark.sh */; };
-		D84343540A6EB6D3009D4C00 /* FXScript Functions.applescript in AppleScript */ = {isa = PBXBuildFile; fileRef = D84343530A6EB6D3009D4C00 /* FXScript Functions.applescript */; settings = {ATTRIBUTES = (Debug, ); }; };
 		D850FE9A0885972B00BA81DA /* folder16.tiff in Resources */ = {isa = PBXBuildFile; fileRef = D850FE990885972B00BA81DA /* folder16.tiff */; };
 		D854D3D5087D99FF00054E17 /* To Do List in Resources */ = {isa = PBXBuildFile; fileRef = D854D3D4087D99FF00054E17 /* To Do List */; };
 		D8CE5BD50A86C7A400A19B6C /* MainMenu.nib in Resources */ = {isa = PBXBuildFile; fileRef = D8CE5BCE0A86C7A300A19B6C /* MainMenu.nib */; };
@@ -51,7 +49,6 @@
 		D800053F0875B5FD00566F05 /* MyApplication.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = MyApplication.m; sourceTree = "<group>"; };
 		D8097EDC0899D000007898DA /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/panel.nib; sourceTree = "<group>"; };
 		D81EDC3709F58B3600551FB2 /* applyWatermark.sh */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = text.script.sh; path = applyWatermark.sh; sourceTree = "<group>"; };
-		D84343530A6EB6D3009D4C00 /* FXScript Functions.applescript */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.applescript; path = "FXScript Functions.applescript"; sourceTree = "<group>"; };
 		D850FE990885972B00BA81DA /* folder16.tiff */ = {isa = PBXFileReference; lastKnownFileType = image.tiff; path = folder16.tiff; sourceTree = "<group>"; };
 		D854D3D4087D99FF00054E17 /* To Do List */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "To Do List"; sourceTree = "<group>"; };
 		D8CE5BCF0A86C7A300A19B6C /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/MainMenu.nib; sourceTree = "<group>"; };
@@ -78,7 +75,6 @@
 			children = (
 				D8EF23B70A845BBE00CFCCC9 /* FXScript Disk Image Creator.applescript */,
 				DA206CF3015C4E8B03C91932 /* Joe's FXScript Compiler.applescript */,
-				D84343530A6EB6D3009D4C00 /* FXScript Functions.applescript */,
 			);
 			name = Scripts;
 			sourceTree = "<group>";

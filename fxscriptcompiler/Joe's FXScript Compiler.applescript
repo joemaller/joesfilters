@@ -81,7 +81,6 @@ end will finish launching
 on awake from nib theObject
 	
 	
-	
 	if name of theObject is "watermarkView" then
 		tell theObject to register drag types {"file names", "text"}
 	end if
@@ -201,7 +200,7 @@ on clicked theObject
 		resetOutputFolders()
 	end if
 	
-	if name of theObject is "idleButton" then
+	if name of theObject is "pauseButton" then
 		doPausePanel()
 	end if
 	
@@ -213,10 +212,6 @@ on clicked theObject
 		log " go do the DMG thing"
 	end if
 	
-	if name of theObject is "fLib" then
-		
-		LogTester() of dmgLibrary
-	end if
 	
 	if name of theObject is "openLastBuild" then
 		
@@ -274,6 +269,15 @@ end setUserDefaults
 
 
 on doCompile(fileList)
+	
+	
+	-- show progress panel:
+	set visible of window "ProgressPanel" to true
+	set level of window "ProgressPanel" to 3
+	set hides when deactivated of window "ProgressPanel" to false
+	
+	
+	
 	set completedProgress to 0 -- reset progress bar for new iteration.
 	
 	set loopcount to 0
@@ -293,11 +297,13 @@ on doCompile(fileList)
 		
 		showStatus("Compiling source code for: " & |fileName| of theFile, true)
 		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
+		makeProgress(completedProgress)
 		
 		set fullplugSource to applyWatermark(|fullPath| of theFile, |fullPath| of item 3 of outputFolders, fetchUserDefaults("watermarkMenuString"), "")
 		
 		showStatus("Compiling demo source code for: " & |fileName| of theFile, true)
 		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
+		makeProgress(completedProgress)
 		
 		log "waterMarkSource:" & fetchUserDefaults("waterMarkSource")
 		set demoplugSource to applyWatermark(|fullPath| of theFile, |fullPath| of item 4 of outputFolders, fetchUserDefaults("watermarkMenuString"), fetchUserDefaults("waterMarkSource"))
@@ -305,12 +311,14 @@ on doCompile(fileList)
 		
 		showStatus(|fileName| of theFile & ": Sending demo code to Final Cut Pro", true)
 		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
+		makeProgress(completedProgress)
 		
 		
 		FXBuilderSaveEncodedPlugin(demoplugSource, (text 1 thru -10 of |fileName| of theFile as string), |fullPath| of item 2 of outputFolders)
 		
 		showStatus(|fileName| of theFile & ": Sending full code to Final Cut Pro", true)
 		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
+		makeProgress(completedProgress)
 		
 		FXBuilderSaveEncodedPlugin(fullplugSource, (text 1 thru -10 of |fileName| of theFile as string), |fullPath| of item 1 of outputFolders)
 		
@@ -327,6 +335,7 @@ on doCompile(fileList)
 -- ==================
 "
 	
+	set visible of window "ProgressPanel" to false
 	log outputFolders
 	log |fullPath| of item 1 of outputFolders
 	log |fullPath| of item 1 of outputFolders as string
@@ -336,22 +345,23 @@ on doCompile(fileList)
 	revealInFinder(|fullPath| of item 1 of outputFolders)
 	
 	set elapsedSeconds to ((current date) - startTime)
-	log "Time elapsed: " & secondsToHMS(elapsedSeconds)
-	log "Final Cut Pro crashed: " & crashcount & " times."
+	--	log "Time elapsed: " & secondsToHMS(elapsedSeconds)
+	--	log "Final Cut Pro crashed: " & crashcount & " times."
 	showStatus("Elapsed Time: " & secondsToHMS(elapsedSeconds) & " crashes: " & crashcount, true)
 	
 end doCompile
 
 
 on showStatus(theMessage, theStatus)
-	
 	log theMessage
 	set contents of text field "statusMessage" of window "main" to theMessage
+	set contents of text field "ProgressStatus" of window "ProgressPanel" to theMessage
 	return theStatus
 end showStatus
 
 on makeProgress(progressValue)
 	set contents of progress indicator "theProgressBar" of window "main" to progressValue
+	set contents of progress indicator "ProgressBar" of window "ProgressPanel" to progressValue
 end makeProgress
 
 
@@ -362,38 +372,24 @@ on isTextFile(theFile)
 	-- checks a file for a known extension, a TEXT file type, and a type-id containing "text" returns true on any of those
 	
 	set theInfo to info for (POSIX file theFile)
+	
 	set theTypeID to type identifier of theInfo
 	set theFileType to file type of theInfo
 	set theExtension to name extension of theInfo
 	
-	
-	if theFileType is "TEXT" then
-		return true
-	end if
-	
-	if theTypeID contains "text" then
-		return true
-	end if
-	
-	if theExtension is in preferredTypes then
-		return true
-	end if
+	if theFileType is "TEXT" then return true
+	if theTypeID contains "text" then return true
+	if theExtension is in preferredTypes then return true
 	
 	return false
 end isTextFile
 
 
-on resetFileList()
-	
-end resetFileList
-
 on resetOutputFolders()
-	log "resetting Output Folders"
 	setUserDefaults("fullEncoded", "full")
 	setUserDefaults("demoEncoded", "demo")
 	setUserDefaults("fullSourceCode", "full code")
 	setUserDefaults("demoSourceCode", "demo code")
-	--	return true
 end resetOutputFolders
 
 
