@@ -275,7 +275,17 @@ on preCleanUp(rwDMG, prevFolder, prevDMG)
 end preCleanUp
 
 
+on logorama()
+	
+	log "logorama"
+end logorama
+
 copy (current date) to startTime
+
+
+copy "file:///Users/joe/Documents/SVN/joesfilters/trunk/disk images/Joe's Filters" to SVNdiskDir
+copy "/Users/joe/Joes_Filters.dmg" to outputDMG
+
 preCleanUp(POSIX file tmpDMG, POSIX file tmpFolder, POSIX file outputDMG)
 BuildDiskImage(POSIX file tmpFolder, POSIX file outputDMG)
 
@@ -292,12 +302,3 @@ BuildDiskImage(POSIX file tmpFolder, POSIX file outputDMG)
 log (current date) - startTime & " seconds"
 
 tell me to activate
-
-
-
-
-on LogTester()
-	log "this was successfully called from the other script file"
-end LogTester
-
-

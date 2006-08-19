@@ -6,33 +6,24 @@
 
 
 global dmgLibrary
-
+global FCPLibrary
 
 property preferredTypes : {"txt", "fxscript"}
 property maxProgress : 100
 property completedProgress : 0
 
-
-(* used by the FCP ccrash detection and recovery routines *)
-property loopcount : 0
-property crashcount : 0
-property startTime : missing value
-
 property paused : false
 
-property buildFolder : ""
-
-
-
+-- property buildFolder : ""
 
 property panelWIndow : missing value
 
 
 
 on will finish launching theObject
-	
 	-- load external library:
 	set dmgLibrary to load script file (((path to me from user domain) & "Contents:Resources:Scripts:" & "FXScript Disk Image Creator" & ".scpt") as text)
+	set FCPLibrary to load script file (((path to me from user domain) & "Contents:Resources:Scripts:" & "FCP Function Library" & ".scpt") as text)
 	
 	set fileList to {}
 	set end of fileList to {|fullPath|:"/boogle/joe.gtml"}
@@ -95,20 +86,23 @@ on awake from nib theObject
 		log "New Panel Loaded"
 	end if
 	
-	if name of theObject is "PreviousBuildButton" then
-		log "PreviousBuildButton woke from NIB"
+	if name of theObject is "openLastBuild" then
+		log "openLastBuild woke from nib"
 		if fetchUserDefaults("LastBuildPath") is not "" then
 			
-			log "LastBuildPath is not empty"
+			log "LastBuildPath is not empty, checking if dirExists(" & fetchUserDefaults("LastBuildPath") & ")"
 			if dirExists(fetchUserDefaults("LastBuildPath")) then
-				log "dir exists"
+				log "dir exists: " & fetchUserDefaults("LastBuildPath")
 				set enabled of theObject to true
+			else
+				set enabled of theObject to false
 			end if
 		end if
 		
 		set enabled of theObject to false
 	end if
 end awake from nib
+
 
 
 on drop theObject drag info dragInfo
@@ -168,6 +162,8 @@ on drop theObject drag info dragInfo
 	return false
 end drop
 
+
+
 on clicked theObject
 	log "clicked: " & name of theObject as text
 	if name of theObject is "chooseFile" then
@@ -218,12 +214,57 @@ on clicked theObject
 	if name of theObject is "openLastBuild" then
 		
 		log (fetchUserDefaults("LastBuildPath"))
-		log (fetchUserDefaults("outputFolderPath"))
-		do shell script "open " & quoted form of (fetchUserDefaults("outputFolderPath") & "/" & fetchUserDefaults("LastBuildPath"))
+		--	log (fetchUserDefaults("outputFolderPath"))
+		do shell script "open " & quoted form of (fetchUserDefaults("LastBuildPath"))
 		
 	end if
 	
+	if name of theObject is "createDMGsFromLastBuild" then
+		log "go make DMGs"
+		-- need to implement pre-cleanup
+		dmgLibrary's logorama()
+		dmgLibrary's BuildDiskImage(POSIX file ("" & "/tmp/joes_filters_for_DMG/" as text), POSIX file (fetchUserDefaults("LastBuildPath" & "/Joes_Filters_Demo.dmg")))
+	end if
+	
 end clicked
+
+
+
+(* two keystroke saving subroutines for working with User Defaults *)
+on fetchUserDefaults(theKey)
+	return contents of default entry theKey of user defaults
+end fetchUserDefaults
+
+on setUserDefaults(theKey, theValue)
+	set contents of default entry theKey of user defaults to theValue
+end setUserDefaults
+
+
+
+on isTextFile(theFile)
+	-- checks a file for a known extension, a TEXT file type, and a type-id containing "text" returns true on any of those
+	
+	set theInfo to info for (POSIX file theFile)
+	
+	set theTypeID to type identifier of theInfo
+	set theFileType to file type of theInfo
+	set theExtension to name extension of theInfo
+	
+	if theFileType is "TEXT" then return true
+	if theTypeID contains "text" then return true
+	if theExtension is in preferredTypes then return true
+	
+	return false
+end isTextFile
+
+
+on resetOutputFolders()
+	setUserDefaults("fullEncoded", "full")
+	setUserDefaults("demoEncoded", "demo")
+	setUserDefaults("fullSourceCode", "full code")
+	setUserDefaults("demoSourceCode", "demo code")
+end resetOutputFolders
+
 
 on doPausePanel() -- this shows the pause panel
 	
@@ -249,25 +290,11 @@ end doPausePanel
 
 
 
-(* two keystroke saving subroutines for working with User Defaults *)
-on fetchUserDefaults(theKey)
-	return contents of default entry theKey of user defaults
-end fetchUserDefaults
-
-on setUserDefaults(theKey, theValue)
-	set contents of default entry theKey of user defaults to theValue
-end setUserDefaults
-
-
-
-
 
 
 on doCompile(fileList)
 	
-	
 	ShowProgressPanel(true)
-	
 	
 	set completedProgress to 0 -- reset progress bar for new iteration.
 	
@@ -305,13 +332,13 @@ on doCompile(fileList)
 		makeProgress(completedProgress)
 		
 		
-		FXBuilderSaveEncodedPlugin(demoplugSource, (text 1 thru -10 of |fileName| of theFile as string), |fullPath| of item 2 of outputFolders)
+		FCPLibrary's FXBuilderSaveEncodedPlugin(demoplugSource, (text 1 thru -10 of |fileName| of theFile as string), |fullPath| of item 2 of outputFolders)
 		
 		showStatus(|fileName| of theFile & ": Sending full code to Final Cut Pro", true)
 		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
 		makeProgress(completedProgress)
 		
-		FXBuilderSaveEncodedPlugin(fullplugSource, (text 1 thru -10 of |fileName| of theFile as string), |fullPath| of item 1 of outputFolders)
+		FCPLibrary's FXBuilderSaveEncodedPlugin(fullplugSource, (text 1 thru -10 of |fileName| of theFile as string), |fullPath| of item 1 of outputFolders)
 		
 		
 	end repeat
@@ -334,8 +361,14 @@ on doCompile(fileList)
 	log |fullPath| of item 1 of outputFolders
 	log |fullPath| of item 1 of outputFolders as string
 	
-	log buildFolder
-	setUserDefaults("LastBuildPath", buildFolder)
+	--	log "outputFolderPath" & fetchUserDefaults("outputFolderPath")
+	--log "buildFolder: " & buildFolder
+	log "setting LastBuildPath to: " & (do shell script "dirname " & quoted form of |fullPath| of item 1 of outputFolders)
+	--(fetchUserDefaults("outputFolderPath") & "/" & fetchUserDefaults("LastBuildPath"))
+	
+	
+	setUserDefaults("LastBuildPath", (do shell script "dirname " & quoted form of |fullPath| of item 1 of outputFolders))
+	set enabled of button "openLastBuild" of window "main" to true
 	revealInFinder(|fullPath| of item 1 of outputFolders)
 	
 	set elapsedSeconds to ((current date) - startTime)
@@ -363,29 +396,6 @@ end makeProgress
 
 
 
-on isTextFile(theFile)
-	-- checks a file for a known extension, a TEXT file type, and a type-id containing "text" returns true on any of those
-	
-	set theInfo to info for (POSIX file theFile)
-	
-	set theTypeID to type identifier of theInfo
-	set theFileType to file type of theInfo
-	set theExtension to name extension of theInfo
-	
-	if theFileType is "TEXT" then return true
-	if theTypeID contains "text" then return true
-	if theExtension is in preferredTypes then return true
-	
-	return false
-end isTextFile
-
-
-on resetOutputFolders()
-	setUserDefaults("fullEncoded", "full")
-	setUserDefaults("demoEncoded", "demo")
-	setUserDefaults("fullSourceCode", "full code")
-	setUserDefaults("demoSourceCode", "demo code")
-end resetOutputFolders
 
 
 
@@ -400,16 +410,6 @@ on zeroPad(theVal, endLength)
 	
 	return text (endLength * -1) thru -1 of theVal
 end zeroPad
-
-
-
-on getVersion(theFile)
-	--	do shell script "cvs -d/usr/local/cvsrep status " & quoted form of theFile & " | awk '/Working/ {print $3}'"
-	--do shell script "/usr/local/bin/./svn log  " & quoted form of theFile & " | grep -m1 -er[0-9] | awk '{print $1}'"
-	
-	return do shell script "/usr/local/bin/./svn log " & quoted form of theFile & " | grep -m1 -er[0-9] | awk '{print $1}'"
-	
-end getVersion
 
 
 
@@ -482,247 +482,7 @@ end revealInFinder
 
 
 
-on FCPdismissStartupWindows()
-	log "FCPdismissStartupWindows()"
-	set loopcount to loopcount + 1
-	-- this checks for every startup window I can find, closes one then calls itself again until it returns true
-	-- check for window "Offline Files"
-	tell application "Final Cut Pro" to activate -- bring FCP to front
-	
-	tell application "System Events"
-		tell process "Final Cut Pro"
-			
-			try
-				with timeout of 30 seconds
-					
-					set windowList to name of every window
-					(* FCP will occasionally fail to respond to System Events during launch and restoration of exising projects. this can take a while *)
-				end timeout
-				
-				if windowList contains "External A/V" then
-					(key code 53) -- press escape
-					my FCPdismissStartupWindows()
-				end if
-				
-				if windowList contains "Offline Files" then
-					click button "Continue" of window "Offline Files"
-					my FCPdismissStartupWindows()
-				end if
-				
-				if button "Replace" of window 1 exists then click button "Replace" of window 1
-				
-			on error the error_message number the error_number
-				-- i don't think is is ever getting called...
-				log "FAILED on: " & loopcount & ", " & error_number & " (" & error_number & ") retrying..."
-				
-				
-				log loopcount
-				if loopcount < 25 then my FCPdismissStartupWindows() -- loopcount is a check to prevent runaway loops
-				
-			end try
-		end tell
-	end tell
-	return true
-	
-end FCPdismissStartupWindows
 
-
-
-
-on FXBuilderBringToFront() -- makes sure frontmost window is FXBuilder
-	log "FXBuilderBringToFront()"
-	tell application "System Events"
-		log "*** GETTING PROCESSES ***"
-		log name of every process as list
-		log "FCP EXISTS? " & (exists process "Final Cut Pro")
-		
-		if not (exists process "Final Cut Pro") then
-			set crashcount to crashcount + 1
-			my showStatus("FCP Crashed: Restarting...", true)
-		end if
-	end tell
-	
-	FCPdismissStartupWindows()
-	
-	tell application "System Events"
-		tell process "Final Cut Pro"
-			set windowList to name of every window
-			if windowList contains "FXBuilder" then
-				set FXBcount to 0
-				repeat with theWindow in windowList
-					if theWindow as string is "FXBuilder" then set FXBcount to FXBcount + 1
-				end repeat
-				
-				repeat FXBcount times
-					perform action "AXRaise" of window "FXBuilder"
-					if scroll bar 1 of window "FXBuilder" exists then
-						return true -- end, we found a workable window
-					end if
-					
-					if size of window "FXBuilder" is {322, 320} then
-						keystroke "w" using command down -- close preview window
-					end if
-					
-					(* if there's a controls window, do nothing, which is a problem since it will remain frontmost
-					this will fail gracefully however and eventually open a new FXBuilder window *)
-					
-				end repeat
-			end if
-			
-			if value of attribute "AXEnabled" of menu item "FXBuilder" of menu "Tools" of menu bar 1 is false then
-				log "FXBuilder menu disabled. loopcount: " & loopcount
-				log "loopcount: " & loopcount
-				if loopcount < 200 then my FCPdismissStartupWindows()
-			end if
-			click menu item "FXBuilder" of menu "Tools" of menu bar 1
-		end tell
-	end tell
-	
-end FXBuilderBringToFront
-
-
-on FXBuilderPasteText(sourceText) -- places sourceText into an FXBuilder window
-	
-	FXBuilderBringToFront()
-	set the clipboard to sourceText as text
-	
-	tell application "System Events"
-		tell process "Final Cut Pro"
-			tell application "Final Cut Pro" to activate
-			keystroke "a" using command down -- select all
-			key code 51 -- (delete key) delete current selected text
-			keystroke "va" using command down -- paste and select all			
-		end tell
-	end tell
-end FXBuilderPasteText
-
-
-on FXBuilderSaveEncodedPlugin(plugSource, destName, destFolder)
-	log "FXBuilderSaveEncodedPlugin(x, " & destName & ", " & destFolder & ")"
-	-- need to have a catch for compile errors
-	
-	FXBuilderPasteText(plugSource) -- send source code to the FXBuilder window
-	
-	try
-		tell application "Final Cut Pro" to activate
-		tell application "System Events"
-			tell process "Final Cut Pro"
-				
-				repeat 5 times -- check for gibberish in the save default box...
-					with timeout of 10 seconds
-						
-						log "CLICKING CREATE ENCODED"
-						click menu item "Create Encoded Plugin..." of menu "FXBuilder" of menu bar item "FXBuilder" of menu bar 1
-						
-						log "clicked, should be the save dialog"
-					end timeout
-					
-					tell window "Save"
-						
-						if not (exists checkbox 2) then
-							click checkbox 1 -- make sure hide extension is visible
-							delay 1 -- let the interface catch up...
-						end if
-						
-						if get value of checkbox 2 is 1 then -- checkbox 2 is the "Hide extension" option
-							click checkbox 2 -- make sure hide extension is not checked
-							delay 1 -- if the extension was hidden, wait one second for the UI to catch up with the script
-						end if
-						
-						set theSaveExtensions to value of text field 1 as text
-					end tell
-					
-					log theSaveExtensions
-					log text -6 through -1 of theSaveExtensions
-					log text -6 through -1 of theSaveExtensions is ".fcfcc"
-					
-					if text -6 through -1 of theSaveExtensions is ".fcfcc" then exit repeat -- clean default name, continue
-					
-					-- the existing text did not register correctly, so it probably contained crap characters
-					key code 53 -- press escape to cancel save
-					log "gibberish in save window"
-					delay 1
-					
-				end repeat
-			end tell
-		end tell
-		
-		FXBuilderSetSaveDialogOutputFolder(destFolder)
-		FXBuilderSetSaveDialogFileNameSaveFile(destName)
-		--	tell application "System Events" to click button "Save" of window 1 of process "Final Cut Pro"
-		
-	on error the error_message number the error_number
-		log "Error: " & the error_number & ". " & the error_message
-		
-		FXBuilderSaveEncodedPlugin(plugSource, destName, destFolder) -- call self if there's a fatal error
-		
-	end try
-	
-end FXBuilderSaveEncodedPlugin
-
-
-
-on FXBuilderSetSaveDialogFileNameSaveFile(theFileName)
-	log "FXBuilderSetSaveDialogFileName(" & theFileName & ")"
-	-- used to simplify entering the outgoing filename when saving files
-	
-	tell application "System Events"
-		tell process "Final Cut Pro"
-			tell window 1
-				set the clipboard to theFileName as text
-				repeat 5 times -- safety max loop value
-					tell application "Final Cut Pro" to activate
-					keystroke "av" using {command down} -- select all, paste
-					set checkVal to (value of text field 1 is equal to theFileName as text)
-					set checkVal to (value of text field 1 as text)
-					
-					if checkVal is equal to (theFileName as text) then exit repeat
-					
-				end repeat
-				
-				click button "Save" -- click save
-			end tell
-		end tell
-	end tell
-end FXBuilderSetSaveDialogFileNameSaveFile
-
-on FXBuilderSetSaveDialogOutputFolder(thePath)
-	log "FXBuilderSetSaveDialogOutputFolder(" & thePath & ")"
-	-- used to simplify entering the destination path when saving FXScripts
-	-- assumes that the FXBuilder save dialog is already frontmost
-	-- flashes twice because the path would occasionally be entered incorrectly, the second flash is a safety check
-	-- added a safety max-loop value of 5 in case the folder doesn't exist or something else breaks
-	
-	if dirExists(thePath) then
-		tell application "System Events"
-			tell process "Final Cut Pro"
-				tell window 1
-					set the clipboard to thePath as text
-					repeat 5 times -- safety max loop value
-						tell application "Final Cut Pro" to activate
-						keystroke "g" using {command down, shift down} -- Open path entry dialog
-						keystroke "av" using {command down} -- select all, paste
-						set checkVal to (value of text field 1 as text)
-						keystroke return -- close path entry dialog
-						if checkVal is equal to (thePath as text) then exit repeat
-					end repeat
-				end tell
-			end tell
-		end tell
-	end if
-end FXBuilderSetSaveDialogOutputFolder
-
-
-on dirExists(thePath)
-	(* a simple and fast test to see if a folder exists, path should be POSIX, doesn't need to end in a slash *)
-	try
-		log (do shell script "test -d " & quoted form of thePath)
-		return true
-	on error
-		return false
-	end try
-	
-end dirExists
 
 on secondsToHMS(theSeconds)
 	-- returns value of seconds in hours, minutes and seconds
@@ -761,3 +521,16 @@ on ShowProgressPanel(showHide)
 		set visible of window "ProgressPanel" to false
 	end if
 end ShowProgressPanel
+
+
+
+on dirExists(thePath)
+	(* a simple and fast test to see if a folder exists, path should be POSIX, doesn't need to end in a slash *)
+	try
+		log (do shell script "test -d " & quoted form of thePath)
+		return true
+	on error
+		return false
+	end try
+end dirExists
+
