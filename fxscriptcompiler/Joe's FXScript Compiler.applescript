@@ -25,6 +25,11 @@ on will finish launching theObject
 	set dmgLibrary to load script file (((path to me from user domain) & "Contents:Resources:Scripts:" & "FXScript Disk Image Creator" & ".scpt") as text)
 	set FCPLibrary to load script file (((path to me from user domain) & "Contents:Resources:Scripts:" & "FCP Function Library" & ".scpt") as text)
 	
+	
+	log "dmgLibrary's outputDMG: " & dmgLibrary's outputDMG
+	
+	
+	
 	set fileList to {}
 	set end of fileList to {|fullPath|:"/boogle/joe.gtml"}
 	set end of fileList to {|fullPath|:"blah/joe"}
@@ -93,15 +98,27 @@ on awake from nib theObject
 			log "LastBuildPath is not empty, checking if dirExists(" & fetchUserDefaults("LastBuildPath") & ")"
 			if dirExists(fetchUserDefaults("LastBuildPath")) then
 				log "dir exists: " & fetchUserDefaults("LastBuildPath")
-				set enabled of theObject to true
+				--	set enabled of theObject to true
+				lastBuildEnableButtons(true)
 			else
-				set enabled of theObject to false
+				log "dir does not exist: " & fetchUserDefaults("LastBuildPath") & ", disabling buttons"
+				lastBuildEnableButtons(false)
+				--	set enabled of theObject to false
+				--	set enabled of button "createDMGsFromLastBuild" of window "main" to false
+				--	set enabled of button "createDMGsFromLastBuild" of window "prefsPanel" to false
 			end if
 		end if
 		
-		set enabled of theObject to false
+		--set enabled of theObject to false
 	end if
 end awake from nib
+
+
+on lastBuildEnableButtons(buttonState)
+	set enabled of button "createDMGsFromLastBuild" of window "main" to buttonState
+	set enabled of button "createDMGsFromLastBuild" of drawer "prefsDrawer" of window "main" to buttonState
+	set enabled of button "openLastBuild" of window "main" to buttonState
+end lastBuildEnableButtons
 
 
 
@@ -223,7 +240,9 @@ on clicked theObject
 		log "go make DMGs"
 		-- need to implement pre-cleanup
 		dmgLibrary's logorama()
-		dmgLibrary's BuildDiskImage(POSIX file ("" & "/tmp/joes_filters_for_DMG/" as text), POSIX file (fetchUserDefaults("LastBuildPath" & "/Joes_Filters_Demo.dmg")))
+		dmgLibrary's BuildDiskImage(POSIX file ("" & "/tmp/joes_filters_for_DMG/" as text), POSIX file (fetchUserDefaults("LastBuildPath") & "/Joes_Filters_Demo.dmg" as text))
+		
+		--lastBuildEnableButtons(false)
 	end if
 	
 end clicked

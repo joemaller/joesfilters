@@ -161,6 +161,9 @@ end setupWindow
 
 
 on DropDMGConvert(srcPath, destPath)
+	log "DropDMGConvert(srcPath): " & srcPath
+	log "DropDMGConvert(destPath): " & destPath
+	
 	-- DropDMG (thankfully) expects a POSIX path
 	tell application "DropDMG"
 		activate
@@ -182,16 +185,19 @@ end DropDMGConvert
 
 
 on BuildDiskImage(srcFolder, outputFile)
-	
+	--	log "BuildDiskImage(srcFolder): " & srcFolder
+	--	log "BuildDiskImage(outputFile): " & outputFile
 	
 	set tmpFolder to POSIX path of srcFolder
 	
 	
+	log "exporting SVN diskDir"
 	--  SVN export of disk contents:
 	do shell script "/usr/local/bin/svn export \"" & SVNdiskDir & "\" \"" & tmpFolder & "\" --force"
 	
+	
 	--- DELETE BELOW BEFORE RELEASE
-	do shell script "cp /Users/joe/Documents/Joe\\'s\\ Filters\\ Development/Builds/build_20060704_1317/demo/* " & tmpFolder & "Joe\\'s\\ Filters\\ Beta/"
+	--	do shell script "cp /Users/joe/Documents/Joe\\'s\\ Filters\\ Development/Builds/build_20060704_1317/demo/* " & tmpFolder & "Joe\\'s\\ Filters\\ Beta/"
 	--- DELETE ABOVE BEFORE RELEASE
 	
 	
@@ -216,7 +222,10 @@ on BuildDiskImage(srcFolder, outputFile)
 	
 	copy diskImageFromFolder(POSIX file tmpFolder, POSIX file tmpDMG, "Joe's Filters") to theDisk --returns (*mount point:/dev/disk2s2, volume:/Volumes/Joe's Filters*)
 	log theDisk
+	
 	do shell script "bless --openfolder " & quoted form of volume of theDisk -- set the window to open when the disk is mounted
+	log "blessed folder"
+	
 	setupWindow((POSIX file (volume of theDisk)) as alias)
 	-- do eject here instead of in setUpWindow()
 	do shell script "hdiutil detach " & |mount point| of theDisk
@@ -278,6 +287,7 @@ end preCleanUp
 on logorama()
 	
 	log "logorama"
+	log "SVNrepos: " & SVNrepos
 end logorama
 
 copy (current date) to startTime
