@@ -231,7 +231,7 @@ on BuildDiskImage(srcFolder, outputFile)
 	do shell script "hdiutil detach " & |mount point| of theDisk
 	
 	--set outputFile to "/Users/joe/Joes_Filters.dmg"
-	DropDMGConvert(tmpDMG, POSIX path of outputFile)
+	DropDMGConvert(tmpDMG, quoted form of POSIX path of outputFile)
 	
 	--	tell application "Finder" to move outputFile as alias to alias "Joe's MacBook Pro HD:Users:joe:"
 	
