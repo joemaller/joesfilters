@@ -242,9 +242,9 @@ on clicked theObject
 		dmgLibrary's logorama()
 		set outputDMG to POSIX file (fetchUserDefaults("LastBuildPath") & "/Joes_Filters_Demo.dmg" as text)
 		
-		dmgLibrary's preCleanUp(POSIX file (dmgLibrary's tmpDMG), POSIX file (dmgLibrary's tmpFolder), outputDMG)
+		dmgLibrary's preCleanUp(POSIX file (dmgLibrary's tmpDMG), outputDMG)
 		
-		dmgLibrary's BuildDiskImage(POSIX file ("" & "/tmp/joes_filters_for_DMG/" as text), outputDMG)
+		dmgLibrary's BuildDiskImage(outputDMG)
 		
 		--lastBuildEnableButtons(false)
 	end if

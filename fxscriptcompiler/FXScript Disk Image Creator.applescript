@@ -184,12 +184,12 @@ end DropDMGConvert
 
 
 
-on BuildDiskImage(srcFolder, outputFile)
+on BuildDiskImage(outputFile)
 	--	log "BuildDiskImage(srcFolder): " & srcFolder
-	--	log "BuildDiskImage(outputFile): " & outputFile
+	log "BuildDiskImage(outputFile): " & outputFile
 	
-	set tmpFolder to POSIX path of srcFolder
-	
+	--	set tmpFolder to POSIX path of srcFolder
+	log "dirname outputFile: " & (do shell script "dirname " & quoted form of POSIX path of outputFile)
 	
 	log "exporting SVN diskDir"
 	--  SVN export of disk contents:
@@ -241,7 +241,9 @@ end BuildDiskImage
 
 
 
-on preCleanUp(rwDMG, prevFolder, prevDMG)
+on preCleanUp(rwDMG, prevDMG)
+	
+	set prevFolder to POSIX file tmpFolder
 	
 	log "**** preCleanUP ***"
 	log "*** rwDMG:" & rwDMG
