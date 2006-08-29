@@ -7,6 +7,7 @@
 
 global dmgLibrary
 global FCPLibrary
+global progressLib
 
 property preferredTypes : {"txt", "fxscript"}
 property maxProgress : 100
@@ -19,12 +20,11 @@ property paused : false
 property panelWIndow : missing value
 
 
-
 on will finish launching theObject
 	-- load external library:
 	set dmgLibrary to load script file (((path to me from user domain) & "Contents:Resources:Scripts:" & "FXScript Disk Image Creator" & ".scpt") as text)
 	set FCPLibrary to load script file (((path to me from user domain) & "Contents:Resources:Scripts:" & "FCP Function Library" & ".scpt") as text)
-	
+	set progressLib to load script file (((path to me from user domain) & "Contents:Resources:Scripts:" & "progressLib" & ".scpt") as text)
 	
 	log "dmgLibrary's outputDMG: " & dmgLibrary's outputDMG
 	
@@ -239,14 +239,18 @@ on clicked theObject
 	if name of theObject is "createDMGsFromLastBuild" then
 		log "go make DMGs"
 		-- need to implement pre-cleanup
-		dmgLibrary's logorama()
 		set outputDMG to POSIX file (fetchUserDefaults("LastBuildPath") & "/Joes_Filters_Demo.dmg" as text)
 		
-		dmgLibrary's preCleanUp(POSIX file (dmgLibrary's tmpDMG), outputDMG)
+		--		dmgLibrary's preCleanUp(POSIX file (dmgLibrary's tmpDMG), outputDMG)
 		
 		dmgLibrary's BuildDiskImage(outputDMG)
 		
 		--lastBuildEnableButtons(false)
+	end if
+	
+	if name of theObject is "dirExistsButton" then
+		
+		dmgLibrary's logorama()
 	end if
 	
 end clicked
@@ -317,49 +321,55 @@ end doPausePanel
 
 on doCompile(fileList)
 	
-	ShowProgressPanel(true)
+	--	set progressLib's maxProgress to 5 + 4 * (count of fileList) -- four stages of progress on each file in filelist
+	tell progressLib to initialize(5 + 4 * (count of fileList))
+	progressLib's showStatus("Starting compile.")
 	
-	set completedProgress to 0 -- reset progress bar for new iteration.
+	--	set completedProgress to 0 -- reset progress bar for new iteration.
 	
 	set loopcount to 0
 	set crashcount to 0
 	set startTime to current date
 	
+	set progressLib's maxProgress to 4 * (count of fileList) -- four stages of progress on each file in filelist
 	
-	showStatus("Building Output folders", true)
+	progressLib's showStatus("Building Output folders")
+	
 	
 	set outputFolders to {fetchUserDefaults("fullEncoded"), fetchUserDefaults("demoEncoded"), fetchUserDefaults("fullSourceCode"), fetchUserDefaults("demoSourceCode")} -- get folder names from user defaults.
 	
 	set outputFolders to makeFolders(outputFolders, fetchUserDefaults("outputFolderPath")) -- create folders and replace outputfolder with a list of records like: {|folderName|:, |fullPath|:}
 	
+	progressLib's showStatus("Output Folders completed")
+	
 	--	tell application "Finder" to log name of container of POSIX file (|fullPath| of item 1 of outputFolders)
 	
 	repeat with theFile in fileList -- from 1 to count of fileList
 		
-		showStatus("Compiling source code for: " & |fileName| of theFile, true)
-		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
-		makeProgress(completedProgress)
+		progressLib's showStatus("Compiling source code for: " & |fileName| of theFile)
+		--	set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
+		--	progressLib's makeProgress(completedProgress)
 		
 		set fullplugSource to applyWatermark(|fullPath| of theFile, |fullPath| of item 3 of outputFolders, fetchUserDefaults("watermarkMenuString"), "")
 		
 		showStatus("Compiling demo source code for: " & |fileName| of theFile, true)
-		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
-		makeProgress(completedProgress)
+		--	set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
+		--	makeProgress(completedProgress)
 		
 		log "waterMarkSource:" & fetchUserDefaults("waterMarkSource")
 		set demoplugSource to applyWatermark(|fullPath| of theFile, |fullPath| of item 4 of outputFolders, fetchUserDefaults("watermarkMenuString"), fetchUserDefaults("waterMarkSource"))
 		
 		
 		showStatus(|fileName| of theFile & ": Sending demo code to Final Cut Pro", true)
-		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
-		makeProgress(completedProgress)
+		--	set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
+		--	makeProgress(completedProgress)
 		
 		
 		FCPLibrary's FXBuilderSaveEncodedPlugin(demoplugSource, (text 1 thru -10 of |fileName| of theFile as string), |fullPath| of item 2 of outputFolders)
 		
 		showStatus(|fileName| of theFile & ": Sending full code to Final Cut Pro", true)
-		set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
-		makeProgress(completedProgress)
+		--	set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
+		--	makeProgress(completedProgress)
 		
 		FCPLibrary's FXBuilderSaveEncodedPlugin(fullplugSource, (text 1 thru -10 of |fileName| of theFile as string), |fullPath| of item 1 of outputFolders)
 		
@@ -375,10 +385,11 @@ on doCompile(fileList)
 -- = Ending Compile =
 -- ==================
 "
-	showStatus("Finished compiling, revealing build in Finder", true)
-	makeProgress(1)
 	
-	ShowProgressPanel(false)
+	progressLib's showStatus("Finished compiling, revealing build in Finder")
+	--	makeProgress(1)
+	
+	--ShowProgressPanel(false)
 	
 	log outputFolders
 	log |fullPath| of item 1 of outputFolders
@@ -397,23 +408,12 @@ on doCompile(fileList)
 	set elapsedSeconds to ((current date) - startTime)
 	--	log "Time elapsed: " & secondsToHMS(elapsedSeconds)
 	--	log "Final Cut Pro crashed: " & crashcount & " times."
-	showStatus("Elapsed Time: " & secondsToHMS(elapsedSeconds) & " crashes: " & crashcount, true)
+	--	showStatus("Elapsed Time: " & secondsToHMS(elapsedSeconds) & " crashes: " & crashcount, true)
+	progressLib's showStatus("Elapsed Time: " & secondsToHMS(elapsedSeconds) & " crashes: " & crashcount)
+	progressLib's showIt(false)
 	
 end doCompile
 
-
-on showStatus(theMessage, theStatus)
-	log theMessage
-	set contents of text field "statusMessage" of window "main" to theMessage
-	set contents of text field "ProgressStatus" of window "ProgressPanel" to theMessage
-	return theStatus
-end showStatus
-
-
-on makeProgress(progressValue)
-	set contents of progress indicator "theProgressBar" of window "main" to progressValue
-	set contents of progress indicator "ProgressBar" of window "ProgressPanel" to progressValue
-end makeProgress
 
 
 
@@ -535,17 +535,6 @@ end secondsToHMS
 
 
 
-on ShowProgressPanel(showHide)
-	if showHide is true then
-		set visible of window "ProgressPanel" to true
-		set level of window "ProgressPanel" to 3
-		set hides when deactivated of window "ProgressPanel" to false
-	else
-		set visible of window "ProgressPanel" to false
-	end if
-end ShowProgressPanel
-
-
 
 on dirExists(thePath)
 	(* a simple and fast test to see if a folder exists, path should be POSIX, doesn't need to end in a slash *)
@@ -556,4 +545,11 @@ on dirExists(thePath)
 		return false
 	end try
 end dirExists
+
+
+
+
+
+
+
 

@@ -38,6 +38,9 @@ property outputDMG : "/Users/joe/Joes_Filters.dmg"
 
 property makePDF : false
 
+
+global preferredTypes
+global progressLib
 --property outputFolders: {{|folderName|:"demo", |fullPath|:"/Users/joe/Documents/Joe\'s\ Filters\ Development/Builds/build_20060704_1317/demo"},{|folderName|:"full", |fullPath|:"/Users/joe/Documents/Joe\'s\ Filters\ Development/Builds/build_20060704_1317/full"}}
 
 
@@ -187,18 +190,27 @@ end DropDMGConvert
 on BuildDiskImage(outputFile)
 	--	log "BuildDiskImage(srcFolder): " & srcFolder
 	log "BuildDiskImage(outputFile): " & outputFile
+	tell progressLib to initialize(3)
+	
+	preCleanUp(POSIX file tmpDMG, outputFile) -- plus 4 progress steps
 	
 	--	set tmpFolder to POSIX path of srcFolder
 	log "dirname outputFile: " & (do shell script "dirname " & quoted form of POSIX path of outputFile)
 	
 	log "exporting SVN diskDir"
+	progressLib's showStatus("Exporting disk directory from SVN.")
 	--  SVN export of disk contents:
 	do shell script "/usr/local/bin/svn export \"" & SVNdiskDir & "\" \"" & tmpFolder & "\" --force"
 	
 	
+	progressLib's showStatus("Copying files from last build.")
+	
 	--- DELETE BELOW BEFORE RELEASE
 	--	do shell script "cp /Users/joe/Documents/Joe\\'s\\ Filters\\ Development/Builds/build_20060704_1317/demo/* " & tmpFolder & "Joe\\'s\\ Filters\\ Beta/"
 	--- DELETE ABOVE BEFORE RELEASE
+	
+	
+	progressLib's showStatus("Setting file type for original plugins.")
 	
 	
 	try
@@ -208,28 +220,42 @@ on BuildDiskImage(outputFile)
 		log return & return & return & errNum & " : " & errMsg & return & return & return
 	end try
 	
+	progressLib's showStatus("Resetting file type for compiled plugins.")
 	-- set type/creator of encoded plugins, also hide extensions
 	do shell script "find -E " & tmpFolder & " -iregex '.*/Joe.s Filters (Demo|Beta)/J.*' -exec /Developer/Tools/SetFile -a E -c KeyG -t FCSC {} \\; -print"
+	
+	progressLib's showStatus("Generating PDF Documentation.")
 	
 	if makePDF is true then -- print documentation
 		printWebPagePDF("http:joesfilters.com") -- change to the printing url later on
 		do shell script "COPYME=`ls -tu /tmp/Joe_s* | head -n1`; cp /tmp/$COPYME " & tmpFolder & "/Joe\\'s\\ Filters\\ Documentation.pdf"
 	end if
 	
+	progressLib's showStatus("Hiding extensions for readme and weblocs.")
+	
 	-- hide extensions on readme and weblocs
 	do shell script "find -E " & tmpFolder & " -iregex '.*\\.(webloc|rtf|pdf)$' -exec /Developer/Tools/SetFile -a E {} \\;"
 	
 	
+	progressLib's showStatus("Creating temp DMG.")
+	
 	copy diskImageFromFolder(POSIX file tmpFolder, POSIX file tmpDMG, "Joe's Filters") to theDisk --returns (*mount point:/dev/disk2s2, volume:/Volumes/Joe's Filters*)
 	log theDisk
 	
+	progressLib's showStatus("Blessing DMG root folder.")
 	do shell script "bless --openfolder " & quoted form of volume of theDisk -- set the window to open when the disk is mounted
-	log "blessed folder"
+	--log "blessed folder"
+	
+	progressLib's showStatus("Setting window and icon positions.")
 	
 	setupWindow((POSIX file (volume of theDisk)) as alias)
+	
+	progressLib's showStatus("Ejecting temp DMG.")
 	-- do eject here instead of in setUpWindow()
 	do shell script "hdiutil detach " & |mount point| of theDisk
 	
+	
+	progressLib's showStatus("Sending temp DMG to DropDMG.")
 	--set outputFile to "/Users/joe/Joes_Filters.dmg"
 	DropDMGConvert(tmpDMG, quoted form of POSIX path of outputFile)
 	
@@ -242,6 +268,8 @@ end BuildDiskImage
 
 
 on preCleanUp(rwDMG, prevDMG)
+	-- four progress steps
+	--	tell progressLib to initialize(4)
 	
 	set prevFolder to POSIX file tmpFolder
 	
@@ -253,18 +281,27 @@ on preCleanUp(rwDMG, prevDMG)
 	
 	-- clean up  before processing:
 	tell application "Finder"
+		
+		tell me to log "trying first showstatus"
+		tell me to progressLib's showStatus("Moving previous RW image.")
 		-- move previous RW images to the trash (could probably just rm them now...)
+		tell me to log "finished first showstatus"
+		
 		try
 			move rwDMG to trash
 		on error the errMsg number the errNum
 			log errNum & " : " & errMsg
 		end try
 		
+		tell me to progressLib's showStatus("Deleting previous temp folder.")
+		
 		try
 			move prevFolder to trash
 		on error the errMsg number the errNum
 			log errNum & " : " & errMsg
 		end try
+		
+		tell me to progressLib's showStatus("Renaming previous output images.")
 		
 		-- rename previous output dmgs to prevent conflicts
 		try
@@ -281,6 +318,8 @@ on preCleanUp(rwDMG, prevDMG)
 		on error the errMsg number the errNum
 			log errNum & " : " & errMsg
 		end try
+		tell me to progressLib's showStatus("Finished pre-cleanup.")
+		
 	end tell
 	
 end preCleanUp
@@ -290,6 +329,12 @@ on logorama()
 	
 	log "logorama"
 	log "SVNrepos: " & SVNrepos
+	log preferredTypes
+	log progressLib's maxProgress
+	set progressLib's maxProgress to 20
+	progressLib's showStatus("hello")
+	progressLib's showStatus(null)
+	tell progressLib to initialize(5)
 end logorama
 
 copy (current date) to startTime
