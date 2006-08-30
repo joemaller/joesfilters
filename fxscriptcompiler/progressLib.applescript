@@ -9,11 +9,9 @@ property inProgress : 0
 property maxProgress : 1
 
 on initialize(newMaxProgress)
-	set maxProgress to newMaxProgress
-	showIt(true)
 	showStatus(" ") -- clumsy, should be dealt with better in showStatus()
 	set inProgress to 0
-	set maxProgress to 1
+	set maxProgress to newMaxProgress
 	makeProgress()
 end initialize
 
@@ -42,6 +40,8 @@ on advance()
 end advance
 
 on makeProgress()
+	--	log "inProgress: " & inProgress
+	--	log "maxProgress: " & maxProgress
 	set contents of progress indicator "theProgressBar" of window "main" to inProgress / maxProgress
 	set contents of progress indicator "ProgressBar" of window "ProgressPanel" to inProgress / maxProgress
 end makeProgress

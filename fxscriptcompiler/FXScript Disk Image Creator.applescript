@@ -89,7 +89,8 @@ end stripExtension
 
 
 on setupWindow(thePath)
-	log thePath
+	log "SetupWindow(" & thePath & ")"
+	-- 7 progress steps
 	
 	-- window size:
 	set windowBounds to {50, 75, 585, 680}
@@ -113,6 +114,7 @@ on setupWindow(thePath)
 	set windowBackground to ".nvisible:background.jpg"
 	
 	tell application "Finder"
+		tell me to progressLib's showStatus("Setting up window.")
 		activate
 		set newWin to make new Finder window
 		set target of newWin to thePath
@@ -123,16 +125,18 @@ on setupWindow(thePath)
 		set arrangement of icon view options of newWin to not arranged
 		set shows item info of icon view options of newWin to false
 		
-		
+		tell me to progressLib's showStatus("Deleting .DS_STORE.")
 		try -- kill any .DS_STORE files before sizing and positioning
 			do shell script "rm " & quoted form of POSIX path of thePath & ".DS_STORE"
 		end try
 		tell newWin
 			set bounds to windowBounds
+			tell me to progressLib's showStatus("Setting window size.")
 			tell application "System Events" to tell process "Finder" to click button 2 of window 1
 			tell application "System Events" to tell process "Finder" to click button 2 of window 1
 			set arrangement of its icon view options to not arranged
 			
+			tell me to progressLib's showStatus("Arranging icons.")
 			repeat with i from 1 to count iconTemplate
 				if (its file (filename of item i of iconTemplate) exists) then
 					set position of its file (filename of item i of iconTemplate) to (iconCoords of item i of iconTemplate)
@@ -141,6 +145,7 @@ on setupWindow(thePath)
 				end if
 			end repeat
 			
+			tell me to progressLib's showStatus("Setting background picture.")
 			if thePath & windowBackground as text as alias exists then
 				set background picture of its icon view options to thePath & windowBackground as text as alias
 			end if
@@ -150,12 +155,14 @@ on setupWindow(thePath)
 		set theDelay to 0.25
 		set waitTime to 0
 		set ejectMe to false
+		tell me to progressLib's showStatus("Waiting for new .DS_STORE to appear.")
 		repeat while ejectMe is false
 			delay theDelay
 			set waitTime to waitTime + theDelay
 			if (do shell script "[ -f " & quoted form of POSIX path of thePath & ".DS_STORE ]; echo $?") = "0" then set ejectMe to true
 		end repeat
-		log "waited " & waitTime & " seconds for .DS_STORE to be created."
+		tell me to progressLib's showStatus(".DS_STORE created in " & waitTime & " seconds.")
+		--log "waited " & waitTime & " seconds for .DS_STORE to be created."
 		--		eject thePath
 	end tell
 end setupWindow
@@ -190,16 +197,16 @@ end DropDMGConvert
 on BuildDiskImage(outputFile)
 	--	log "BuildDiskImage(srcFolder): " & srcFolder
 	log "BuildDiskImage(outputFile): " & outputFile
-	tell progressLib to initialize(3)
+	tell progressLib to initialize(13 + 4 + 7) -- 13 here + 4 for preCleanup + 7 for setup window
 	
+	progressLib's showStatus("Pre-cleanup starting.")
 	preCleanUp(POSIX file tmpDMG, outputFile) -- plus 4 progress steps
 	
 	--	set tmpFolder to POSIX path of srcFolder
 	log "dirname outputFile: " & (do shell script "dirname " & quoted form of POSIX path of outputFile)
 	
 	log "exporting SVN diskDir"
-	progressLib's showStatus("Exporting disk directory from SVN.")
-	--  SVN export of disk contents:
+	progressLib's showStatus("Exporting disk directory from SVN.") --  SVN export of disk contents:
 	do shell script "/usr/local/bin/svn export \"" & SVNdiskDir & "\" \"" & tmpFolder & "\" --force"
 	
 	
@@ -212,7 +219,6 @@ on BuildDiskImage(outputFile)
 	
 	progressLib's showStatus("Setting file type for original plugins.")
 	
-	
 	try
 		-- set original plugins to FCP text files:
 		do shell script "/Developer/Tools/SetFile -a E -c KeyG -t TEXT " & tmpFolder & "Joe\\'s\\ Filters/*"
@@ -220,8 +226,7 @@ on BuildDiskImage(outputFile)
 		log return & return & return & errNum & " : " & errMsg & return & return & return
 	end try
 	
-	progressLib's showStatus("Resetting file type for compiled plugins.")
-	-- set type/creator of encoded plugins, also hide extensions
+	progressLib's showStatus("Resetting file type for compiled plugins.") -- set type/creator of encoded plugins, also hide extensions
 	do shell script "find -E " & tmpFolder & " -iregex '.*/Joe.s Filters (Demo|Beta)/J.*' -exec /Developer/Tools/SetFile -a E -c KeyG -t FCSC {} \\; -print"
 	
 	progressLib's showStatus("Generating PDF Documentation.")
@@ -231,11 +236,8 @@ on BuildDiskImage(outputFile)
 		do shell script "COPYME=`ls -tu /tmp/Joe_s* | head -n1`; cp /tmp/$COPYME " & tmpFolder & "/Joe\\'s\\ Filters\\ Documentation.pdf"
 	end if
 	
-	progressLib's showStatus("Hiding extensions for readme and weblocs.")
-	
-	-- hide extensions on readme and weblocs
+	progressLib's showStatus("Hiding extensions for readme and weblocs.") -- hide extensions on readme and weblocs
 	do shell script "find -E " & tmpFolder & " -iregex '.*\\.(webloc|rtf|pdf)$' -exec /Developer/Tools/SetFile -a E {} \\;"
-	
 	
 	progressLib's showStatus("Creating temp DMG.")
 	
@@ -244,22 +246,19 @@ on BuildDiskImage(outputFile)
 	
 	progressLib's showStatus("Blessing DMG root folder.")
 	do shell script "bless --openfolder " & quoted form of volume of theDisk -- set the window to open when the disk is mounted
-	--log "blessed folder"
 	
 	progressLib's showStatus("Setting window and icon positions.")
-	
 	setupWindow((POSIX file (volume of theDisk)) as alias)
 	
-	progressLib's showStatus("Ejecting temp DMG.")
-	-- do eject here instead of in setUpWindow()
+	progressLib's showStatus("Ejecting temp DMG.") -- do eject here instead of in setUpWindow()
 	do shell script "hdiutil detach " & |mount point| of theDisk
 	
 	
-	progressLib's showStatus("Sending temp DMG to DropDMG.")
-	--set outputFile to "/Users/joe/Joes_Filters.dmg"
+	progressLib's showStatus("Sending temp DMG to DropDMG.") --set outputFile to "/Users/joe/Joes_Filters.dmg"
 	DropDMGConvert(tmpDMG, quoted form of POSIX path of outputFile)
 	
 	--	tell application "Finder" to move outputFile as alias to alias "Joe's MacBook Pro HD:Users:joe:"
+	progressLib's showStatus("Finished building DMG.")
 	
 end BuildDiskImage
 
@@ -282,11 +281,7 @@ on preCleanUp(rwDMG, prevDMG)
 	-- clean up  before processing:
 	tell application "Finder"
 		
-		tell me to log "trying first showstatus"
-		tell me to progressLib's showStatus("Moving previous RW image.")
-		-- move previous RW images to the trash (could probably just rm them now...)
-		tell me to log "finished first showstatus"
-		
+		tell me to progressLib's showStatus("Moving previous RW image.") -- move previous RW images to the trash (could probably just rm them now...)
 		try
 			move rwDMG to trash
 		on error the errMsg number the errNum
@@ -294,16 +289,13 @@ on preCleanUp(rwDMG, prevDMG)
 		end try
 		
 		tell me to progressLib's showStatus("Deleting previous temp folder.")
-		
 		try
 			move prevFolder to trash
 		on error the errMsg number the errNum
 			log errNum & " : " & errMsg
 		end try
 		
-		tell me to progressLib's showStatus("Renaming previous output images.")
-		
-		-- rename previous output dmgs to prevent conflicts
+		tell me to progressLib's showStatus("Renaming previous output images.") -- rename previous output dmgs to prevent conflicts
 		try
 			copy my stripExtension(prevDMG) to fileRoot -- strip text after last period in the filename
 			copy POSIX path of (container of prevDMG as alias) to dirName
@@ -334,7 +326,7 @@ on logorama()
 	set progressLib's maxProgress to 20
 	progressLib's showStatus("hello")
 	progressLib's showStatus(null)
-	tell progressLib to initialize(5)
+	
 end logorama
 
 copy (current date) to startTime
