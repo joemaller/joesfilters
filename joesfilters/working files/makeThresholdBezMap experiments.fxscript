@@ -12,7 +12,7 @@ input keyColor, "Key Color", Color, 255, 22, 22, 255;
 //	input gthreshold, "Threshold", slider, 100, 0, 255;
 //	input bthreshold, "Threshold", slider, 100, 0, 255;
 
-input width, "width", slider, 10, 1, 255
+input width, "width", slider, 10, 0, 255
 input softness, "softness", slider, 25, 0, 255;
 
 input rWidth, "rWidth", Slider, 10, 1, 255;
@@ -22,14 +22,16 @@ input bWidth, "bWidth", Slider, 10, 1, 255;
 input yWidth, "Luma Width", Slider, 10, 1, 255;
 input cWidth, "Chroma Width", Slider, 5, 1, 255;
 
-input fillRGB, "fillRGB", checkbox, 0;
+input monoChannel, "Monochrome", Checkbox, 0;
+
+input YUVorRGB, "YUV or RGB", RadioGroup, 1, "YUV", "RGB";
 
 
-input showOriginal, "Show Original", radiogroup, 1, "Original", "Red", "Green", "Blue", "Red-Green", "!r-g";
+input showOriginal, "Show Original", radiogroup, 1, "Original", "Red", "Green", "Blue", "passthrough";
 
 input doRGBkey, "doRGBkey", checkbox, 0;
-input softadjuster, "RGBKey Softness adjust", slider, 1, 0, 10;
-input wadjuster, "RGBKey Width adjust", slider, 1, 0, 10;
+input RGBKeySoftness, "RGBKey Softness adjust", slider, 1, 0, 255;
+input RGBKeyWidth, "RGBKey Width", slider, 1, 0, 255;
 
 InformationFlag("YUVaware");
 
@@ -221,7 +223,7 @@ on makeKeyMapBez(float _kmap, value _center, value _width, value _softness, valu
 end
 
 
-on joesColorKey(image _src, image _dest, color _keyColorRGB, value _rWidth, value _gWidth, value _bWidth, value _yWidth, value _cbWidth, value _crWidth, value _softness, value _fillRGB)
+on joesColorKey(image _src, image _dest, color _keyColorRGB, value _rWidth, value _gWidth, value _bWidth, value _yWidth, value _cbWidth, value _crWidth, value _softness, value _YUVorRGB)
 // DEPENDENCIES:
 //		channelcopyfit()
 //		makeKeyMapBez()
@@ -254,20 +256,32 @@ on joesColorKey(image _src, image _dest, color _keyColorRGB, value _rWidth, valu
 	levelMap(_rgbIMG, _rgbIMG, linearRamp, _rMap, _gMap, _bMap);
 	levelMap(_yuvIMG, _yuvIMG, linearRamp, _yMap, _cbMap, _crMap);
 
+//	image _img1[_w][_h];
+//	ChannelCopy(_yuvIMG, _img1, kalpha, kgreen, kred, kgreen);
+//	Matte(_img1, _yuvIMG, _img1, 0.5, kAlpha);	// mix red and green into _img1 red
+//	ChannelCopy(_img1, _img1, kalpha, knone, knone, kred);
+//	Matte(_img1, _yuvIMG, _img1, 0.33333, kAlpha);
+
 	// 	ImageAND(_rgbIMG, _yuvIMG, _dest)	// RY, GU, BV
 	//	ChannelCopy(_dest, _rgbIMG, kalpha, kgreen, knone, knone);
 	//	ChannelCopy(_dest, _yuvIMG, kalpha, kblue, knone, knone);
 	//	ImageAnd(_dest, _rgbIMG, _dest);	// RYGU, ??, ??
 	//	ImageAnd(_dest, _yuvIMG, _dest);	// RYGUBV, ??, ??
 //		
-	//	channelfill(_dest, 255, -1, 128, 128);
-	_dest = _rgbIMG;
+	//	channelfill(_yuvIMG, 255, -1, 128, 128);
+	//convertImage(_yuvIMG, _rgbIMG, kFormatRGB219);
+
+	if (_YUVorRGB == kformatYUV219)
+		_dest = _yuvIMG;
+	else if (_YUVorRGB == kformatRGB219)
+		_dest = _rgbIMG;
+	end if
 end
 
 
-
-
-joesColorKey(src1, dest, keyColor, rWidth, gWidth, bWidth, yWidth, cWidth, cWidth, softness, fillRGB);
+YUVorRGB = (YUVorRGB == 1) ? kFormatYUV219 : kformatRGB219;
+convertimage(dest, dest, YUVorRGB);
+joesColorKey(src1, dest, keyColor, Width, Width, Width, yWidth, cWidth, cWidth, softness, YUVorRGB);
 
 
 if (showOriginal == 1)
@@ -275,33 +289,37 @@ if (showOriginal == 1)
 else if (showOriginal == 2)
 		
 	ChannelCopy(dest, dest, kalpha, kred, kred, kred);
-	if (fillRGB); channelfill(dest, 255, -1, 128, 128); end if
+	if (monoChannel); 
+		channelfill(dest, 255, -1, 128, 128); 
+	end if
 
 else if (showOriginal == 3)
 	ChannelCopy(dest, dest, kalpha, kgreen, kgreen, kgreen);
-	if (fillRGB); channelfill(dest, 255, 128, -1, 128); end if
+	if (monoChannel); 
+		channelcopy(dest, dest, kalpha, kgreen, knone, knone);
+		channelfill(dest, 255, -1, 128, 128); 
+	end if
 
 else if	(showOriginal == 4)
 	ChannelCopy(dest, dest, kalpha, kblue, kblue, kblue);
-	if (fillRGB); channelfill(dest, 255, 128, 128, -1); end if
+	if (monoChannel); 
+		channelcopy(dest, dest, kalpha, kblue, knone, knone);
+		channelfill(dest, 255, -1, 128, 128); 
+	end if
 
 else if	(showOriginal == 5)
 	// passthrough
 
-else if (showOriginal == 6)
-
-	//Difference(rImg, gImg, dest, kAlpha);
-	AddOffset(gImg, bImg, dest, -128)
 end if
 
 
 
 
 if (doRGBkey)
+convertimage(src1, src1, kformatRGB219);
+convertimage(dest, dest, kformatRGB219);
 
-	width = wadjuster
-	softness *= softadjuster
-	RGBColorKey(src1, dest, keyColor.r, width, keyColor.g, width, keyColor.b, width, softness, 1)
+	RGBColorKey(src1, dest, keyColor.r, RGBKeyWidth, keyColor.g, RGBKeyWidth, keyColor.b, RGBKeyWidth, RGBKeySoftness, 1)
 //	YUVColorKey(src1, dest, keyColor.r, width, keyColor.g, width, keyColor.b, width, softness, 1)
 	Invert(dest, dest)
 end if
