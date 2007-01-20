@@ -1,17 +1,20 @@
 on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
 	
-	float rw, rh, ra, rd, rzoom;
+	float rw, rh, ra, rd;
 	string reporter;
 	color fontcolor;
 	
 	DimensionsOf(_destIMG, rw, rh);
-	rzoom = rw/720;
 	
-	fontcolor = {255,235,235,235};
+	if (getPixelFormat(_destIMG)==kFormatYUV219)
+		fontcolor = {255,235,128,128};
+	else
+		fontcolor = {255,235,235,235};
+	end if
 	settextfont("verdana");
 	setTextstyle(kbold);
 	setTextjustify(_justification);
-	setTextSize(_fontsize * rzoom);
+	setTextSize(_fontsize);
 													
 	NumToString(_data, reporter, _numberformat);
 	reporter = _label + " = " + reporter;
