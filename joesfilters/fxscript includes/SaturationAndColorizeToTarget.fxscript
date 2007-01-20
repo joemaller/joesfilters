@@ -1,0 +1,52 @@
+on SaturationAndColorizeToTarget(image _src, image _dest, color _target, value _saturation, value _colorize)
+
+	// DEPENDENCIES:  NormalizeColorVector, vectorStretch
+	
+	//	_saturation is a floating point value between 0 and 10
+	//	_colorize is a boolean
+	//	_target is the color to target desaturation on.
+
+	float _mat[3][3], _colorSpace;
+	float _rr, _rg, _rb, _gr, _gg, _gb, _br, _bg, _bb, _offset0[3];
+
+	point3d _normedColor;
+	NormalizeColorVector(_target, _normedColor);
+
+	_colorSpace = getPixelFormat(_dest);
+
+	if (_colorSpace != kFormatRGB219)
+		ConvertImage(_src, _src, kFormatRGB219);
+		SetPixelFormat(_dest, kFormatRGB219);
+	end if
+	
+	_offset0 = {0,0,0};
+
+
+	if (_colorize != 1)
+		//define initial matrix values for straight pass-through
+		_rr = 1; _rg = 0; _rb = 0;
+		_gr = 0; _gg = 1; _gb = 0;
+		_br = 0; _bg = 0; _bb = 1;
+
+		_rr -= (_rr - _normedColor.x) * _saturation;		_rg -= (_rg - _normedColor.x) * _saturation; 	_rb -= (_rb - _normedColor.x) * _saturation;
+		_gr -= (_gr - _normedColor.y) * _saturation;		_gg -= (_gg - _normedColor.y) * _saturation; 	_gb -= (_gb - _normedColor.y) * _saturation;
+		_br -= (_br - _normedColor.z) * _saturation;		_bg -= (_bg - _normedColor.z) * _saturation; 	_bb -= (_bb - _normedColor.z) * _saturation;
+
+		_mat = {_rr, _rg, _rb, _gr, _gg, _gb, _br, _bg, _bb};
+	else
+
+		_normedColor -= 0.5;
+		_normedColor *= _saturation;
+		_normedColor += 0.5;
+
+		VectorStretch(_normedColor);
+
+		if (_saturation > 1); 
+			_normedColor *= _saturation; 
+		end if
+		
+		_mat = {_normedColor.x, 0, 0, 	0, _normedColor.y, 0,		0, 0, _normedColor.z};
+	end if	
+
+	colorTransform(_src, _dest, _mat, _offset0, _offset0);
+end
