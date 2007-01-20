@@ -1,0 +1,3 @@
+on VectorStretch(point3d _v)
+	_v /= max(_v.x, max(_v.y, _v.z));
+end

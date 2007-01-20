@@ -1,0 +1,8 @@
+on NormalizeColorVector(color _c, point3d _p)
+	if (_c.r + _c.g + _c.b == 0); _p *= 0; _p += 1/sqrt(3); return; end if // do nothing for black input color
+
+	float _l;
+	_l = sqrt(power(_c.r,2) + power(_c.g,2) + power(_c.b,2));
+	_p = {_c.r, _c.g, _c.b};
+	_p /= _l;
+end

@@ -1,0 +1,5 @@
+on NormalizeVector3d(point3d _V)
+	float _l;
+	_l = sqrt(power(_V.x,2) + power(_V.y,2) + power(_V.z,2));
+	_V /= _l // transforms _V into a normalized vector, length = 1;
+end 
