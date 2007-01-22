@@ -1,36 +1,26 @@
-on BoundsOfPoly(point _srcPoly, value _srcPolyPts, point _destRect)
+on BoundsOfPoly(point _srcPoly, point _destRect)
 	
-	// returns the rectangular bounding box of n-sided polys
-	
-	// _srcPoly 		: 		polygon to fit inside _destRect
-	// _srcPolyPts 		: 		number of points in _srcPoly, because it can't be programatically determined
-	// _destRect		:		four-point poly which receives the bounding box around _srcPoly
+	// returns the rectangular bounding box of n-sided polys, _destRect should be a 4 position point array
 
-	float _j;
+	// Dependencies:	Basic_math
+	// 					ArrayPointCount
+	float _j, _srcPolyPts;
 	point _topLeft, _bottomRight;
 	
 	_topLeft = _srcPoly[0];
 	_bottomRight = _srcPoly[2];
+	_srcPolyPts = ArrayPointCount(_srcPoly) - 1;
 	
-	repeat with _j = 0 to ( _srcPolyPts -1)
+	repeat with _j = 0 to _srcPolyPts
 	
-		if (_srcPoly[_j].x < _topLeft.x)
-			_topLeft.x = _srcPoly[_j].x;
-		else if (_srcPoly[_j].x > _bottomRight.x)
-			_bottomRight.x = _srcPoly[_j].x;
-		end if
-
-		if (_srcPoly[_j].y < _topLeft.y)				
-			_topLeft.y = _srcPoly[_j].y;
-		else if (_srcPoly[_j].y > _bottomRight.y)
-			_bottomRight.y = _srcPoly[_j].y;
-		end if
+		_topLeft.x = min (_topLeft.x, _srcPoly[j].x);
+		_topLeft.y = min(_topLeft.y, _srcPoly[j].y);
+	
+		_bottomRight.x = max(_bottomRight.x, _srcPoly[j].x);
+		_bottomRight.y = max(_bottomRight.y, _srcPoly[j].y);
 
 	end repeat
 
-	//makeRect(_destRect, _topLeft.x, _topLeft.y, abs(_topLeft.x) + abs(_bottomRight.x), abs(_topLeft.y) + abs(_bottomRight.y));
 	makeRect(_destRect, _topLeft.x, _topLeft.y, _bottomRight.x - _topLeft.x, _bottomRight.y - _topLeft.y);
 
-end	
-
-
+end
