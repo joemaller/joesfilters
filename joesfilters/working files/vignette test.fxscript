@@ -1,0 +1,199 @@
+filter "Vingette Tests";
+group "BETA";
+
+input centerPt, "Center", Point, 0, 0;
+input doOval, "do Oval", Checkbox, 0;
+
+input divisor, "divisor", Slider, 10, 1, 50;
+
+input doBlur, "do Blur", Checkbox, 0;
+input reverseIt, "reverseIt", Checkbox, 0;
+
+input startColor, "StartColor", Color, 255, 127, 22, 0;
+input endColor, "End Color", Color, 255, 11, 22, 120;
+
+
+producesalpha;
+
+code
+
+exposedBackground=1;
+
+
+
+
+// INCLUDE "NumReporter.fxscript" r247
+
+on NumReporter(image _destIMG, value _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd;
+	string reporter;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	
+	if (getPixelFormat(_destIMG)==kFormatYUV219)
+		fontcolor = {255,235,128,128};
+	else
+		fontcolor = {255,235,235,235};
+	end if
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize);
+													
+	NumToString(_data, reporter, _numberformat);
+	reporter = _label + " = " + reporter;
+	DrawString(reporter, 0, _h, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "NumReporter.fxscript"
+
+
+// INCLUDE "PtReporter.fxscript" r124
+
+on PtReporter(image _destIMG, point _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string reporterX, reporterY;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.x, reporterX, _numberformat);
+	NumToString(_data.y, reporterY, _numberformat);
+	reporterX = _label + " = {" + reporterX + "," + reporterY + "}";
+	DrawString(reporterX, 0, _h, 1.25,  _destIMG, fontcolor, aspectof(_destIMG));
+
+end
+
+// END "PtReporter.fxscript"
+
+// INCLUDE "basic_math.fxscript" r128
+
+on max(value _a, value _b); return (_a > _b) ? _a : _b; end 
+on min(value _a, value _b); return (_a < _b) ? _a : _b; end 
+on ceil(value _x); return(((_x - integer(_x)) > 0) ? integer(_x) + 1 : integer(_x)); end 
+on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(_x)); end 
+
+// END "basic_math.fxscript"
+
+
+on InterpolateBox(point _box1, point _box2, value _percent, point _outBox)
+	//	float _x;
+	//	for _x = 0 to 3
+	//		Interpolate(_box1[_x], _box2[_x], _percent, _outBox[_x]);
+	//	next;
+	
+	_outBox = _box2;
+	_outBox -= _box1;
+	_outBox *= _percent;
+	_outBox += _box1;
+end
+
+
+
+on vignette(image _dest, point _startPoly, point _endPoly, color _startColor, color _endColor, value _doOval)
+	// could add color ramp bending by using the ease functions
+	// instead of reversing the loop here, reverse the input polys
+
+	// DEPENDENCIES:
+	//		basic math
+	//		InterpolateBox
+	
+	
+	float _iterations, _i, _w, _h;
+	point _iBox[4];
+	color _iColor;
+	
+	DimensionsOf(dest, _w, _h);
+	image _img[_w][_h];
+	
+	/// calculate iterations by max vertex distance between the two polys
+
+
+	//	NumReporter(_dest, distTo(_startPoly[0], _endPoly[0]), "distTo[0]", kFloat2, 0, 12, kCenterJustify);
+	//	NumReporter(_dest, distTo(_startPoly[1], _endPoly[1]), "distTo[1]", kFloat2, 20, 12, kCenterJustify);
+	//	NumReporter(_dest, distTo(_startPoly[2], _endPoly[2]), "distTo[2]", kFloat2, 40, 12, kCenterJustify);
+	//	NumReporter(_dest, distTo(_startPoly[3], _endPoly[3]), "distTo[3]", kFloat2, 60, 12, kCenterJustify);
+
+	//	Line(_startPoly[0], _endPoly[0], _dest, kgray, 1);
+	//	Line(_startPoly[1], _endPoly[1], _dest, kgray, 1);
+	//	Line(_startPoly[2], _endPoly[2], _dest, kgray, 1);
+	//	Line(_startPoly[3], _endPoly[3], _dest, kgray, 1);
+	
+	_iterations = integer(max(distTo(_startPoly[0], _endPoly[0]), max(distTo(_startPoly[1], _endPoly[1]), max(distTo(_startPoly[2], _endPoly[2]), distTo(_startPoly[3], _endPoly[3])))));
+	//	NumReporter(_dest, _iterations, "_iterations", kFloat2, 100, 12, kCenterJustify);
+	_iterations /=divisor;
+	_iterations = min(_iterations, _w/2);
+	
+	if (doOval)
+		FillPoly(_startPoly, _img, _startColor);	// fill _startPoly first to eliminate circle edges
+	end if
+
+	for _i = 0 to _iterations
+		interpolateBox(_startPoly, _endPoly, _i/_iterations, _iBox)
+
+		//	_iColor.a = (_startColor.a - _endColor.a * _i/_iterations) + _startColor.a;
+		//	_iColor.r = (_startColor.r - _endColor.r * _i/_iterations) + _startColor.r;
+		//	_iColor.g = (_startColor.g - _endColor.g * _i/_iterations) + _startColor.g;
+		//	_iColor.b = (_startColor.b - _endColor.b * _i/_iterations) + _startColor.b;
+		
+		_iColor = _endColor;
+		_iColor -= _startColor;
+		_iColor *= _i/_iterations;
+		_iColor += _startColor;
+		
+		if (_doOval)
+			frameOval(_iBox, _img, _iColor, divisor+3)
+		else 
+			FramePoly(_iBox, _img, _iColor, divisor+1);
+		end if
+		
+	next;
+	
+	if (doOval)
+		FillOval(_endPoly, _img, _endColor)
+		frameOval(_endPoly, _img, _endColor, divisor+3)
+	else
+		FillPoly(_endPoly, _img, _endColor);
+		FramePoly(_endPoly, _img, _endColor, divisor+1);
+	end if
+		
+	if (doBlur)
+		BlurChannel(_img, _dest, divisor, 1, 1, 1, 1, AspectOf(_dest));
+	else
+		_dest = _img;
+	end if
+
+end
+
+
+point dims;
+
+DimensionsOf(dest, dims.x, dims.y);
+centerPt *= dims;
+
+
+ChannelFill(dest, 255, 0, 0, 0);
+
+point b1[4], b2[4], b3[4];
+
+BoundsOf(dest, b1);
+MakeRect(b2, centerPt.x, centerPt.y, 30, 55);
+InterpolateBox(b1, b2, 0.5, b3);
+
+
+//	FramePoly(b1, dest, kred, 2);
+//	FramePoly(b2, dest, kgreen, 1);
+//	FramePoly(b3, dest, kblue, 1);
+
+vignette(dest, b1, b2, startColor, endColor, doOval)
