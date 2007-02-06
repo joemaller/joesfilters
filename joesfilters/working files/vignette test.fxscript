@@ -10,7 +10,10 @@ input doBlur, "do Blur", Checkbox, 0;
 input reverseIt, "reverseIt", Checkbox, 0;
 
 input startColor, "StartColor", Color, 255, 127, 22, 0;
+input startColorOpacity, "StartColorOpacity", Slider, 50, 0, 255;
+
 input endColor, "End Color", Color, 255, 11, 22, 120;
+input endColorOpacity, "EndColorOpacity", Slider, 200, 0, 255;
 
 
 producesalpha;
@@ -115,7 +118,12 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _startColor, co
 	color _iColor;
 	
 	DimensionsOf(dest, _w, _h);
-	image _img[_w][_h];
+	image _img[_w][_h], _bummer[_w][_h];
+	
+	
+	if (doOval)
+		_startPoly *= 2 * cos(45);
+	end if
 	
 	/// calculate iterations by max vertex distance between the two polys
 
@@ -135,45 +143,62 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _startColor, co
 	_iterations /=divisor;
 	_iterations = min(_iterations, _w/2);
 	
+	_iColor = {255, _startColor.a,255, 0}; // setup initial fill color
 	if (doOval)
-		FillPoly(_startPoly, _img, _startColor);	// fill _startPoly first to eliminate circle edges
+		FillPoly(_startPoly, _dest, _iColor);	// fill _startPoly first to eliminate circle edges
 	end if
 
 	for _i = 0 to _iterations
 		interpolateBox(_startPoly, _endPoly, _i/_iterations, _iBox)
 
-		//	_iColor.a = (_startColor.a - _endColor.a * _i/_iterations) + _startColor.a;
-		//	_iColor.r = (_startColor.r - _endColor.r * _i/_iterations) + _startColor.r;
-		//	_iColor.g = (_startColor.g - _endColor.g * _i/_iterations) + _startColor.g;
+_iColor *= 0;
+_iColor += 0
+// use red for input alpha mask
+// use green for full alpha transition
+			_iColor.r = (_startColor.a - _endColor.a) * (1-_i/_iterations) + _endColor.a;
+		//	_iColor.r = (_startColor.a) * (1-_i/_iterations);	// run this down from _startColor.a to 0
+			_iColor.g = (1-_i/_iterations) * 255;
+//			_iColor.g = (_endColor.a) * _i/_iterations;	// run this up from 0 to _endColor.a
 		//	_iColor.b = (_startColor.b - _endColor.b * _i/_iterations) + _startColor.b;
 		
-		_iColor = _endColor;
-		_iColor -= _startColor;
-		_iColor *= _i/_iterations;
-		_iColor += _startColor;
+		//	_iColor = _endColor;
+		//	_iColor -= _startColor;
+		//	_iColor *= _i/_iterations;
+		//	_iColor += _startColor;
 		
 		if (_doOval)
-			frameOval(_iBox, _img, _iColor, divisor+3)
+			frameOval(_iBox, _dest, _iColor, divisor+3)
 		else 
-			FramePoly(_iBox, _img, _iColor, divisor+1);
+			FramePoly(_iBox, _dest, _iColor, divisor+1);
 		end if
 		
 	next;
 	
+	_iColor = {255, _endColor.a, 0, 0}; // setup ending fill color
+	
 	if (doOval)
-		FillOval(_endPoly, _img, _endColor)
-		frameOval(_endPoly, _img, _endColor, divisor+3)
+		FillOval(_endPoly, _dest, _iColor)
+		frameOval(_endPoly, _dest, _iColor, divisor+3)
 	else
-		FillPoly(_endPoly, _img, _endColor);
-		FramePoly(_endPoly, _img, _endColor, divisor+1);
+		FillPoly(_endPoly, _dest, _iColor);
+		FramePoly(_endPoly, _dest, _iColor, divisor+1);
 	end if
 		
 	if (doBlur)
-		BlurChannel(_img, _dest, divisor, 1, 1, 1, 1, AspectOf(_dest));
+		BlurChannel(_dest, _img, divisor, 1, 1, 1, 1, AspectOf(_dest));
 	else
-		_dest = _img;
+	 	_img = _dest;
 	end if
-
+	
+	if (reverseIt)
+	ChannelFill(_dest, 255, _endColor.r, _endColor.g, _endColor.b);
+	ChannelFill(_bummer, 255, _startColor.r, _startColor.g, _startColor.b);
+		ChannelCopy(_img, _bummer, kgreen, knone, knone, knone);	// move full gradient to start color channel
+	Matte(_bummer, _dest, _dest, 1, kAlpha);
+	ChannelCopy(_img, _dest, kred, knone, knone, knone);	//
+	
+	end if
+	
 end
 
 
@@ -183,7 +208,7 @@ DimensionsOf(dest, dims.x, dims.y);
 centerPt *= dims;
 
 
-ChannelFill(dest, 255, 0, 0, 0);
+//	ChannelFill(dest, 255, 0, 0, 0);
 
 point b1[4], b2[4], b3[4];
 
@@ -196,4 +221,30 @@ InterpolateBox(b1, b2, 0.5, b3);
 //	FramePoly(b2, dest, kgreen, 1);
 //	FramePoly(b3, dest, kblue, 1);
 
+startColor.a = startColorOpacity;
+endColor.a = endColorOpacity;
 vignette(dest, b1, b2, startColor, endColor, doOval)
+Matte(dest, src1, dest, 1, kAlpha);
+
+//	
+//	
+//	
+//	possible solution to the alpha bug:
+//	
+//	Generate the vignette in black and white, channelcopy that to alpha, fill color channels with startColor
+//	Matte the alpha'd start color over the endcolor into dest. May also need to recopy the alpha into dest when finished.
+//	
+//	can that work for middle alpha values? ie, a blend from 45a to 129a with colors? (no.)
+//	
+//	
+//	Generate three different mattes:
+//	1: start alpha to 0
+//	2: 1 to end alpha
+//	3: 1 to 0
+//	
+//	Channelfill dest with the end color and channelcopy the alpha values
+//	fill _img with start color and channelcopy the alpha
+//	matte _img over Dest into dest
+//	
+//	
+//	Alternately, what about generating a transition from start alpha to end alpha, matting startcolor over end color with a linear blend alpha, then channelcopying the alpha in?
