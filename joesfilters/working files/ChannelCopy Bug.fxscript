@@ -2,7 +2,9 @@ Filter "ChannelCopy Bug";
 group "FXScript Bugs";
 
 
-input workaround, "Check", RadioGroup, 1, "Red to Alpha", "Bug: Green to Alpha", "Bug: Blue to Alpha", "Workaround: pre-swap Red & Alpha", "Workaround: pre-swap Green & Alpha", "Workaround: pre-swap Blue & Alpha";
+input workaround, "Check", RadioGroup, 1, "Red to Alpha", "Bug: Green to Alpha", "Bug: Blue to Alpha", "Workaround: pre-swap Red & Alpha", "Workaround: pre-swap Green & Alpha", "test for color shift";
+
+input ccsafe, "ccsafe", Checkbox, 1;
 
 
 InformationFlag("YUVaware");
@@ -104,15 +106,14 @@ end if
 if (workaround == 5)
 	// Workaround for swap Green & Alpha inside _img before channelcopying to _dest's alpha
 	// cost is one additional channel copy
-	ChannelCopy(_img, _img, kgreen, kred, kalpha, kblue);
-	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+	CCsafe2(_img, _dest, kblue, knone, knone, knone);
 end if
 
 if (workaround == 6)
 	// Workaround for swap Blue & Alpha inside _img before channelcopying to _dest's alpha
 	// cost is one additional channel copy
-	ChannelCopy(_img, _img, kblue, kred, kgreen, kalpha);
-	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+//	ChannelCopy(_img, _img, kblue, kred, kgreen, kalpha);
+	ChannelCopy(_img, _dest, knone, kred, kgreen, kblue);
 end if
 
 // This is also not working:
@@ -155,7 +156,40 @@ end
 on ChannelCopySafe(image _src, image _dest, value _A, value _R, value _G, value _B)
 
 	ChannelCopy(_src, _dest, _A, _R, _G, _B);
+	ChannelCopy(_src, _dest, _A, _R, _G, _B);
 
+
+// WHICH IS MORE COSTLY, CREATING AN ADDITIONAL BUFFER, OR REVERSING THE INITIAL COPY?
+
+
+end
+
+
+
+
+on CCsafe1(image _src, image _dest, value _A, value _R, value _G, value _B)
+	float _cs;
+	_cs = GetPixelFormat(_src);
+	SetPixelFormat(_src, kFormatRGB255);	
+	ChannelCopy(_src, _src, kblue, knone, knone, kalpha);
+	ChannelCopy(_src, _dest, kalpha, knone, knone, knone);
+	ChannelCopy(_src, _src, kblue, knone, knone, kalpha);	// switch channels back
+	SetPixelFormat(_src, _cs);	
+	
+end
+
+on CCsafe2(image _src, image _dest, value _A, value _R, value _G, value _B)		// faster than CCsafe1
+	float _w, _h, _cs;
+	DimensionsOf(dest, _w, _h);
+	image _img[_w][_h];
+
+	_cs = GetPixelFormat(_src);
+
+	SetPixelFormat(_src, kFormatRGB255);	
+	SetPixelFormat(_img, kFormatRGB255);	
+	ChannelCopy(_src, _img, kblue,  knone, knone, knone);
+	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+	SetPixelFormat(_src, _cs);	
 end
 
 on simpleChannelCopyBug(image _src1, image _dest)
@@ -197,3 +231,7 @@ channelcopyBug(dest)
 //convertImage(dest, dest, kFormatRGB255);	// about 12 seconds
 
 //SetPixelFormat(dest, kFormatYUV219);	
+
+
+
+	//	CCsafe2(img, dest, kblue, knone, knone, knone);
