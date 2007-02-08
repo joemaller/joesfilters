@@ -1,0 +1,189 @@
+Filter "ChannelCopy Bug";
+group "FXScript Bugs";
+
+
+input workaround, "Check", RadioGroup, 1, "Bug: Red to Alpha", "Bug: Green to Alpha", "Bug: Blue to Alpha", "Workaround: pre-swap Red & Alpha", "Workaround: pre-swap Green & Alpha", "Workaround: pre-swap Blue & Alpha";
+
+
+InformationFlag("YUVaware");
+ProducesAlpha;
+
+code
+
+exposedBackground=1;
+
+//	
+//	This filter demonstrates a bug in ChannelCopy when copying any Red (or Luma) channel into an alpha channel.
+//	
+//	Each input option points to a slightly modified version of the original bug function
+//	
+//	
+
+
+
+
+// INCLUDE "ColorReporter.fxscript" r124
+
+on ColorReporter(image _destIMG, color _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string _reporterA, _reporterR, _reporterG, _reporterB;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.a, _reporterA, _numberformat);
+	NumToString(_data.r, _reporterR, _numberformat);
+	NumToString(_data.g, _reporterG, _numberformat);
+	NumToString(_data.b, _reporterB, _numberformat);
+	_reporterR = _label + " = {" + _reporterA + "," + _reporterR + "," + _reporterG + "," + _reporterB + "}";
+	DrawString(_reporterR, -1, _h - 1, 1.25,  _destIMG, fontColor, aspectof(_destIMG));
+	DrawString(_reporterR, 1, _h + 1, 1.25,  _destIMG, kblack, aspectof(_destIMG));
+	DrawString(_reporterR, 0, _h, 1.25,  _destIMG, _data, aspectof(_destIMG));
+
+end 
+
+// END "ColorReporter.fxscript"
+
+
+
+
+on channelcopyBug(image _dest)
+
+	// this should produce a red square in the middle of the frame
+	// instead it produces a half-opacity square, the alpha information is being compressed
+	// the problem is that image buffers created inside a function are not in a pre-defined color space.
+
+	float _w, _h;
+	DimensionsOf(dest, _w, _h);
+	image _img[_w][_h];
+	point _p[4];
+	color _white;
+	
+//	 _w = GetPixelFormat(_img);
+//	 _h = GetPixelFormat(_dest);
+//	DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
+//		
+//		
+SetPixelFormat(_img, kFormatRGB255);
+//SetPixelFormat(_dest, kFormatRGB255);
+//	convertImage(_img, _img, kFormatYUV219);
+	convertImage(_dest, _dest, kFormatRGB255);
+//		
+	ChannelFill(dest, 255, 255, 0, 0);	//fill dest with red
+	ChannelFill(_img, 0, 0, 0, 0);	// make sure the image buffer is initialized, just in case
+
+	MakeRect(_p, -50, -50, 100, 100);
+	_white = {255, 255, 255, 255};	// force pure white
+	FillPoly(_p, _img, _white);
+//		
+//		float _a, _r, _g, _b	// used for debug logging
+//		_p *= 0;
+//		ColorOf(_img, _p[0], _white);
+//		_a = _white.a; _r = _white.r; _g = _white.g; _b = _white.b
+//		DebugText("_img colors:", _a, _r, _g, _b);
+
+if (workaround == 1)	// BUG
+	// Sending Red to the destination alpha results in a dimming of the channel data.
+	ChannelCopy(_img, _dest, kred, knone, knone, knone);
+end if
+
+if (workaround == 2)	// BUG
+	// Sending Red to the destination alpha results in a dimming of the channel data.
+	ChannelCopy(_img, _dest, kgreen, knone, knone, knone);
+end if
+
+if (workaround == 3)	// BUG
+	// Sending Red to the destination alpha results in a dimming of the channel data.
+	ChannelCopy(_img, _dest, kblue, knone, knone, knone);
+end if
+
+if (workaround == 4)
+	// Workaround for swap Red & Alpha inside _img before channelcopying to _dest's alpha
+	// cost is one additional channel copy
+
+	ChannelCopy(_img, _img, kgreen, knone, knone, knone);
+
+//	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+//	_dest = _img
+//	channelcopy(_dest, _dest, kgreen, knone, kgreen, knone);
+	ColorOf(_img, _p[0], _white);
+	_a = _white.a; _r = _white.r; _g = _white.g; _b = _white.b
+	DebugText("_img2 colors:", _a, _r, _g, _b);
+
+end if
+
+if (workaround == 5)
+	// Workaround for swap Green & Alpha inside _img before channelcopying to _dest's alpha
+	// cost is one additional channel copy
+	ChannelCopy(_img, _img, kgreen, kred, kalpha, kblue);
+	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+end if
+
+if (workaround == 6)
+	// Workaround for swap Blue & Alpha inside _img before channelcopying to _dest's alpha
+	// cost is one additional channel copy
+	ChannelCopy(_img, _img, kblue, kred, kgreen, kalpha);
+	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+end if
+
+// This is also not working:
+//	ChannelCopy(_img, _img, kred, kUndefined, knone, knone);
+//	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+
+// WORKAROUND 1:
+// copying more than one channel fixes the alpha transfer
+//	ChannelCopy(_img, _img, kblue, knone, knone, kblue);
+//	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+
+if (workaround == 7)
+// WORKAROUND 2:
+	//	ChannelCopy(_img, _img, kblue , knone , knone, knone);
+//channelcopy(_img, _img, kred, knone, knone, knone);
+//channelcopy(_dest, _img, knone, kred, kgreen, kblue);
+//_dest = _img
+	//	ChannelCopy(_dest, _img, knone, kred, kgreen, kblue);
+	//	_dest = _img
+end if
+
+
+if (workaround == 8)
+	// this is the costliest workaround, it uses an entire additional image buffer for transferring 
+
+// This bug only seems to apply to data from the red channel, channelcopied into an alpha channel
+
+// bug only affects channelcopies from within functions !?	
+
+end if
+
+
+
+
+
+end
+
+
+
+
+
+//	
+	float w, h;
+	DimensionsOf(dest, w, h);
+	image img[w][h];
+//	point _p1
+//	
+//	ChannelFill(dest, 255, 255, 0, 0);	//fill dest with red
+//	ChannelFill(_img, 0, 0, 0, 0);	// make sure the image buffer is initialized
+//	
+//	DrawSoftDot(_img, _p1, kround, 80, 2, 4, kwhite, 1, aspectOf(dest));		
+//	
+//	ChannelCopy(_img, dest, kred, knone, knone, knone);
+
+channelcopyBug(dest)
