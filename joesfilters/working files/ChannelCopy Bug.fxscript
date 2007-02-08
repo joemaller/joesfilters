@@ -89,6 +89,7 @@ if (workaround == 4)
 	// Workaround for swap Red & Alpha inside _img before channelcopying to _dest's alpha
 	// cost is one additional channel copy
 
+SetPixelFormat(dest, kFormatRGB255);	
 	ChannelCopy(_img, _img, knone, kblue, kred, knone);
 
 //	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
@@ -186,11 +187,13 @@ end
 //	
 //	ChannelCopy(_img, dest, kred, knone, knone, knone);
 
-//channelcopyBug(dest)
+channelcopyBug(dest)
 
 //dest = src1;
 //qtest(dest)
 
-
+//dest = src1
 //SetPixelFormat(dest, kFormatRGB255);		// about 9 seconds
 //convertImage(dest, dest, kFormatRGB255);	// about 12 seconds
+
+//SetPixelFormat(dest, kFormatYUV219);	
