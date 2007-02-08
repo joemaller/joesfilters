@@ -2,7 +2,7 @@ Filter "ChannelCopy Bug";
 group "FXScript Bugs";
 
 
-input workaround, "Check", RadioGroup, 1, "Bug: Red to Alpha", "Bug: Green to Alpha", "Bug: Blue to Alpha", "Workaround: pre-swap Red & Alpha", "Workaround: pre-swap Green & Alpha", "Workaround: pre-swap Blue & Alpha";
+input workaround, "Check", RadioGroup, 1, "Red to Alpha", "Bug: Green to Alpha", "Bug: Blue to Alpha", "Workaround: pre-swap Red & Alpha", "Workaround: pre-swap Green & Alpha", "Workaround: pre-swap Blue & Alpha";
 
 
 InformationFlag("YUVaware");
@@ -20,37 +20,6 @@ exposedBackground=1;
 //	
 
 
-
-
-// INCLUDE "ColorReporter.fxscript" r124
-
-on ColorReporter(image _destIMG, color _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
-	
-	float rw, rh, ra, rd, rzoom;
-	string _reporterA, _reporterR, _reporterG, _reporterB;
-	color fontcolor;
-	
-	DimensionsOf(_destIMG, rw, rh);
-	rzoom = rw/720;
-	
-	fontcolor = {255,235,235,235};
-	settextfont("verdana");
-	setTextstyle(kbold);
-	setTextjustify(_justification);
-	setTextSize(_fontsize * rzoom);
-													
-	NumToString(_data.a, _reporterA, _numberformat);
-	NumToString(_data.r, _reporterR, _numberformat);
-	NumToString(_data.g, _reporterG, _numberformat);
-	NumToString(_data.b, _reporterB, _numberformat);
-	_reporterR = _label + " = {" + _reporterA + "," + _reporterR + "," + _reporterG + "," + _reporterB + "}";
-	DrawString(_reporterR, -1, _h - 1, 1.25,  _destIMG, fontColor, aspectof(_destIMG));
-	DrawString(_reporterR, 1, _h + 1, 1.25,  _destIMG, kblack, aspectof(_destIMG));
-	DrawString(_reporterR, 0, _h, 1.25,  _destIMG, _data, aspectof(_destIMG));
-
-end 
-
-// END "ColorReporter.fxscript"
 
 
 
@@ -74,21 +43,21 @@ on channelcopyBug(image _dest)
 //		
 SetPixelFormat(_img, kFormatRGB255);
 //SetPixelFormat(_dest, kFormatRGB255);
-//	convertImage(_img, _img, kFormatYUV219);
-	convertImage(_dest, _dest, kFormatRGB255);
+	//	convertImage(_img, _img, kFormatRGB255);
+	//	convertImage(_dest, _dest, kFormatRGB255);
 //		
 	ChannelFill(dest, 255, 255, 0, 0);	//fill dest with red
-	ChannelFill(_img, 0, 0, 0, 0);	// make sure the image buffer is initialized, just in case
+	ChannelFill(_img, 0, 0, 127, 127);	// make sure the image buffer is initialized, just in case
 
 	MakeRect(_p, -50, -50, 100, 100);
 	_white = {255, 255, 255, 255};	// force pure white
 	FillPoly(_p, _img, _white);
-//		
-//		float _a, _r, _g, _b	// used for debug logging
-//		_p *= 0;
-//		ColorOf(_img, _p[0], _white);
-//		_a = _white.a; _r = _white.r; _g = _white.g; _b = _white.b
-//		DebugText("_img colors:", _a, _r, _g, _b);
+
+	float _a, _r, _g, _b	// used for debug logging
+	_p *= 0;
+	ColorOf(_img, _p[0], _white);
+	_a = _white.a; _r = _white.r; _g = _white.g; _b = _white.b
+	DebugText("_img pre-colors:", _a, _r, _g, _b);
 
 if (workaround == 1)	// BUG
 	// Sending Red to the destination alpha results in a dimming of the channel data.
@@ -97,19 +66,30 @@ end if
 
 if (workaround == 2)	// BUG
 	// Sending Red to the destination alpha results in a dimming of the channel data.
-	ChannelCopy(_img, _dest, kgreen, knone, knone, knone);
+//	ChannelCopy(_img, _dest, kgreen, knone, knone, knone);
+ _h = GetPixelFormat(_dest);
+ _w = GetPixelFormat(_img);
+DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
+
+	ChannelCopySafe(_img, _dest, kgreen, knone, knone, knone);
+	
+	 _h = GetPixelFormat(_dest);
+	 _w = GetPixelFormat(_img);
+	DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
+	
 end if
 
 if (workaround == 3)	// BUG
 	// Sending Red to the destination alpha results in a dimming of the channel data.
-	ChannelCopy(_img, _dest, kblue, knone, knone, knone);
+	ChannelCopy(_img, _img, knone, kblue, knone, knone);
+	ChannelCopy(_img, _dest, kred, knone, knone, knone);
 end if
 
 if (workaround == 4)
 	// Workaround for swap Red & Alpha inside _img before channelcopying to _dest's alpha
 	// cost is one additional channel copy
 
-	ChannelCopy(_img, _img, kgreen, knone, knone, knone);
+	ChannelCopy(_img, _img, knone, kblue, kred, knone);
 
 //	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
 //	_dest = _img
@@ -171,7 +151,27 @@ end
 
 
 
+on ChannelCopySafe(image _src, image _dest, value _A, value _R, value _G, value _B)
 
+	ChannelCopy(_src, _dest, _A, _R, _G, _B);
+
+end
+
+on simpleChannelCopyBug(image _src1, image _dest)
+	
+	ChannelFill(_dest, 255, 255, 0, 0);
+	ChannelCopy(_src1, _dest, kgreen, knone, knone, knone);
+	
+end
+
+
+on qtest(image _dest)
+//	float _w, _h;
+//	DimensionsOf(_dest, _w, _h);
+//	image _img[_w][_h];
+	
+	
+end
 
 //	
 	float w, h;
@@ -186,4 +186,11 @@ end
 //	
 //	ChannelCopy(_img, dest, kred, knone, knone, knone);
 
-channelcopyBug(dest)
+//channelcopyBug(dest)
+
+//dest = src1;
+//qtest(dest)
+
+
+//SetPixelFormat(dest, kFormatRGB255);		// about 9 seconds
+//convertImage(dest, dest, kFormatRGB255);	// about 12 seconds
