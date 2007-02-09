@@ -4,23 +4,43 @@ group "BETA";
 input centerPt, "Center", Point, 0, 0;
 input doOval, "do Oval", Checkbox, 0;
 
-input divisor, "divisor", Slider, 10, 1, 50;
+input divisor, "divisor", Slider, 25, 1, 50;
 
-input doBlur, "do Blur", Checkbox, 0;
-input reverseIt, "reverseIt", Checkbox, 0;
+input doBlur, "do Blur", Checkbox, 1;
+input showChannels, "Show Channels", Checkbox, 0;
 
-input startColor, "StartColor", Color, 255, 127, 22, 0;
-input startColorOpacity, "StartColorOpacity", Slider, 50, 0, 255;
+input outerColor, "outerColor", Color, 255, 127, 22, 0;
+input outerColorOpacity, "outerColorOpacity", Slider, 50, 0, 255;
 
-input endColor, "End Color", Color, 255, 11, 22, 120;
-input endColorOpacity, "EndColorOpacity", Slider, 200, 0, 255;
+input innerColor, "End Color", Color, 255, 11, 22, 120;
+input innerColorOpacity, "innerColorOpacity", Slider, 200, 0, 255;
+
+input checkAlpha, "checkAlpha", Checkbox, 0;
+
 
 
 producesalpha;
+//	InformationFlag("YUVaware");
 
 code
 
 exposedBackground=1;
+
+
+
+
+
+// INCLUDE "RGBtoYUVcolor.fxscript" r160
+
+on RGBtoYUVcolor(color _rgbColor)
+	color _temp;
+	_temp = _rgbColor
+	_rgbColor.r = _temp.r * 0.299 + _temp.g * 0.587 + _temp.b * 0.114 
+	_rgbColor.g = _temp.r * -0.169 + _temp.g * -0.332 + _temp.b * 0.500 + 128; 
+	_rgbColor.b = _temp.r * 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
+end 
+
+// END "RGBtoYUVcolor.fxscript"
 
 
 
@@ -104,7 +124,7 @@ end
 
 
 
-on vignette(image _dest, point _startPoly, point _endPoly, color _startColor, color _endColor, value _doOval)
+on vignette(image _dest, point _startPoly, point _endPoly, color _outerColor, color _innerColor, value _doOval)
 	// could add color ramp bending by using the ease functions
 	// instead of reversing the loop here, reverse the input polys
 
@@ -113,58 +133,40 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _startColor, co
 	//		InterpolateBox
 	
 	
-	float _iterations, _i, _w, _h;
+	float _iterations, _i, _w, _h, _colorSpace;
 	point _iBox[4];
 	color _iColor;
 	
+	_colorSpace = GetPixelFormat(_dest);
+
 	DimensionsOf(dest, _w, _h);
 	image _img[_w][_h], _bummer[_w][_h];
 	
+	channelfill(_img, 0, 0, 127, 127)
+	channelfill(_bummer, 0, 0, 127, 127)
 	
 	if (doOval)
 		_startPoly *= 2 * cos(45);
 	end if
 	
 	/// calculate iterations by max vertex distance between the two polys
-
-
-	//	NumReporter(_dest, distTo(_startPoly[0], _endPoly[0]), "distTo[0]", kFloat2, 0, 12, kCenterJustify);
-	//	NumReporter(_dest, distTo(_startPoly[1], _endPoly[1]), "distTo[1]", kFloat2, 20, 12, kCenterJustify);
-	//	NumReporter(_dest, distTo(_startPoly[2], _endPoly[2]), "distTo[2]", kFloat2, 40, 12, kCenterJustify);
-	//	NumReporter(_dest, distTo(_startPoly[3], _endPoly[3]), "distTo[3]", kFloat2, 60, 12, kCenterJustify);
-
-	//	Line(_startPoly[0], _endPoly[0], _dest, kgray, 1);
-	//	Line(_startPoly[1], _endPoly[1], _dest, kgray, 1);
-	//	Line(_startPoly[2], _endPoly[2], _dest, kgray, 1);
-	//	Line(_startPoly[3], _endPoly[3], _dest, kgray, 1);
-	
 	_iterations = integer(max(distTo(_startPoly[0], _endPoly[0]), max(distTo(_startPoly[1], _endPoly[1]), max(distTo(_startPoly[2], _endPoly[2]), distTo(_startPoly[3], _endPoly[3])))));
-	//	NumReporter(_dest, _iterations, "_iterations", kFloat2, 100, 12, kCenterJustify);
 	_iterations /=divisor;
-	_iterations = min(_iterations, _w/2);
+	_iterations = min(_iterations, _w/2);	// limit _iterations to half the width of the frame to prevent runoffs with large frames and off-screen placement
 	
-	_iColor = {255, _startColor.a,255, 0}; // setup initial fill color
+	_iColor = {255, _outerColor.a,0, 0}; // setup initial fill color
 	if (doOval)
 		FillPoly(_startPoly, _dest, _iColor);	// fill _startPoly first to eliminate circle edges
 	end if
 
+	_iColor *= 0;
 	for _i = 0 to _iterations
 		interpolateBox(_startPoly, _endPoly, _i/_iterations, _iBox)
 
-_iColor *= 0;
-_iColor += 0
 // use red for input alpha mask
 // use green for full alpha transition
-			_iColor.r = (_startColor.a - _endColor.a) * (1-_i/_iterations) + _endColor.a;
-		//	_iColor.r = (_startColor.a) * (1-_i/_iterations);	// run this down from _startColor.a to 0
-			_iColor.g = (1-_i/_iterations) * 255;
-//			_iColor.g = (_endColor.a) * _i/_iterations;	// run this up from 0 to _endColor.a
-		//	_iColor.b = (_startColor.b - _endColor.b * _i/_iterations) + _startColor.b;
-		
-		//	_iColor = _endColor;
-		//	_iColor -= _startColor;
-		//	_iColor *= _i/_iterations;
-		//	_iColor += _startColor;
+			_iColor.r = (_outerColor.a - _innerColor.a) * (1-_i/_iterations) + _innerColor.a;
+			_iColor.g = (_i/_iterations) * 255;
 		
 		if (_doOval)
 			frameOval(_iBox, _dest, _iColor, divisor+3)
@@ -174,7 +176,7 @@ _iColor += 0
 		
 	next;
 	
-	_iColor = {255, _endColor.a, 0, 0}; // setup ending fill color
+	_iColor = {255, _innerColor.a, 255, 0}; // setup ending fill color
 	
 	if (doOval)
 		FillOval(_endPoly, _dest, _iColor)
@@ -190,16 +192,43 @@ _iColor += 0
 	 	_img = _dest;
 	end if
 	
-	if (reverseIt)
-	ChannelFill(_dest, 255, _endColor.r, _endColor.g, _endColor.b);
-	ChannelFill(_bummer, 255, _startColor.r, _startColor.g, _startColor.b);
+	SetPixelFormat(_img, kFormatRGB255);
+	SetPixelFormat(_dest, kFormatRGB255);
+
+	if (!showChannels)
+		ChannelFill(_bummer, 255, _innerColor.r, _innerColor.g, _innerColor.b);
+		ChannelFill(_dest, 255, _outerColor.r, _outerColor.g, _outerColor.b);
 		ChannelCopy(_img, _bummer, kgreen, knone, knone, knone);	// move full gradient to start color channel
-	Matte(_bummer, _dest, _dest, 1, kAlpha);
-	ChannelCopy(_img, _dest, kred, knone, knone, knone);	//
+		Matte(_bummer, _dest, _dest, 1, kAlpha);
+//		channelfill(dest, 255, -1, -1, -1)
+		
+ChannelCopy(_img, _dest, kred, knone, knone, knone);		
+//ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+
+
+//	ChannelCopy(_img, _dest, knone, kred, kred, kred);
+
+	//	ChannelCopy(_img, _img, kred, knone, knone, knone);
+	//		ChannelCopy(_dest, _img, knone, kred, kgreen, kblue);
+	//		_dest = _img
 	
+	if (checkAlpha)
+
+		ChannelCopy(_dest, _dest, kalpha, kalpha,kalpha,kalpha);
+		ChannelFill(_dest, 255, -1, -1, -1);
 	end if
 	
+	 
+else 
+channelfill(_dest, 255, 255, 255, 255)
+channelcopy(_img, _dest, knone, kred, kred, kred)
+	end if
+	
+//	SetPixelFormat(_dest, _colorSpace);
+
 end
+
+
 
 
 point dims;
@@ -207,44 +236,22 @@ point dims;
 DimensionsOf(dest, dims.x, dims.y);
 centerPt *= dims;
 
-
-//	ChannelFill(dest, 255, 0, 0, 0);
-
 point b1[4], b2[4], b3[4];
 
 BoundsOf(dest, b1);
 MakeRect(b2, centerPt.x, centerPt.y, 30, 55);
 InterpolateBox(b1, b2, 0.5, b3);
 
+RGBtoYUVcolor(outerColor);
+RGBtoYUVcolor(innerColor);
 
-//	FramePoly(b1, dest, kred, 2);
-//	FramePoly(b2, dest, kgreen, 1);
-//	FramePoly(b3, dest, kblue, 1);
+outerColor.a = outerColorOpacity;
+innerColor.a = innerColorOpacity;
 
-startColor.a = startColorOpacity;
-endColor.a = endColorOpacity;
-vignette(dest, b1, b2, startColor, endColor, doOval)
-Matte(dest, src1, dest, 1, kAlpha);
+vignette(dest, b1, b2, outerColor, innerColor, doOval)
+//Matte(dest, src1, dest, 1, kAlpha);
 
-//	
-//	
-//	
-//	possible solution to the alpha bug:
-//	
-//	Generate the vignette in black and white, channelcopy that to alpha, fill color channels with startColor
-//	Matte the alpha'd start color over the endcolor into dest. May also need to recopy the alpha into dest when finished.
-//	
-//	can that work for middle alpha values? ie, a blend from 45a to 129a with colors? (no.)
-//	
-//	
-//	Generate three different mattes:
-//	1: start alpha to 0
-//	2: 1 to end alpha
-//	3: 1 to 0
-//	
-//	Channelfill dest with the end color and channelcopy the alpha values
-//	fill _img with start color and channelcopy the alpha
-//	matte _img over Dest into dest
-//	
-//	
-//	Alternately, what about generating a transition from start alpha to end alpha, matting startcolor over end color with a linear blend alpha, then channelcopying the alpha in?
+
+
+//	WHY IS THE SECONDARY COLOR SHOWING UP TRANSPARENT?
+	// because of a bug in ChannelCopy regarding unspecified image buffers
