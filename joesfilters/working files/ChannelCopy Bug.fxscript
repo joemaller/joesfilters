@@ -49,7 +49,7 @@ SetPixelFormat(_img, kFormatRGB255);
 	//	convertImage(_dest, _dest, kFormatRGB255);
 //		
 	ChannelFill(dest, 255, 255, 0, 0);	//fill dest with red
-	ChannelFill(_img, 0, 0, 127, 127);	// make sure the image buffer is initialized, just in case
+	ChannelFill(_img, 0, 0, 0, 0);	// make sure the image buffer is initialized, just in case
 
 	MakeRect(_p, -50, -50, 100, 100);
 	_white = {255, 255, 255, 255};	// force pure white
