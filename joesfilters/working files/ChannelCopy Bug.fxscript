@@ -2,7 +2,7 @@ Filter "ChannelCopy Bug";
 group "FXScript Bugs";
 
 
-input workaround, "Check", RadioGroup, 1, "Red to Alpha", "Bug: Green to Alpha", "Bug: Blue to Alpha", "Workaround: pre-swap Red & Alpha", "Workaround: pre-swap Green & Alpha", "test for color shift";
+input workaround, "Check", RadioGroup, 1, "channelcopy green", "CCsafe2 green", "Bug: Blue to Alpha", "Workaround: pre-swap Red & Alpha", "Workaround: pre-swap Green & Alpha", "test for color shift";
 
 input ccsafe, "ccsafe", Checkbox, 1;
 
@@ -23,6 +23,18 @@ exposedBackground=1;
 
 
 
+// INCLUDE "RGBtoYUVcolor.fxscript" r160
+
+on RGBtoYUVcolor(color _rgbColor)
+	color _temp;
+	_temp = _rgbColor
+	_rgbColor.r = _temp.r * 0.299 + _temp.g * 0.587 + _temp.b * 0.114 
+	_rgbColor.g = _temp.r * -0.169 + _temp.g * -0.332 + _temp.b * 0.500 + 128; 
+	_rgbColor.b = _temp.r * 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
+end 
+
+// END "RGBtoYUVcolor.fxscript"
+
 
 
 
@@ -33,51 +45,50 @@ on channelcopyBug(image _dest)
 	// the problem is that image buffers created inside a function are not in a pre-defined color space.
 
 	float _w, _h;
+	float _a, _r, _g, _b	// used for debug logging
 	DimensionsOf(dest, _w, _h);
 	image _img[_w][_h];
 	point _p[4];
-	color _white;
+	color _color;
 	
-//	 _w = GetPixelFormat(_img);
-//	 _h = GetPixelFormat(_dest);
-//	DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
-//		
-//		
-SetPixelFormat(_img, kFormatRGB255);
-//SetPixelFormat(_dest, kFormatRGB255);
-	//	convertImage(_img, _img, kFormatRGB255);
-	//	convertImage(_dest, _dest, kFormatRGB255);
-//		
-	ChannelFill(dest, 255, 255, 0, 0);	//fill dest with red
+		SetPixelFormat(_img, kFormatRGB255);
+	//	SetPixelFormat(_dest, kFormatRGB255);
+	_color = {255, 255, 0,0}
+	RGBtoYUVcolor(_color);
+	ChannelFill(dest, 255, _color.r, _color.g, _color.b);	//fill dest with red
 	ChannelFill(_img, 0, 0, 0, 0);	// make sure the image buffer is initialized, just in case
 
 	MakeRect(_p, -50, -50, 100, 100);
-	_white = {255, 255, 255, 255};	// force pure white
-	FillPoly(_p, _img, _white);
+	_color = {255, 255, 255, 255};	// force pure white
+	FillPoly(_p, _img, _color);
 
-	float _a, _r, _g, _b	// used for debug logging
-	_p *= 0;
-	ColorOf(_img, _p[0], _white);
-	_a = _white.a; _r = _white.r; _g = _white.g; _b = _white.b
-	DebugText("_img pre-colors:", _a, _r, _g, _b);
+	//	_p *= 0;
+	//	ColorOf(_img, _p[0], _color);	_a = _color.a; _r = _color.r; _g = _color.g; _b = _color.b
+	//	DebugText("_img pre-colors:", _a, _r, _g, _b);
 
 if (workaround == 1)	// BUG
 	// Sending Red to the destination alpha results in a dimming of the channel data.
-	ChannelCopy(_img, _dest, kred, knone, knone, knone);
+
+	ConvertImage(_dest, _dest, kFormatRGB255);
+	channelcopy(_img, _dest, kgreen, knone, knone, knone);
+	ConvertImage(_dest, _dest, kFormatYUV219);
+	
 end if
 
 if (workaround == 2)	// BUG
 	// Sending Red to the destination alpha results in a dimming of the channel data.
-//	ChannelCopy(_img, _dest, kgreen, knone, knone, knone);
- _h = GetPixelFormat(_dest);
- _w = GetPixelFormat(_img);
-DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
-
-	ChannelCopySafe(_img, _dest, kgreen, knone, knone, knone);
 	
-	 _h = GetPixelFormat(_dest);
-	 _w = GetPixelFormat(_img);
-	DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
+	CCsafe2(_img, _dest, kgreen, knone, knone, knone);
+	
+	//	_h = GetPixelFormat(_dest);
+	//	_w = GetPixelFormat(_img);
+	//	DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
+	//	
+	//	ChannelCopySafe(_img, _dest, kgreen, knone, knone, knone);
+	//	
+	//	_h = GetPixelFormat(_dest);
+	//	_w = GetPixelFormat(_img);
+	//	DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
 	
 end if
 
@@ -91,14 +102,12 @@ if (workaround == 4)
 	// Workaround for swap Red & Alpha inside _img before channelcopying to _dest's alpha
 	// cost is one additional channel copy
 
-SetPixelFormat(dest, kFormatRGB255);	
+	SetPixelFormat(dest, kFormatRGB255);	
 	ChannelCopy(_img, _img, knone, kblue, kred, knone);
 
-//	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
-//	_dest = _img
-//	channelcopy(_dest, _dest, kgreen, knone, kgreen, knone);
-	ColorOf(_img, _p[0], _white);
-	_a = _white.a; _r = _white.r; _g = _white.g; _b = _white.b
+
+	ColorOf(_img, _p[0], _color);
+	_a = _color.a; _r = _color.r; _g = _color.g; _b = _color.b
 	DebugText("_img2 colors:", _a, _r, _g, _b);
 
 end if
@@ -113,37 +122,9 @@ if (workaround == 6)
 	// Workaround for swap Blue & Alpha inside _img before channelcopying to _dest's alpha
 	// cost is one additional channel copy
 //	ChannelCopy(_img, _img, kblue, kred, kgreen, kalpha);
-	ChannelCopy(_img, _dest, knone, kred, kgreen, kblue);
+	ChannelCopy(_img, _dest, knone, knone, kgreen, kblue);
 end if
 
-// This is also not working:
-//	ChannelCopy(_img, _img, kred, kUndefined, knone, knone);
-//	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
-
-// WORKAROUND 1:
-// copying more than one channel fixes the alpha transfer
-//	ChannelCopy(_img, _img, kblue, knone, knone, kblue);
-//	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
-
-if (workaround == 7)
-// WORKAROUND 2:
-	//	ChannelCopy(_img, _img, kblue , knone , knone, knone);
-//channelcopy(_img, _img, kred, knone, knone, knone);
-//channelcopy(_dest, _img, knone, kred, kgreen, kblue);
-//_dest = _img
-	//	ChannelCopy(_dest, _img, knone, kred, kgreen, kblue);
-	//	_dest = _img
-end if
-
-
-if (workaround == 8)
-	// this is the costliest workaround, it uses an entire additional image buffer for transferring 
-
-// This bug only seems to apply to data from the red channel, channelcopied into an alpha channel
-
-// bug only affects channelcopies from within functions !?	
-
-end if
 
 
 
@@ -160,78 +141,43 @@ on ChannelCopySafe(image _src, image _dest, value _A, value _R, value _G, value 
 
 
 // WHICH IS MORE COSTLY, CREATING AN ADDITIONAL BUFFER, OR REVERSING THE INITIAL COPY?
-
+// reversing the initial copy seemed to be about 33% more costly than creating an additional buffer
 
 end
 
 
 
 
-on CCsafe1(image _src, image _dest, value _A, value _R, value _G, value _B)
-	float _cs;
-	_cs = GetPixelFormat(_src);
-	SetPixelFormat(_src, kFormatRGB255);	
-	ChannelCopy(_src, _src, kblue, knone, knone, kalpha);
-	ChannelCopy(_src, _dest, kalpha, knone, knone, knone);
-	ChannelCopy(_src, _src, kblue, knone, knone, kalpha);	// switch channels back
-	SetPixelFormat(_src, _cs);	
-	
-end
 
 on CCsafe2(image _src, image _dest, value _A, value _R, value _G, value _B)		// faster than CCsafe1
 	float _w, _h, _cs;
 	DimensionsOf(dest, _w, _h);
 	image _img[_w][_h];
 
-	_cs = GetPixelFormat(_src);
+//	_cs = GetPixelFormat(_src);
 
-	SetPixelFormat(_src, kFormatRGB255);	
+
+
+
+	if (_A == kBlue || _A == kGreen || _R == kGreen || _R == kBlue)
+		// always send Green to Alpha, send Blue to Red
+		// copy Alpha and Red from original source
+		
+	end if
+	
+
+
+//	SetPixelFormat(_src, kFormatRGB255);	
 	SetPixelFormat(_img, kFormatRGB255);	
-	ChannelCopy(_src, _img, kblue,  knone, knone, knone);
+	ChannelCopy(_src, _img, kgreen, knone, knone, knone);
 	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
-	SetPixelFormat(_src, _cs);	
+//	SetPixelFormat(_src, _cs);	
 end
 
-on simpleChannelCopyBug(image _src1, image _dest)
-	
-	ChannelFill(_dest, 255, 255, 0, 0);
-	ChannelCopy(_src1, _dest, kgreen, knone, knone, knone);
-	
-end
-
-
-on qtest(image _dest)
-//	float _w, _h;
-//	DimensionsOf(_dest, _w, _h);
-//	image _img[_w][_h];
-	
-	
-end
-
-//	
-	float w, h;
-	DimensionsOf(dest, w, h);
-	image img[w][h];
-//	point _p1
-//	
-//	ChannelFill(dest, 255, 255, 0, 0);	//fill dest with red
-//	ChannelFill(_img, 0, 0, 0, 0);	// make sure the image buffer is initialized
-//	
-//	DrawSoftDot(_img, _p1, kround, 80, 2, 4, kwhite, 1, aspectOf(dest));		
-//	
-//	ChannelCopy(_img, dest, kred, knone, knone, knone);
-
+float x
+for x = 0 to 20
 channelcopyBug(dest)
-
-//dest = src1;
-//qtest(dest)
-
-//dest = src1
-//SetPixelFormat(dest, kFormatRGB255);		// about 9 seconds
-//convertImage(dest, dest, kFormatRGB255);	// about 12 seconds
-
-//SetPixelFormat(dest, kFormatYUV219);	
-
-
+	
+next;
 
 	//	CCsafe2(img, dest, kblue, knone, knone, knone);
