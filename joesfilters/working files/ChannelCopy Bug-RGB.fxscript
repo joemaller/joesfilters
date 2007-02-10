@@ -1,38 +1,42 @@
-Filter "ChannelCopy Bug";
+Filter "ChannelCopy Bug RGB";
 group "FXScript Bugs";
 
+input copyFrom, "Copy", RadioGroup, 2, "kRed", "kGreen", "kBlue";
 
-input showBug, "Check", RadioGroup, 1, "Red -> Alpha", "Green -> Alpha //bug", "Blue -> Alpha   //bug", "Alpha -> Alpha";
-input showAlpha, "showAlpha", Checkbox, 1;
-input inFunction, "Run in Function", Checkbox, 1;
+input label_1171129998, "Toggle copy target:", Label, "";
+
+input copyTo, "Copy to: Alpha/Red", Checkbox, 0;
+
+input label_1171129838, "Alpha = Checked", Label, "";
+input label_1171130014, "Red = Unchecked", Label, "";
+
+input showChannel, "Show Channel", Checkbox, 1;
 
 ProducesAlpha;
 
 code
 
-exposedBackground=1;
+exposedBackground = 1;
 
-//	This filter demonstrates a bug where ChannelCopy will shift pixel values when when copying any kGreen or kBlue channel to an Alpha channel.
+//	This filter demonstrates a bug where ChannelCopy compresses pixel values when when copying any kGreen or kBlue channel to an Alpha channel.
+//	The bug occurs in both YUV and RGB. Copying these same channels to Red/Luma works fine.
 //
+//	To demonstrate the bug:
+//		1. apply this filter to a clip, or run it in FXBuilder
+//		2. Toggle the "Copy To" checkbox
+//			- The diagonal line should shift in value, darker when copying to Alpha
+//		3. Compare results between kRed, kGreen and kBlue copy sources.
+//			- kBlue and kGreen values shift when targeting alpha, kRed never shifts.
+//
+//	This may have something to do with loosely typed image buffers, a workaround is to temporarily declare the copy source and destination to be
+// 	kFormatRGB255, perform the channelcopy, then declare them back to thier original formats. Both buffers passed to ChannelCopy must be RGB255
+// 	or the shift will occur.
+//
+// 	Tested in FCP 5.1.2 on a MacBook Pro.
+//	
+//  Joe Maller
+//	February 10, 2007	
 
-/// the problem appears to be exclusive to ChannelCopy inside a function when copying kGreen or kBlue to the destination Alpha
-// This only occurs inside of functions, the identical code works fine in the main body of the effect
-
-
-// A workaround is to declare both buffers as kFormatRGB255, channelcopy, then declare them back to their original pixel formats
-
-//  -- Joe Maller Feb, 2007	
-
-
-
-on ChannelCopyBug(image _src, image _dest)
-	// Demonstrate pixel value shifting when moving channels from Green or Blue to Alpha
-	if (showBug == 1 ); 	ChannelCopy(_src, _dest,	kred,	knone,	knone,	knone);	
-	else if (showBug == 2);	ChannelCopy(_src, _dest,	kgreen,	knone,	knone,	knone);	
-	else if (showBug == 3);	ChannelCopy(_src, _dest,	kblue,	knone,	knone,	knone);	
-	else if (showBug == 4);	ChannelCopy(_src, _dest,	kalpha,	knone,	knone,	knone);	
-	end if
-end
 
 
 
@@ -50,28 +54,32 @@ Line(p1, p2, img, k, 25);
 
 
 
-
-if (inFunction)
-	// Call the function to demonstrate the bug. Choose different values to see the change between
-	ChannelCopyBug(img, dest);
-else
-	// same code as the ChannelCopyBug function, running outside the function
-	if (showBug == 1 ); 	ChannelCopy(img, dest,	kred,	knone,	knone,	knone);	
-	else if (showBug == 2);	ChannelCopy(img, dest,	kgreen,	knone,	knone,	knone);	
-	else if (showBug == 3);	ChannelCopy(img, dest,	kblue,	knone,	knone,	knone);	
-	else if (showBug == 4);	ChannelCopy(img, dest,	kalpha,	knone,	knone,	knone);	
+if (copyTo == 0)	// Copy channels to Alpha
+	if 		(copyFrom == 1); 	ChannelCopy(img, dest,	kred,	knone,	knone,	knone);	
+	else if (copyFrom == 2);	ChannelCopy(img, dest,	kgreen,	knone,	knone,	knone);	
+	else if (copyFrom == 3);	ChannelCopy(img, dest,	kblue,	knone,	knone,	knone);	
+	else if (copyFrom == 4);	ChannelCopy(img, dest,	kalpha,	knone, 	knone,	knone);	
+	end if		
+else if (copyTo == 1)	// Copy channels to red
+	if 		(copyFrom == 1); 	ChannelCopy(img, dest, knone,	kred,	knone, 	knone);	
+	else if (copyFrom == 2);	ChannelCopy(img, dest, knone,	kgreen,	knone, 	knone);	
+	else if (copyFrom == 3);	ChannelCopy(img, dest, knone,	kblue,	knone, 	knone);	
+	else if (copyFrom == 4);	ChannelCopy(img, dest, knone,	kalpha,	knone, 	knone);	
 	end if
 end if
 
 
 
-
-if (showAlpha)
-	// show the alpha result
-	ChannelCopy(dest, dest, knone, kalpha, kalpha, kalpha);
+if (showChannel)	// show the alpha result
+	if (copyTo == 0)			// show alpha
+		ChannelCopy(dest, dest, knone, kalpha, kalpha, kalpha);
+	else if (copyTo == 1)		// show red
+		ChannelCopy(dest, dest, knone, kred, kred, kred);
+	end if
+	
 	ChannelFill(dest, 255, -1, -1, -1);
 
-	// draw reference lines
+	// draw white and black reference lines
 	p1 = {-10,-50}; p2 = {-10,50}; Line(p1, p2, dest, k, 12);
 	k = {255, 0, 0, 0};
 	p1 = {10,-50}; p2 = {10,50}; Line(p1, p2, dest, k, 12);

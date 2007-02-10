@@ -1,0 +1,15 @@
+Filter "RadioGroup Bug";
+Group "FXScript Bugs";
+
+input rg1, "Three items", RadioGroup, 1, "Item 1", "Item 2", "Item 3";
+input rg2, "Two items", RadioGroup, 1, "Group 2, Item 1", "Group 2, Item 2";
+
+
+code
+
+dest = src1
+
+// I thought this was fixed in a previous release, but I just encountered it again with FCP 5.1.2 on a MacBook Pro.
+// The problem is obvious once this is applied, the first RadioGroup is offset and drawn behind the second RadioGroup.
+// When trying to select an item from the visible (second) group, items from the first group are selected and
+// draw over the second group.  The even/odd item count between the two groups helps to illustrate this.
