@@ -2,9 +2,8 @@ Filter "ChannelCopy Bug";
 group "FXScript Bugs";
 
 
-input workaround, "Check", RadioGroup, 1, "channelcopy green", "CCsafe2 green", "Bug: Blue to Alpha", "Workaround: pre-swap Red & Alpha", "Workaround: pre-swap Green & Alpha", "test for color shift";
+input workaround, "Check", RadioGroup, 1, "red to alpha", "green to alpha", "Blue to alpha", "alpha to alpha", "Workaround: pre-swap Green & Alpha", "test for color shift";
 
-input ccsafe, "ccsafe", Checkbox, 1;
 
 
 InformationFlag("YUVaware");
@@ -208,24 +207,37 @@ end
 
 
 
-on g2b(image _dest)
-	float _w, _h;
-	DimensionsOf(dest, _w, _h);
-	image _img[_w][_h];
-	point _p1, _p2;
-	_p1 -= 100
-	_p2 += 100
-	ChannelFill(_img, 255, 255, 255, 255);
-	Line(_p1, _p2, _img, kred, 5);
-	ChannelCopy(_img, _dest, kred, knone, knone, knone);	
+on g2b(image _src, image _dest)
+	
+	// Following had no pixelformat specified
+	// ChannelCopy(_img, _dest, kgreen, knone, knone, knone);	// fails in RGB, whites are shifted to 219, YUV blacks shift to dark gray
+	// SetPixelFormat(_img, kFormatRGB255);
+	//	SetPixelFormat(_dest, kFormatRGB255);
+
+	if (workaround == 1 ); ChannelCopy(_src, _dest, kred, knone, knone, knone);	
+	else if (workaround == 2); ChannelCopy(_src, _dest, kgreen, knone, knone, knone);	
+	else if (workaround == 3); ChannelCopy(_src, _dest, kblue, knone, knone, knone);	
+	else if (workaround == 4); ChannelCopy(_src, _dest, kalpha, knone, knone, knone);	
+	end if
 end
 
+float w, h;
+DimensionsOf(dest, w, h);
+image img[w][h];
+
+point p1, p2;
+p1 -= 100;
+p2 += 100;
 
 color k;
-k = {255, 127, 127, 127}
-ChannelFill(dest, 255, 128, 128, 128);
+k = {255, 255, 255, 255}
+ChannelFill(dest, 255, 255, 255, 255);
+ChannelFill(img, 0, 0, 0, 0);
+Line(p1, p2, img, k, 25);
 
-g2b(dest);
+
+
+g2b(img, dest);
 
 //	ColorReporter(dest, k, "k", kFloat2, 0, 32, kCenterJustify);
 //	RGBtoYUVcolor(k)
