@@ -2,252 +2,66 @@ Filter "ChannelCopy Bug";
 group "FXScript Bugs";
 
 
-input workaround, "Check", RadioGroup, 1, "red to alpha", "green to alpha", "Blue to alpha", "alpha to alpha", "Workaround: pre-swap Green & Alpha", "test for color shift";
+input showBug, "Check", RadioGroup, 1, "Red -> Alpha", "Green -> Alpha //bug", "Blue -> Alpha   //bug", "Alpha -> Alpha";
 
-
-
-InformationFlag("YUVaware");
+//InformationFlag("YUVaware");
 ProducesAlpha;
 
 code
 
 exposedBackground=1;
 
-//	
-//	This filter demonstrates a bug in ChannelCopy when copying any Red (or Luma) channel into an alpha channel.
-//	
-//	Each input option points to a slightly modified version of the original bug function
-//	
-//	
+//	This filter demonstrates a bug where ChannelCopy will shift pixel values when when copying any kGreen or kBlue channel to an Alpha channel.
+//
+
+/// the problem appears to be exclusive to ChannelCopy inside a function when copying kGreen or kBlue to the destination Alpha
+// This only occurs inside of functions, the identical code works fine in the main body of the effect
+
+
+// A workaround is to declare both buffers as kFormatRGB255, channelcopy, then declare them back to their original pixel formats
+
+//  -- Joe Maller Feb, 2007	
 
 
 
-
-// INCLUDE "ColorReporter.fxscript" r124
-
-on ColorReporter(image _destIMG, color _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
-	
-	float rw, rh, ra, rd, rzoom;
-	string _reporterA, _reporterR, _reporterG, _reporterB;
-	color fontcolor;
-	
-	DimensionsOf(_destIMG, rw, rh);
-	rzoom = rw/720;
-	
-	fontcolor = {255,235,235,235};
-	settextfont("verdana");
-	setTextstyle(kbold);
-	setTextjustify(_justification);
-	setTextSize(_fontsize * rzoom);
-													
-	NumToString(_data.a, _reporterA, _numberformat);
-	NumToString(_data.r, _reporterR, _numberformat);
-	NumToString(_data.g, _reporterG, _numberformat);
-	NumToString(_data.b, _reporterB, _numberformat);
-	_reporterR = _label + " = {" + _reporterA + "," + _reporterR + "," + _reporterG + "," + _reporterB + "}";
-	DrawString(_reporterR, -1, _h - 1, 1.25,  _destIMG, fontColor, aspectof(_destIMG));
-	DrawString(_reporterR, 1, _h + 1, 1.25,  _destIMG, kblack, aspectof(_destIMG));
-	DrawString(_reporterR, 0, _h, 1.25,  _destIMG, _data, aspectof(_destIMG));
-
-end 
-
-// END "ColorReporter.fxscript"
-
-
-// INCLUDE "RGBtoYUVcolor.fxscript" r160
-
-on RGBtoYUVcolor(color _rgbColor)
-	color _temp;
-	_temp = _rgbColor
-	_rgbColor.r = _temp.r * 0.299 + _temp.g * 0.587 + _temp.b * 0.114 
-	_rgbColor.g = _temp.r * -0.169 + _temp.g * -0.332 + _temp.b * 0.500 + 128; 
-	_rgbColor.b = _temp.r * 0.500 + _temp.g * -0.419 + _temp.b * -0.0813 + 128;
-end 
-
-// END "RGBtoYUVcolor.fxscript"
-
-
-
-
-on channelcopyBug(image _dest)
-
-	// this should produce a red square in the middle of the frame
-	// instead it produces a half-opacity square, the alpha information is being compressed
-	// the problem is that image buffers created inside a function are not in a pre-defined color space.
-
-	float _w, _h;
-	float _a, _r, _g, _b	// used for debug logging
-	DimensionsOf(dest, _w, _h);
-	image _img[_w][_h];
-	point _p[4];
-	color _color;
-	
-		SetPixelFormat(_img, kFormatRGB255);
-	//	SetPixelFormat(_dest, kFormatRGB255);
-	_color = {255, 255, 0,0}
-	RGBtoYUVcolor(_color);
-	ChannelFill(dest, 255, _color.r, _color.g, _color.b);	//fill dest with red
-	ChannelFill(_img, 0, 0, 0, 0);	// make sure the image buffer is initialized, just in case
-
-	MakeRect(_p, -50, -50, 100, 100);
-	_color = {255, 255, 255, 255};	// force pure white
-	FillPoly(_p, _img, _color);
-
-	//	_p *= 0;
-	//	ColorOf(_img, _p[0], _color);	_a = _color.a; _r = _color.r; _g = _color.g; _b = _color.b
-	//	DebugText("_img pre-colors:", _a, _r, _g, _b);
-
-if (workaround == 1)	// BUG
-	// Sending Red to the destination alpha results in a dimming of the channel data.
-
-	ConvertImage(_dest, _dest, kFormatRGB255);
-	channelcopy(_img, _dest, kgreen, knone, knone, knone);
-	ConvertImage(_dest, _dest, kFormatYUV219);
-	
-end if
-
-if (workaround == 2)	// BUG
-	// Sending Red to the destination alpha results in a dimming of the channel data.
-	
-	CCsafe2(_img, _dest, kgreen, knone, knone, knone);
-	
-	//	_h = GetPixelFormat(_dest);
-	//	_w = GetPixelFormat(_img);
-	//	DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
-	//	
-	//	ChannelCopySafe(_img, _dest, kgreen, knone, knone, knone);
-	//	
-	//	_h = GetPixelFormat(_dest);
-	//	_w = GetPixelFormat(_img);
-	//	DebugText("_img pixel format", _w, "_dest PixelFormat", _h);
-	
-end if
-
-if (workaround == 3)	// BUG
-	// Sending Red to the destination alpha results in a dimming of the channel data.
-	ChannelCopy(_img, _img, knone, kblue, knone, knone);
-	ChannelCopy(_img, _dest, kred, knone, knone, knone);
-end if
-
-if (workaround == 4)
-	// Workaround for swap Red & Alpha inside _img before channelcopying to _dest's alpha
-	// cost is one additional channel copy
-
-	SetPixelFormat(dest, kFormatRGB255);	
-	ChannelCopy(_img, _img, knone, kblue, kred, knone);
-
-
-	ColorOf(_img, _p[0], _color);
-	_a = _color.a; _r = _color.r; _g = _color.g; _b = _color.b
-	DebugText("_img2 colors:", _a, _r, _g, _b);
-
-end if
-
-if (workaround == 5)
-	// Workaround for swap Green & Alpha inside _img before channelcopying to _dest's alpha
-	// cost is one additional channel copy
-	CCsafe2(_img, _dest, kblue, knone, knone, knone);
-end if
-
-if (workaround == 6)
-	// Workaround for swap Blue & Alpha inside _img before channelcopying to _dest's alpha
-	// cost is one additional channel copy
-//	ChannelCopy(_img, _img, kblue, kred, kgreen, kalpha);
-	ChannelCopy(_img, _dest, knone, knone, kgreen, kblue);
-end if
-
-
-
-
-
-
-end
-
-
-
-on ChannelCopySafe(image _src, image _dest, value _A, value _R, value _G, value _B)
-
-	ChannelCopy(_src, _dest, _A, _R, _G, _B);
-	ChannelCopy(_src, _dest, _A, _R, _G, _B);
-
-
-// WHICH IS MORE COSTLY, CREATING AN ADDITIONAL BUFFER, OR REVERSING THE INITIAL COPY?
-// reversing the initial copy seemed to be about 33% more costly than creating an additional buffer
-
-end
-
-
-
-
-
-on CCsafe2(image _src, image _dest, value _A, value _R, value _G, value _B)		// faster than CCsafe1
-	float _w, _h, _cs;
-	DimensionsOf(dest, _w, _h);
-	image _img[_w][_h];
-
-//	_cs = GetPixelFormat(_src);
-
-
-
-
-	if (_A == kBlue || _A == kGreen || _R == kGreen || _R == kBlue)
-		// always send Green to Alpha, send Blue to Red
-		// copy Alpha and Red from original source
-		
-	end if
-	
-
-
-//	SetPixelFormat(_src, kFormatRGB255);	
-	SetPixelFormat(_img, kFormatRGB255);	
-	ChannelCopy(_src, _img, kgreen, knone, knone, knone);
-	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
-//	SetPixelFormat(_src, _cs);	
-end
-
-
-
-on g2b(image _src, image _dest)
-	
-	// Following had no pixelformat specified
-	// ChannelCopy(_img, _dest, kgreen, knone, knone, knone);	// fails in RGB, whites are shifted to 219, YUV blacks shift to dark gray
-	// SetPixelFormat(_img, kFormatRGB255);
-	//	SetPixelFormat(_dest, kFormatRGB255);
-
-	if (workaround == 1 ); ChannelCopy(_src, _dest, kred, knone, knone, knone);	
-	else if (workaround == 2); ChannelCopy(_src, _dest, kgreen, knone, knone, knone);	
-	else if (workaround == 3); ChannelCopy(_src, _dest, kblue, knone, knone, knone);	
-	else if (workaround == 4); ChannelCopy(_src, _dest, kalpha, knone, knone, knone);	
+on ChannelCopyBug(image _src, image _dest)
+	// Demonstrate pixel value shifting when moving channels from Green or Blue to Alpha
+	if (showBug == 1 ); 	ChannelCopy(_src, _dest,	kred,	knone,	knone,	knone);	
+	else if (showBug == 2);	ChannelCopy(_src, _dest,	kgreen,	knone,	knone,	knone);	
+	else if (showBug == 3);	ChannelCopy(_src, _dest,	kblue,	knone,	knone,	knone);	
+	else if (showBug == 4);	ChannelCopy(_src, _dest,	kalpha,	knone,	knone,	knone);	
 	end if
 end
 
-float w, h;
-DimensionsOf(dest, w, h);
-image img[w][h];
 
-point p1, p2;
-p1 -= 100;
-p2 += 100;
 
-color k;
-k = {255, 255, 255, 255}
-ChannelFill(dest, 255, 255, 255, 255);
+
+
+// Set up extra image; fill dest white/opaque; fill img black/transparent; draw opaque line onto img
+point p1, p2; DimensionsOf(dest, p1.x, p1.y); image img[p1.x][p1.y];
+
+ChannelFill(dest, 255, 255, 255, 255); 
 ChannelFill(img, 0, 0, 0, 0);
+
+color k; k = {255, 255, 255, 255}
+p1 = {-100,-100}; p2={100,100};
 Line(p1, p2, img, k, 25);
 
 
 
-g2b(img, dest);
 
-//	ColorReporter(dest, k, "k", kFloat2, 0, 32, kCenterJustify);
-//	RGBtoYUVcolor(k)
-//	ColorReporter(dest, k, "k", kFloat2, 25, 32, kCenterJustify);
-
-float x
-//	for x = 0 to 20
-//	channelcopyBug(dest)
-	
-//	next;
+// Call the function to demonstrate the bug. Choose different values to see the change between
+ChannelCopyBug(img, dest);
 
 
-	//	CCsafe2(img, dest, kblue, knone, knone, knone);
+
+
+
+// show the alpha result
+ChannelCopy(dest, dest, knone, kalpha, kalpha, kalpha);
+ChannelFill(dest, 255, -1, -1, -1);
+
+// draw reference lines
+p1 = {-10,-50}; p2 = {-10,50}; Line(p1, p2, dest, k, 12);
+k = {255, 0, 0, 0};
+p1 = {10,-50}; p2 = {10,50}; Line(p1, p2, dest, k, 12);
