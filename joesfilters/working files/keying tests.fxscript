@@ -100,11 +100,11 @@ if (RGBorYUV == 1)
 			ConvertImage(src1, dest, kFormatRGB219);
 			DebugText("converted to RGB");
 		else
-		dest = src1;
+			dest = src1;
 		end if
 
 	RGBColorKey(dest, dest, aRGBcolor.r, Tolerance, aRGBcolor.g, Tolerance, aRGBcolor.b, Tolerance, Soften, true)
-else
+else if (RGBorYUV == 2)
 	if (getPixelFormat(src1) != kFormatYUV219)
 		ConvertImage(src1, dest, kFormatYUV219);
 		DebugText("converted to YUV");
@@ -113,6 +113,11 @@ else
 	end if
 	if (doit);RGBtoYUVcolor(aRGBcolor); end if
 	YUVColorKey(dest, dest, aRGBcolor.r, Tolerance, aRGBcolor.g, cTolerance, aRGBcolor.b, cTolerance, Soften, true)
+else
+	ChannelFill(dest, 255, 150, 40, 111);
+	makeKeyMapBez(float _kmap, value _center, value _width, value _softness, value _mapLength)
+	
+	
 end if
 
 ColorReporter(dest, aRGBcolor, "aRGBcolor", kfloat2, 0, 32, kcenterJustify)

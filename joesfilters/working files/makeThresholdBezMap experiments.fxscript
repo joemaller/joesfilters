@@ -280,7 +280,9 @@ end
 
 
 YUVorRGB = (YUVorRGB == 1) ? kFormatYUV219 : kformatRGB219;
-convertimage(dest, dest, YUVorRGB);
+if (getPixelFormat(dest) != YUVorRGB)
+	convertimage(dest, dest, YUVorRGB);
+end if
 joesColorKey(src1, dest, keyColor, Width, Width, Width, yWidth, cWidth, cWidth, softness, YUVorRGB);
 
 
@@ -316,8 +318,8 @@ end if
 
 
 if (doRGBkey)
-convertimage(src1, src1, kformatRGB219);
-convertimage(dest, dest, kformatRGB219);
+//	convertimage(src1, src1, kformatRGB219);
+//	convertimage(dest, dest, kformatRGB219);
 
 	RGBColorKey(src1, dest, keyColor.r, RGBKeyWidth, keyColor.g, RGBKeyWidth, keyColor.b, RGBKeyWidth, RGBKeySoftness, 1)
 //	YUVColorKey(src1, dest, keyColor.r, width, keyColor.g, width, keyColor.b, width, softness, 1)
