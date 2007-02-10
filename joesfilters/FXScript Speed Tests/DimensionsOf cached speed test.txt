@@ -1,0 +1,34 @@
+// this filter compares stored dimension values vs repetitive queries
+//
+// 10000 iterations, 3 second DV NTSC clip:
+// 		Stored Value:  		96 seconds
+//		Determined Value:	96 seconds
+
+// note: testing machine was an 1.25ghz G4 powerbook, a 120 minute ntsc movie has 216,000 frames.
+//
+// DimensionsOf is a fast function and shows absolutely no benefit to caching.
+// The added complexity of the cache calls does not seem worth the trouble for simple dimensions.
+// 
+
+
+filter "Dimensions Of Speed Test"
+group "FXScript Reference"
+
+input x, "choose", RadioGroup, 1, "Stored", "Determined";
+input iterations, "Iterations", slider, 10000, 1, 10000;
+
+float cw,ch;
+
+code
+
+float j,w,h;
+
+for j = 1 to iterations
+	if (x == 1)
+		if (cw == kundefined)
+			dimensionsOf(dest, cw, ch);
+		end if
+	else if (x == 2)
+		dimensionsOf(dest, w, h)	
+	end if
+next;

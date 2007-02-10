@@ -1,0 +1,35 @@
+// this filter compares stored getNativeSize values against repetitive queries
+//
+// 10000 iterations, 3 second DV NTSC clip:
+// 		Stored Value:  		97 seconds
+//		Determined Value:	143 seconds
+
+// note: testing machine was an 1.25ghz G4 powerbook, a 120 minute ntsc movie has 216,000 frames.
+//
+// DimensionsOf is outside the loop because most filters will need that information somewhere anyway,
+// because getNativeSize queries the souce clip it's a slow function and benefits from caching.
+
+
+filter "GetNativeSize Speed Test"
+group "FXScript Reference"
+
+input x, "choose", RadioGroup, 1, "Stored", "Determined";
+input iterations, "Iterations", slider, 10000, 1, 10000;
+
+float zoomfactor0
+
+code
+float j,w,h, nw, nh, zoomfactor;
+dimensionsOf(dest, w, h)
+
+for j = 1 to iterations
+if (x == 1)
+	if (zoomfactor0 == kundefined)
+		getNativeSize(clip1, nw, nh);
+		zoomfactor0 = w/nw;
+	end if
+else if (x == 2)
+	getNativeSize(clip1, nw, nh);
+	zoomfactor = nw/w;
+end if
+next;

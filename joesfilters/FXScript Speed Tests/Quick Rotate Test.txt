@@ -1,0 +1,29 @@
+filter "Quick Rotate Test"
+group "TESTS"
+
+
+input w, "width", slider, 100, 10, 200;
+input h, "height", slider, 50, 10, 200;
+input off, "offset", point, 0.25, 0.25;
+
+
+code
+
+point box[4], turnbox[4], newbox[4], dims;
+
+dimensionsof(dest, dims.x, dims.y);
+off *= dims;
+
+
+channelfill(dest, 0, 0, 0, 0)
+
+makeRect(box, -w/2, -h/2, w, h);
+makeRect(turnbox, -h/2, -w/2, h, w);
+makeRect(newbox, -w/2 + (w-h)/2 + off.x, -h/2 +(h-w)/2 + off.y, h, w)
+
+ framepoly(box, dest, kblue, 1); 
+ framepoly(turnbox, dest, kmagenta, 1); 
+ framepoly(newbox, dest, kred, 2); 
+ 
+
+

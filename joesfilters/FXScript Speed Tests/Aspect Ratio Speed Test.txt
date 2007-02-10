@@ -1,0 +1,40 @@
+
+
+// this filter compares two methods of using the frame aspect ratio
+// there is no significant difference between calling 'aspectOf(dest)' vs storing the aspect value in a variable
+//
+// 10000 iterations, 10 second DV NTSC clip (3,000,000 aspect calls):
+// 		stored aspect ratio:  	119 seconds (approx 25,000 per second)
+//		aspectOf(dest):			132 seconds (approx 23,000 per second)
+
+// note: testing machine was an 867mhz G4 powerbook, a 120 minute ntsc movie has 216,000 frames.
+//
+// unless a script will be calling a substantial nested loop,
+// aspectOf(dest) can be used instead of storing the aspect ratio in a float
+// without any measurable performance cost.
+
+
+filter "Aspect Ratio Speed Test";
+group "BETA"
+
+
+input method, "Aspect Ratio Method", RadioGroup, 1, "Stored Aspect Ratio", "AspectOf(dest)";
+
+input iterations, "Iterations", slider, 10000, 1, 10000;
+code
+
+
+float x, j1, j2;
+
+j1 = aspectOf(dest);
+	
+
+if (method == 1)
+	for x = 1 to iterations
+		j2 = j1;
+	next
+else
+	for x = 1 to iterations
+		j2 = aspectOf(dest);
+	next
+end if

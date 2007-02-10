@@ -1,0 +1,34 @@
+	// Part of Joe's Debug and Explore Filters for Final Cut Pro
+	// Visit the FXScript Reference online at http://www.fxscriptreference.org
+	// This file auto-generated from script 'multivalue.php'
+                
+filter "DrawSoftDot vs. FillPoly";
+group "Joe's FXScript Speed Tests	";
+
+input spotornot, "Draw Method", RadioGroup, 1, "DrawSoftDot", "FillPoly";
+input spotsize, "Spot Size", slider, 28, 6, 144;
+input spotcolor, "color", Color, 255, 255, 82, 179;
+
+input title, "www.fxscriptreference.org", Label,"";
+
+code
+
+                        
+float zoomfactor, w, h, sourceDuration, sourceOffset;
+point centerpt, box[4];
+
+dest = src1
+
+centerpt = {0,0};
+
+
+dimensionsOf(dest, w, h);
+zoomfactor = w/720
+
+
+if spotornot == 1
+	DrawSoftDot(dest, centerpt, ksquare, spotsize * zoomfactor, 0, 20, spotcolor, 1, aspectOf(dest));
+else
+	makeRect(box, centerpt.x  - spotsize * zoomfactor / 2, centerpt.y - spotsize * zoomfactor / 2, spotsize * zoomfactor, spotsize * zoomfactor);
+	FillPoly(box, dest, spotcolor)
+end if

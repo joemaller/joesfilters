@@ -1,0 +1,56 @@
+filter "DrawStringPlain vs. DrawString"
+group "FXScript Speed Tests"
+
+
+input testmethod, "Test:", RadioGroup, 1, "DrawString", "DrawStringPlain";
+
+input teststring, "Test String", Text, "www.fxscriptreference.org";
+
+input fontsize, "Font Size", slider, 24, 6, 144;
+input fontfont, "Font", FontList, "Verdana", "Verdana";
+input fontcolor, "Font Color", color, 255, 235, 235, 235;
+input fontalign, "Font Alignment", popup, 2, "Left", "Center", "Right";
+
+input tracking, "Tracking", slider, 1, 0, 3;
+input fixaspect, "Aspect/2", checkbox, 0;
+
+input showbox, "Show Box", checkbox, 1;
+input zerobox, "Zero Box", checkbox, 0;
+
+code
+
+channelFill(dest, 255, 0,0,0);
+
+float w,h;
+point fontbox[4];
+
+dimensionsOf(dest, w, h);
+                       
+settextfont(fontfont);
+setTextstyle(kbold);
+setTextSize(fontsize * (w/720));
+
+if (fontalign==1)
+	setTextjustify(kLeftJustify);
+else if (fontalign == 2)
+	setTextjustify(kCenterJustify);
+else if (fontalign==3)
+	setTextjustify(kRightJustify);
+end if
+
+
+MakeRect(fontbox, w/-4, 0, w/2, h/4);
+zerobox = (zerobox -1) * -1;
+fontbox *= zerobox;
+
+if (showbox)
+	FramePoly(fontbox, dest, kred, 2);
+end if
+
+
+if (testmethod == 1)
+	DrawString(teststring, 0, fontsize * (w/720), tracking, dest, fontcolor, aspectOf(dest)/(fixaspect + 1))
+else if (testmethod == 2)
+	DrawStringPlain(teststring, fontbox, dest, fontcolor, aspectOf(dest)/(fixaspect + 1))
+
+end if
