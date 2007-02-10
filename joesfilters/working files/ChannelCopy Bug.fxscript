@@ -23,6 +23,38 @@ exposedBackground=1;
 
 
 
+
+// INCLUDE "ColorReporter.fxscript" r124
+
+on ColorReporter(image _destIMG, color _data, string _label, value _numberformat, value _h, value _fontsize, value _justification)
+	
+	float rw, rh, ra, rd, rzoom;
+	string _reporterA, _reporterR, _reporterG, _reporterB;
+	color fontcolor;
+	
+	DimensionsOf(_destIMG, rw, rh);
+	rzoom = rw/720;
+	
+	fontcolor = {255,235,235,235};
+	settextfont("verdana");
+	setTextstyle(kbold);
+	setTextjustify(_justification);
+	setTextSize(_fontsize * rzoom);
+													
+	NumToString(_data.a, _reporterA, _numberformat);
+	NumToString(_data.r, _reporterR, _numberformat);
+	NumToString(_data.g, _reporterG, _numberformat);
+	NumToString(_data.b, _reporterB, _numberformat);
+	_reporterR = _label + " = {" + _reporterA + "," + _reporterR + "," + _reporterG + "," + _reporterB + "}";
+	DrawString(_reporterR, -1, _h - 1, 1.25,  _destIMG, fontColor, aspectof(_destIMG));
+	DrawString(_reporterR, 1, _h + 1, 1.25,  _destIMG, kblack, aspectof(_destIMG));
+	DrawString(_reporterR, 0, _h, 1.25,  _destIMG, _data, aspectof(_destIMG));
+
+end 
+
+// END "ColorReporter.fxscript"
+
+
 // INCLUDE "RGBtoYUVcolor.fxscript" r160
 
 on RGBtoYUVcolor(color _rgbColor)
@@ -174,10 +206,36 @@ on CCsafe2(image _src, image _dest, value _A, value _R, value _G, value _B)		// 
 //	SetPixelFormat(_src, _cs);	
 end
 
+
+
+on g2b(image _dest)
+	float _w, _h;
+	DimensionsOf(dest, _w, _h);
+	image _img[_w][_h];
+	point _p1, _p2;
+	_p1 -= 100
+	_p2 += 100
+	ChannelFill(_img, 255, 255, 255, 255);
+	Line(_p1, _p2, _img, kred, 5);
+	ChannelCopy(_img, _dest, kred, knone, knone, knone);	
+end
+
+
+color k;
+k = {255, 127, 127, 127}
+ChannelFill(dest, 255, 128, 128, 128);
+
+g2b(dest);
+
+//	ColorReporter(dest, k, "k", kFloat2, 0, 32, kCenterJustify);
+//	RGBtoYUVcolor(k)
+//	ColorReporter(dest, k, "k", kFloat2, 25, 32, kCenterJustify);
+
 float x
-for x = 0 to 20
-channelcopyBug(dest)
+//	for x = 0 to 20
+//	channelcopyBug(dest)
 	
-next;
+//	next;
+
 
 	//	CCsafe2(img, dest, kblue, knone, knone, knone);
