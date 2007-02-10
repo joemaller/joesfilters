@@ -2,20 +2,22 @@ Filter "ChannelCopy Bug";
 group "FXScript Bugs";
 
 
-input showBug, "Check", RadioGroup, 1, "Red -> Alpha", "Green -> Alpha //bug", "Blue -> Alpha   //bug", "Alpha -> Alpha";
+input showBug, "Copy:", RadioGroup, 1, "Red -> Alpha", "Green -> Alpha //bug", "Blue -> Alpha   //bug", "Alpha -> Alpha";
 input showAlpha, "showAlpha", Checkbox, 1;
 input inFunction, "Run in Function", Checkbox, 1;
 
+
+
+InformationFlag("YUVaware");
 ProducesAlpha;
 
 code
 
 exposedBackground=1;
 
-//	This filter demonstrates a bug where ChannelCopy will shift pixel values when when copying any kGreen or kBlue channel to an Alpha channel.
-//
+//	This filter demonstrates a bug where ChannelCopy shifts pixel values when when copying any kGreen or kBlue channel to an Alpha channel.
 
-/// the problem appears to be exclusive to ChannelCopy inside a function when copying kGreen or kBlue to the destination Alpha
+// The problem appears to be exclusive to ChannelCopy inside a function when copying kGreen or kBlue to the destination Alpha
 // This only occurs inside of functions, the identical code works fine in the main body of the effect
 
 
@@ -41,13 +43,15 @@ end
 // Set up extra image; fill dest white/opaque; fill img black/transparent; draw opaque line onto img
 point p1, p2; DimensionsOf(dest, p1.x, p1.y); image img[p1.x][p1.y];
 
-ChannelFill(dest, 255, 255, 255, 255); 
-ChannelFill(img, 0, 0, 0, 0);
+ChannelFill(dest, 255, 255, 128, 128); 
+ChannelFill(img, 0, 0, 0, 0);	
+
+// the img buffer is intentionally filled with YUV-illegal values,
+// legal values also shift, but these work correctly outside of a function
 
 color k; k = {255, 255, 255, 255}
 p1 = {-100,-100}; p2={100,100};
 Line(p1, p2, img, k, 25);
-
 
 
 
@@ -63,13 +67,10 @@ else
 	end if
 end if
 
-
-
-
 if (showAlpha)
 	// show the alpha result
-	ChannelCopy(dest, dest, knone, kalpha, kalpha, kalpha);
-	ChannelFill(dest, 255, -1, -1, -1);
+	ChannelCopy(dest, dest, knone, kalpha, knone, knone);
+	ChannelFill(dest, 255, -1, 128, 128);
 
 	// draw reference lines
 	p1 = {-10,-50}; p2 = {-10,50}; Line(p1, p2, dest, k, 12);
