@@ -20,3 +20,10 @@ Catch focus switch, this should be portable so it can be used by iPhoto scripts 
 
 Better interface stretchiness
 Add SVN root to preferences drawer
+
+
+Added 2007-04-17:
+
+If null path for previous build, disable buttons
+
+Should not use dragged files, should offer a list of everything in SVN (add select all/none checkbox)

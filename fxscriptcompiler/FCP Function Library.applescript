@@ -14,17 +14,6 @@ property startTime : missing value
 
 tell me to log "loaded FCP Functions"
 
-on clicked theObject
-	--	log name of me as string
-	--	tell parent to log name of me as string
-	--	tell my parent to dirExists("/Users/joe/Documents/Joe's Filters Development/Builds/build_20060818_0040/demo")
-	--dmgLibrary's LogTester()
-	--log my cheese
-	--log dirLib's dirExists("/Users/joe/Documents/Joe's Filters Development/Builds/build_20060818_0040/demo")
-	--	log name of my parent as string
-	--	log name of my parent's parent as string
-end clicked
-
 
 
 on FCPdismissStartupWindows()

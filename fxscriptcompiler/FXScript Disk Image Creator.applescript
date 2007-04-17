@@ -131,12 +131,12 @@ on setupWindow(thePath)
 		end try
 		tell newWin
 			set bounds to windowBounds
-			tell me to progressLib's showStatus("Setting window size.")
+			tell me to tell me to progressLib's showStatus("Setting window size.")
 			tell application "System Events" to tell process "Finder" to click button 2 of window 1
 			tell application "System Events" to tell process "Finder" to click button 2 of window 1
 			set arrangement of its icon view options to not arranged
 			
-			tell me to progressLib's showStatus("Arranging icons.")
+			tell me to tell me to progressLib's showStatus("Arranging icons.")
 			repeat with i from 1 to count iconTemplate
 				if (its file (filename of item i of iconTemplate) exists) then
 					set position of its file (filename of item i of iconTemplate) to (iconCoords of item i of iconTemplate)
@@ -145,7 +145,7 @@ on setupWindow(thePath)
 				end if
 			end repeat
 			
-			tell me to progressLib's showStatus("Setting background picture.")
+			tell me to tell me to progressLib's showStatus("Setting background picture.")
 			if thePath & windowBackground as text as alias exists then
 				set background picture of its icon view options to thePath & windowBackground as text as alias
 			end if
@@ -162,7 +162,7 @@ on setupWindow(thePath)
 			if (do shell script "[ -f " & quoted form of POSIX path of thePath & ".DS_STORE ]; echo $?") = "0" then set ejectMe to true
 		end repeat
 		tell me to progressLib's showStatus(".DS_STORE created in " & waitTime & " seconds.")
-		--log "waited " & waitTime & " seconds for .DS_STORE to be created."
+		tell me to log "waited " & waitTime & " seconds for .DS_STORE to be created."
 		--		eject thePath
 	end tell
 end setupWindow
