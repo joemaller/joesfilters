@@ -12,6 +12,9 @@ property crashcount : 0
 property errorCount : 0
 property startTime : missing value
 
+global progressLib
+
+
 tell me to log "loaded FCP Functions"
 
 
@@ -72,7 +75,7 @@ on FXBuilderBringToFront() -- makes sure frontmost window is FXBuilder
 		
 		if not (exists process "Final Cut Pro") then
 			set crashcount to crashcount + 1
-			my showStatus("FCP Crashed: Restarting...", true)
+			progressLib's showStatus("FCP Crashed: Restarting...", true)
 		end if
 	end tell
 	

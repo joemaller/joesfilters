@@ -317,17 +317,16 @@ on preCleanUp(rwDMG, prevDMG)
 end preCleanUp
 
 
-on logorama()
+on logger()
 	
-	log "logorama"
 	log "SVNrepos: " & SVNrepos
-	log preferredTypes
-	log progressLib's maxProgress
+	log "preferredTypes:" & preferredTypes
+	log "progressLib's maxProgress: " & progressLib's maxProgress
 	set progressLib's maxProgress to 20
 	progressLib's showStatus("hello")
 	progressLib's showStatus(null)
 	
-end logorama
+end logger
 
 copy (current date) to startTime
 

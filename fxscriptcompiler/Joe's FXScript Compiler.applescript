@@ -157,9 +157,9 @@ on drop theObject drag info dragInfo
 			
 			log (count of theFiles)
 			if (count of theFiles) > 1 then
-				return showStatus("Please drop a single file", false)
+				return progressLib's showStatus("Please drop a single file", false)
 			else
-				showStatus("", true)
+				progressLib's showStatus("", true)
 				
 			end if
 			
@@ -248,9 +248,9 @@ on clicked theObject
 		--lastBuildEnableButtons(false)
 	end if
 	
-	if name of theObject is "dirExistsButton" then
+	if name of theObject is "logger" then
 		
-		dmgLibrary's logorama()
+		dmgLibrary's logger()
 	end if
 	
 end clicked
@@ -352,7 +352,7 @@ on doCompile(fileList)
 		
 		set fullplugSource to applyWatermark(|fullPath| of theFile, |fullPath| of item 3 of outputFolders, fetchUserDefaults("watermarkMenuString"), "")
 		
-		showStatus("Compiling demo source code for: " & |fileName| of theFile, true)
+		progressLib's showStatus("Compiling demo source code for: " & |fileName| of theFile, true)
 		--	set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
 		--	makeProgress(completedProgress)
 		
@@ -360,14 +360,14 @@ on doCompile(fileList)
 		set demoplugSource to applyWatermark(|fullPath| of theFile, |fullPath| of item 4 of outputFolders, fetchUserDefaults("watermarkMenuString"), fetchUserDefaults("waterMarkSource"))
 		
 		
-		showStatus(|fileName| of theFile & ": Sending demo code to Final Cut Pro", true)
+		progressLib's showStatus(|fileName| of theFile & ": Sending demo code to Final Cut Pro", true)
 		--	set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
 		--	makeProgress(completedProgress)
 		
 		
 		FCPLibrary's FXBuilderSaveEncodedPlugin(demoplugSource, (text 1 thru -10 of |fileName| of theFile as string), |fullPath| of item 2 of outputFolders)
 		
-		showStatus(|fileName| of theFile & ": Sending full code to Final Cut Pro", true)
+		progressLib's showStatus(|fileName| of theFile & ": Sending full code to Final Cut Pro", true)
 		--	set completedProgress to completedProgress + 0.25 * (1 / (count of fileList))
 		--	makeProgress(completedProgress)
 		
