@@ -1,7 +1,9 @@
 Filter "ChannelCopy Bug Workaround RGB";
 group "FXScript Bugs";
 
-input copyFrom, "Copy", RadioGroup, 2, "kRed", "kGreen", "kBlue", "kAlpha";
+input copyFrom, "Copy From:", RadioGroup, 2, "kRed", "kGreen", "kBlue", "kAlpha";
+input copyTo, "Copy To:", Popup, 1, "Alpha", "Red";
+
 input doAlpha, "doAlpha", Popup, 2, "knone", "kAlpha", "kRed", "kGreen", "kBlue";
 input doRed, "doRed", Popup, 3, "knone", "kAlpha", "kRed", "kGreen", "kBlue";
 input doGreen, "doGreen", Popup, 4, "knone", "kAlpha", "kRed", "kGreen", "kBlue";
@@ -9,17 +11,9 @@ input doBlue, "doBlue", Popup, 5, "knone", "kAlpha", "kRed", "kGreen", "kBlue";
 
 input doChannelCopyFixed, "ChannelCopyFixed", Checkbox, 1;
 
-
-input label_1171129998, "Toggle copy target:", Label, "";
-
-input copyTo, "Copy to: Alpha (Checked) : Red (Unchecked)", Checkbox, 1;
-
-input label_1171129838, "Alpha = Checked", Label, "";
-input label_1171130014, "Red = Unchecked", Label, "";
-
 input showChannel, "Show Channel", Checkbox, 0;
 
-//	InformationFlag("YUVaware");
+InformationFlag("YUVaware");
 
 ProducesAlpha;
 
@@ -27,27 +21,6 @@ code
 
 exposedBackground = 1;
 
-//	This filter demonstrates a bug where ChannelCopy compresses pixel values when when copying any kGreen or kBlue channel to an Alpha channel.
-//	The bug occurs in both YUV and RGB. Copying these same channels to Red/Luma works fine.
-//
-//	To demonstrate the bug:
-//		1. apply this filter to a clip, or run it in FXBuilder
-//		2. Toggle the "Copy To" checkbox
-//			- The diagonal line should shift in value, darker when copying to Alpha
-//		3. Compare results between kRed, kGreen and kBlue copy sources.
-//			- kBlue and kGreen values shift when targeting alpha, kRed never shifts.
-//
-//	This may have something to do with loosely typed image buffers, a workaround is to temporarily declare the copy source and destination to be
-// 	kFormatRGB255, perform the channelcopy, then declare them back to thier original formats. Both buffers passed to ChannelCopy must be RGB255
-// 	or the shift will occur.
-//
-// 	Tested in FCP 5.1.2 on a MacBook Pro.
-//	
-//  Joe Maller
-//	February 10, 2007	
-	
-	
-	//	I think this was fixed in the 5.1.3 or 5.1.4 updates. yay.
 
 
 
@@ -68,65 +41,85 @@ on ChannelCopyFixed(image _src, image _dest, value _A, value _R, value _G, value
 		float _swapCount, _mat[3][3], _offset[3];
 		
 		_swapCount = 0; // this is for optimizing the ColorTransform, more than one channel swapped is faster, only one channel swapped isn't
-		_swapCount += (_R == kGreen || _R == kBlue);
-		_swapCount += (_G == kRed || _G == kBlue);
-		_swapCount += (_B == kRed || _B == kGreen);
+		_swapCount += integer(_R == kGreen || _R == kBlue);
+		_swapCount += integer(_G == kRed || _G == kBlue);
+		_swapCount += integer(_B == kRed || _B == kGreen);
 		
 		
-		if (_R != kAlpha && _G != kAlpha && _B != kAlpha &&  _R != kNone && _G != kNone && _B != kNone &&  !(_R == kRed && _G == kGreen && _B == kBlue) && _swapCount > 1)
-		/// check speed tests again, it seems like this whole step is turning out to be exactly the same speed as just using ChannelCopy...
-		// NEED TO PRESERVE ALPHA IF _A == kNONE
-
-			DebugText("swapping");
-			
-			_mat = {((_R==kRed)?1:0), ((_G==kRed)?1:0), ((_B==kRed)?1:0),		((_R==kGreen)?1:0), ((_G==kGreen)?1:0), ((_B==kGreen)?1:0), 	((_R==kBlue)?1:0), ((_G==kBlue)?1:0), ((_B==kBlue)?1:0)};
-			ColorTransform(_src, _dest, _mat, _offset, _offset);
-		
-			// handle Alpha
-			// the following conditions select each channel based on it's transformed result
-			if(_A == kAlpha)
-	 			ChannelCopy(_src, _dest, kAlpha, kNone, kNone, kNone);
-
-			else if (_A == kRed && _R == kRed) || (_A == kGreen && _R == kGreen) || (_A == kBlue && _R == kBlue) // copy kRed
-				ChannelCopy(_dest, _dest, kred, knone, knone, knone);
-
-			else if (_A == kRed && _G == kRed) || (_A == kGreen && _G == kGreen) || (_A == kBlue && _G == kBlue)
-				ChannelCopy(_dest, _dest, kRed, kGreen, knone, knone);	// move Red out of the way
-				ChannelCopy(_dest, _dest, kRed, kAlpha, knone, knone);
-
-			else if (_A == kRed && _B == kRed) || (_A == kGreen && _B == kGreen) || (_A == kBlue && _B == kBlue)
-				ChannelCopy(_dest, _dest, kRed, kBlue, knone, knone);
-				ChannelCopy(_dest, _dest, kRed, kAlpha, knone, knone);
+	//		if (_R != kAlpha && _G != kAlpha && _B != kAlpha &&  _R != kNone && _G != kNone && _B != kNone &&  !(_R == kRed && _G == kGreen && _B == kBlue) && _swapCount > 1)
 				
-			else if (_A == kred)
-				ChannelCopy(_src, _dest, kred, knone, knone, knone);
-				
-			else if (_A == kgreen || _A == kblue)
-				ChannelCopy(_dest, _dest, kred, knone, knone, knone);
-				ChannelCopy(_src, _dest, knone, ((_A == kgreen)?kGreen:kBlue), knone, knone);
-				
-			end if
+			//	kAlpha is not being copied to Red, Green or Blue
+			// 	Red, Green or Blue are not being skipped (knone)
+			//	red is not being copied to red
+			//	green is not being copied to green
+			//	blue is not being copied to blue
 	
-		else if (_A == kgreen || _A == kblue)	
-			if (_R == knone) // preserve kRed in Alpha
-				DebugText("_R == knone, _A == kGreen || kBlue");
-				ChannelCopy(_dest, _dest, kred, knone, knone, knone);	// move red out of the way if _R == knone
-				ChannelCopy(_src, _dest, knone, _A, _G, _B);	
-				ChannelCopy(_dest, _dest, kred, kAlpha, knone, knone);
+			if (!(_R==kAlpha || _G==kAlpha || _B==kAlpha) &&  !(_R==kNone || _G==kNone || _B==kNone) && !(_R==kRed && _G==kGreen && _B==kBlue) && _swapCount > 1)
+
+			// NEED TO PRESERVE ALPHA IF _A == kNONE
+
+				DebugText("swapping");
+			
+				_mat = {	((_R==kRed)?1:0), 	((_G==kRed)?1:0), 	((_B==kRed)?1:0),		((_R==kGreen)?1:0),	((_G==kGreen)?1:0),	((_B==kGreen)?1:0),		((_R==kBlue)?1:0), 	((_G==kBlue)?1:0), 	((_B==kBlue)?1:0)};
+											
+						
+				ColorTransform(_src, _dest, _mat, _offset, _offset);
+		
+				// handle Alpha
+				// the following conditions select each channel based on it's transformed result
 				
-			else	// red is getting obliterated, copy to Alpha and 
-				DebugText("_A kGreen or kBlue, red getting killed");
-				ChannelCopy(_src, _dest, _R, _A, _G, _B);	
-				ChannelCopy(_dest, _dest, kred, kAlpha, knone, knone);
+				//	THIS SECTION IS HORRIBLY CONFUSING AND SHOULD BE REFACTORED
 				
+				
+				if(_A == kAlpha)
+		 			ChannelCopy(_src, _dest, kAlpha, kNone, kNone, kNone);
+
+				else if (_A == kRed && _R == kRed) || (_A == kGreen && _R == kGreen) || (_A == kBlue && _R == kBlue) // copy kRed
+					ChannelCopy(_dest, _dest, kred, knone, knone, knone);
+
+				else if (_A == kRed && _G == kRed) || (_A == kGreen && _G == kGreen) || (_A == kBlue && _G == kBlue)
+					// ROOM FOR OPTIMIZATION HERE, POSSIBLY REMOVE A CHANNELCOPY IF THE ORIGIN ALPHA WAS NOT G OR B
+					
+					
+					ChannelCopy(_dest, _dest, kRed, kGreen, knone, knone);	// move Red out of the way
+					ChannelCopy(_dest, _dest, kRed, kAlpha, knone, knone);
+
+				else if (_A == kRed && _B == kRed) || (_A == kGreen && _B == kGreen) || (_A == kBlue && _B == kBlue)
+					ChannelCopy(_dest, _dest, kRed, kBlue, knone, knone);
+					ChannelCopy(_dest, _dest, kRed, kAlpha, knone, knone);
+				
+				else if (_A == kred)
+					ChannelCopy(_src, _dest, kred, knone, knone, knone);
+				
+				else if (_A == kgreen || _A == kblue)
+					ChannelCopy(_dest, _dest, kred, knone, knone, knone);
+					ChannelCopy(_src, _dest, knone, ((_A == kgreen)?kGreen:kBlue), knone, knone);
+				
+				end if
+	
+			else if (_A == kgreen || _A == kblue)	
+				if (_R == knone) // preserve kRed in Alpha
+					DebugText("_R == knone, _A == kGreen || kBlue");
+					ChannelCopy(_dest, _dest, kred, knone, knone, knone);	// move red out of the way because _R == knone
+					ChannelCopy(_src, _dest, knone, _A, _G, _B);	
+					ChannelCopy(_dest, _dest, kred, kAlpha, knone, knone);
+				
+				else	// red is getting obliterated, copy to Alpha and 
+					DebugText("_A kGreen or kBlue, red getting replaced");
+					ChannelCopy(_src, _dest, _R, _A, _G, _B);	
+					ChannelCopy(_dest, _dest, kred, kAlpha, knone, knone);
+				
+				end if
+			
+			else // nothing special, do straight channelcopy
+				DebugText("nothing special, pass to ChannelCopy");
+				ChannelCopy(_src, _dest, _A, _R, _G, _B);
+			
 			end if
-			
-		else // nothing special, do straight channelcopy
-			DebugText("nothing special");
-			ChannelCopy(_src, _dest, _A, _R, _G, _B);
-			
-		end if
-		//	NumReporter(dest, _swapCount, "_swapCount", kFloat2, 0, 32, kCenterJustify);
+		
+		
+		
+	//	NumReporter(dest, _swapCount, "_swapCount", kFloat2, 0, 32, kCenterJustify);
 end
 
 
@@ -159,16 +152,18 @@ end
 // END "NumReporter.fxscript"
 
 
-// Set up extra image; fill dest white/opaque; fill img black/transparent; draw opaque line onto img
-point p1, p2; DimensionsOf(dest, p1.x, p1.y); image img[p1.x][p1.y];
 
-float x;
 
 // adjust input values to match channel constants:
 doAlpha += (doAlpha < 3) ? -3 : 11;
 doRed += (doRed < 3) ? -3 : 11;
 doGreen += (doGreen < 3) ? -3 : 11;
 doBlue += (doBlue < 3) ? -3 : 11;
+
+
+// Set up extra image; fill dest white/opaque; fill img black/transparent; draw opaque line onto img
+point p1, p2; DimensionsOf(dest, p1.x, p1.y); image img[p1.x][p1.y];
+
 
 ChannelFill(dest, 255, 255, 255, 255); 
 ChannelFill(img, 0, 0, 0, 0);
@@ -177,15 +172,16 @@ color k; k = {255, 255, 255, 255}
 p1 = {-100,-100}; p2={100,100};
 Line(p1, p2, img, k, 25);
 
-if (true)
+
+if (false)
 	if (doChannelCopyFixed)
-		if (copyTo == 0)	// Copy channels to Alpha
+		if (copyTo == 1)	// Copy channels to Alpha
 			if 		(copyFrom == 1); 	ChannelCopyFixed(img, dest,	kred,	knone,	knone,	knone);	
 			else if (copyFrom == 2);	ChannelCopyFixed(img, dest,	kgreen,	knone,	knone,	knone);	
 			else if (copyFrom == 3);	ChannelCopyFixed(img, dest,	kblue,	knone,	knone,	knone);	
 			else if (copyFrom == 4);	ChannelCopyFixed(img, dest,	kalpha,	knone, 	knone,	knone);	
 			end if		
-		else if (copyTo == 1)	// Copy channels to red
+		else if (copyTo == 2)	// Copy channels to red
 			if 		(copyFrom == 1); 	ChannelCopyFixed(img, dest, knone,	kred,	knone, 	knone);	
 			else if (copyFrom == 2);	ChannelCopyFixed(img, dest, knone,	kgreen,	knone, 	knone);	
 			else if (copyFrom == 3);	ChannelCopyFixed(img, dest, knone,	kblue,	knone, 	knone);	
@@ -193,13 +189,13 @@ if (true)
 			end if
 		end if
 	else	// do regular ChannelCopy
-		if (copyTo == 0)	// Copy channels to Alpha
+		if (copyTo == 1)	// Copy channels to Alpha
 			if 		(copyFrom == 1); 	ChannelCopy(img, dest,	kred,	knone,	knone,	knone);	
 			else if (copyFrom == 2);	ChannelCopy(img, dest,	kgreen,	knone,	knone,	knone);	
 			else if (copyFrom == 3);	ChannelCopy(img, dest,	kblue,	knone,	knone,	knone);	
 			else if (copyFrom == 4);	ChannelCopy(img, dest,	kalpha,	knone, 	knone,	knone);	
 			end if		
-		else if (copyTo == 1)	// Copy channels to red
+		else if (copyTo == 2)	// Copy channels to red
 			if 		(copyFrom == 1); 	ChannelCopy(img, dest, knone,	kred,	knone, 	knone);	
 			else if (copyFrom == 2);	ChannelCopy(img, dest, knone,	kgreen,	knone, 	knone);	
 			else if (copyFrom == 3);	ChannelCopy(img, dest, knone,	kblue,	knone, 	knone);	
@@ -209,9 +205,10 @@ if (true)
 	end if
 end if
 
-if (false)
+if (true)
+	
 	img = src1
-
+	float x;
 	for x = 1 to 20
 		if (doChannelCopyFixed)
 			Channelcopyfixed(img, dest, doAlpha, doRed, doGreen, doBlue)
