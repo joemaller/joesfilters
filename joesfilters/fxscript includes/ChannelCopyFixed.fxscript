@@ -1,0 +1,80 @@
+on ChannelCopyFixed(image _src, image _dest, value _A, value _R, value _G, value _B)
+			
+	// This function is a drop-in replacement for ChannelCopy
+	// there is a bug in FCP where the Green and Blue (or CrCb) channels will be slightly compressed when copied to the alpha channel
+	// The solution is to copy those channels through the Red channel then copy to Alpha. 
+	// In addition, there is one speed optimization for cases where many channels are swapped. In these cases a ColorTransform is faster than ChannelCopy
+	
+	
+	float _swapCount;
+	
+	_swapCount = 0; // this is for optimizing the ColorTransform, more than one channel swapped is faster, only one channel swapped isn't
+	_swapCount += integer(_R == kGreen || _R == kBlue);
+	_swapCount += integer(_G == kRed || _G == kBlue);
+	_swapCount += integer(_B == kRed || _B == kGreen);
+	
+
+	if ( _A != knone && !(_R==kAlpha || _G==kAlpha || _B==kAlpha) &&  !(_R==kNone || _G==kNone || _B==kNone) && !(_R==kRed && _G==kGreen && _B==kBlue) && _swapCount > 1)
+		// this is a special speed exception: 
+		//	kAlpha is not being copied to Red, Green or Blue
+		// 	Red, Green or Blue are not being skipped (knone)
+		//	red is not being copied to red
+		//	green is not being copied to green
+		//	blue is not being copied to blue
+
+		//	DebugText("swapping");
+	
+		float _mat[3][3], _offset[3];
+									
+		_mat[0] = {	integer(_R==kRed), 		integer(_G==kRed),		integer(_B==kRed)};
+		_mat[1] = {	integer(_R==kGreen),	integer(_G==kGreen),	integer(_B==kGreen)};
+		_mat[2] = {	integer(_R==kBlue), 	integer(_G==kBlue),		integer(_B==kBlue)};
+				
+		ColorTransform(_src, _dest, _mat, _offset, _offset);
+
+		// handle Alpha
+		// the following conditions select each channel based on its transformed result
+		
+		if(_A == kAlpha)
+ 			ChannelCopy(_src, _dest, kAlpha, kNone, kNone, kNone);
+
+		else if (_A == kRed && _R == kRed) || (_A == kGreen && _R == kGreen) || (_A == kBlue && _R == kBlue) // copy kRed
+			ChannelCopy(_dest, _dest, kred, knone, knone, knone);
+
+		else if (_A == kRed && _G == kRed) || (_A == kGreen && _G == kGreen) || (_A == kBlue && _G == kBlue)
+			ChannelCopy(_dest, _dest, kRed, kGreen, knone, knone);	// move Red out of the way
+			ChannelCopy(_dest, _dest, kRed, kAlpha, knone, knone);
+
+		else if (_A == kRed && _B == kRed) || (_A == kGreen && _B == kGreen) || (_A == kBlue && _B == kBlue)
+			ChannelCopy(_dest, _dest, kRed, kBlue, knone, knone);
+			ChannelCopy(_dest, _dest, kRed, kAlpha, knone, knone);
+		
+		else if (_A == kred)
+			ChannelCopy(_src, _dest, kred, knone, knone, knone);
+		
+		else if (_A == kgreen || _A == kblue)
+			ChannelCopy(_dest, _dest, kred, knone, knone, knone);
+			ChannelCopy(_src, _dest, knone, _A, knone, knone);
+		
+		end if
+
+	else if (_A == kgreen || _A == kblue)	
+		if (_R == knone) // preserve kRed in Alpha
+			DebugText("_R == knone, _A == kGreen || kBlue");
+			ChannelCopy(_dest, _dest, kred, knone, knone, knone);	// move red out of the way because _R == knone, at 3 copies, this is the worst case scenerio
+			ChannelCopy(_src, _dest, knone, _A, _G, _B);	
+			ChannelCopy(_dest, _dest, kred, kAlpha, knone, knone);
+		
+		else	// red is getting obliterated, copy to Alpha and 
+			DebugText("_A kGreen or kBlue, red getting replaced");
+			ChannelCopy(_src, _dest, _R, _A, _G, _B);	
+			ChannelCopy(_dest, _dest, kred, kAlpha, knone, knone);
+		
+		end if
+	
+	else // nothing special, do straight channelcopy
+		DebugText("nothing special, pass to ChannelCopy");
+		ChannelCopy(_src, _dest, _A, _R, _G, _B);
+	
+	end if
+end
