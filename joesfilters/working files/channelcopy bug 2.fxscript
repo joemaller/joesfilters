@@ -1,0 +1,55 @@
+//	This is attempting to find the cause of a change in the red channel in the Vignette Test filter when copying the
+//	channel to its own alpha with the rest being knones. Looking for a range compression and workaround.
+	
+//	The problem is only visible in the timeline, everything works perfectly in FXBuilder
+	
+//	
+//	Notes:
+//	
+//	The problem is not confined to occuring inside a funciton, exact same results using code inline
+//	
+
+
+filter "TEST"
+
+input opacity, "opacity", Slider, 128, 0, 255;
+
+ProducesAlpha;
+
+code
+
+exposedBackground=1;
+
+
+
+
+on a(image _dest)
+	float _w, _h;
+	DimensionsOf(_dest, _w, _h);
+	image _img[_w][_h];
+
+	channelfill(_img, 255, opacity, 255, 255);
+	channelcopy(_img, _dest, kred, knone, knone, knone)
+	_img = _dest
+	ChannelFill(_dest, 255, -1,-1,-1);
+
+	channelcopy(_img, _dest, knone, kalpha, kalpha, kalpha)
+end
+
+
+dest = src1
+//a(dest)
+
+
+
+
+float w, h;
+DimensionsOf(dest, w, h);
+image img[w][h];
+
+channelfill(img, 255, opacity, 255, 255);
+channelcopy(img, dest, kred, knone, knone, knone)
+img = dest
+ChannelFill(dest, 255, -1,-1,-1);
+
+channelcopy(_img, dest, knone, kalpha, kalpha, kalpha)
