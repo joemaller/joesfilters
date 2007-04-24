@@ -1,3 +1,11 @@
+ //	Next steps:
+ //		custom start shape?
+ //		composite over original image
+ //		output as mask (for applying corrections)
+
+
+
+
 filter "Vingette Tests";
 group "BETA";
 
@@ -12,10 +20,10 @@ input doBlur, "do Blur", Checkbox, 1;
 input showChannels, "showChannels", RadioGroup, 1, "Merged", "Red (opacity ramp)", "Green (Overall Opacity)", "Red/Green";
 
 input outerColor, "outerColor", Color, 255, 127, 22, 0;
-input outerColorOpacity, "outerColorOpacity", Slider, 50, 0, 255;
+input outerColorOpacity, "outerColorOpacity", Slider, 25, 0, 255;
 
 input innerColor, "End Color", Color, 255, 11, 22, 120;
-input innerColorOpacity, "innerColorOpacity", Slider, 200, 0, 255;
+input innerColorOpacity, "innerColorOpacity", Slider, 225, 0, 255;
 
 input checkAlpha, "checkAlpha", Checkbox, 0;
 
@@ -208,6 +216,9 @@ on floor(value _x); return(((_x - integer(_x)) < 0) ? integer(_x) - 1 : integer(
 // END "basic_math.fxscript"
 
 
+
+
+
 on InterpolateBox(point _box1, point _box2, value _percent, point _outBox)
 	//	float _x;
 	//	for _x = 0 to 3
@@ -236,11 +247,8 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _outerColor, co
 	color _iColor;
 
 	DimensionsOf(dest, _w, _h);
-	image _img[_w][_h], _bummer[_w][_h];
-	SetPixelFormat(_img, kFormatRGB255);
-	//	channelfill(_img, 255, 255, 255, 255)
-	//	channelfill(_bummer, 255, 255, 255, 255)
-	
+	image _img0[_w][_h], _img1[_w][_h];
+
 	if (doOval)
 		_startPoly *= 2 * cos(45);
 	end if
@@ -256,8 +264,9 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _outerColor, co
 		FillPoly(_startPoly, _dest, _iColor);	// fill _startPoly first to eliminate circle edges
 	end if
 
-	_iColor *= 0;
-	_iColor += 255;
+	//	float debug1,debug2,debug3
+	//	DebugText("START RAMP **********************");
+	
 	for _i = 0 to _iterations
 		interpolateBox(_startPoly, _endPoly, _i/_iterations, _iBox)
 
@@ -267,55 +276,65 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _outerColor, co
 			_iColor.g = (_i/_iterations) * 255;
 		
 		if (_doOval)
-			frameOval(_iBox, _img, _iColor, divisor+3)
+			frameOval(_iBox, _img0, _iColor, divisor+3)
 		else 
-			FramePoly(_iBox, _img, _iColor, divisor+1);
+			FramePoly(_iBox, _img0, _iColor, divisor+1);			
 		end if
 		
+		//	debug1 = _iColor.r;
+		//	debug2 = _iColor.g
+		//	DebugText("_iColor.r,g", debug1, debug2);
+		//	
+		//	ColorOf(_img0, _iBox[0], _iColor)
+		//	debug1 = _iColor.r;
+		//	debug2 = _iColor.g
+		//	DebugText("_iColor.r,g", debug1, debug2, " sampled");
+		
+		
 	next;
+	
+	//	DebugText("END RAMP **********************");
 	
 	_iColor = {255, _innerColor.a, 255, 0}; // setup ending fill color
 	
 	if (doOval)
-		FillOval(_endPoly, _img, _iColor)
-		frameOval(_endPoly, _img, _iColor, divisor+3)
+		FillOval(_endPoly, _img0, _iColor)
+		frameOval(_endPoly, _img0, _iColor, divisor+3)
 	else
-		FillPoly(_endPoly, _img, _iColor);
-		FramePoly(_endPoly, _img, _iColor, divisor+1);
-	end if
-		
-	if (doBlur)
-		BlurChannel(_img, _dest, divisor, 1, 1, 1, 1, AspectOf(_dest));
-	else
-	 	_dest = _img;
+		FillPoly(_endPoly, _img0, _iColor);
+		FramePoly(_endPoly, _img0, _iColor, divisor+1);
 	end if
 	
-	//	RGBtoYUVcolor(_innerColor);
-	//	RGBtoYUVcolor(_outerColor);
+	// The frame-drawing funcitons seem to draw inside the 16-235 value range. Force-expand this to fit 0-255 for correct alphas
+	float _lut[256]
+	point _l, _r;
+	_l = {16/256, 0};
+	_r = {235/256, 1};
+	BezToLevelMap(_lut, _l, _l, _r, _r, 0, 255, TRUE);
+	LevelMap(_img0, _img0, linearRamp, _lut, _lut, linearRamp);
+	
+		
+		
+	if (doBlur)
+		BlurChannel(_img0, _dest, divisor + 5, 1, 1, 1, 1, AspectOf(_dest));
+	else
+	 	_dest = _img0;
+	end if
+	
 
 	if (showChannels == 1)
-		ChannelCopy(_dest, _dest, kgreen, knone, knone, knone);
+		ChannelCopy(_dest, _img0, kGreen, kGreen, kGreen, kGreen);	// not sure why, but the channel must be copied everywhere, otherwise the channel gets corrupted
+		ChannelCopy(_img0, _img0, kred, knone, knone, knone);	// transfer green to alpha via kRed
+	
+		ChannelFill(_img1, 255, _outerColor.r, _outerColor.g, _outerColor.b);
+	
+		ChannelFill(_img0, -1, _innerColor.r, _innerColor.g, _innerColor.b);
+	
+		Matte(_img0, _img1, _img1, 1, kAlpha);
 		
-			//	ChannelFill(_bummer, 255, _innerColor.r, _innerColor.g, _innerColor.b);
-			//	ChannelFill(_dest, 255, _outerColor.r, _outerColor.g, _outerColor.b);
-			//	ChannelCopyFixed(_img, _bummer, kgreen, knone, knone, knone);	// move full gradient to start color channel
-			//	Matte(_bummer, _dest, _dest, 1, kAlpha);
-			//	ChannelCopy(_img, _dest, kred, knone, knone, knone);
-		//	ChannelCopy(_img, _img, knone, kgreen, knone, knone);
-		//	ChannelCopyFixed(_img, _dest, kred, knone, knone, knone);
-		//	ChannelCopyFixed(_img, _dest, kred, kred, kred, kred);
-		//	ChannelCopyFixed(_img, _dest, kred, knone,knone, knone);
-		//	ChannelCopyFixed(_dest, _dest, kred, knone,knone, knone);
-		//	ChannelFill(_dest, -1, 0, 0, 255);
-		
-		//	
-		//	DimensionsOf(_dest, _w, _h);
-		//	image _img2[_w][_h];
-		//	
-		//	//	ChannelCopy(_dest, _dest, kred, kred, kgreen , kBlue);	// move red out of the way because _R == knone, at 3 copies, this is the worst case scenerio
-		//	ChannelCopy(_img, _img2, kred, kgreen, knone, knone);	
-		//	ChannelCopy(_img2, _dest, kred, kAlpha, knone, knone);
-		//	
+		ChannelCopy(_dest, _dest, kRed, kRed, kRed, kRed);	// not sure why, but the channel must be copied everywhere, otherwise the channel gets corrupted
+		ChannelCopy(_img1, _dest, knone, kRed, kGreen, kBlue);
+	
 		if (checkAlpha)
 			ChannelCopy(_dest, _dest, knone, kalpha, kalpha, kalpha);
 			ChannelFill(_dest, 255, -1, -1, -1);
@@ -323,20 +342,14 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _outerColor, co
 	else if (showChannels > 1)
 		
 		if (showChannels == 2)
-			channelfill(_img, 255, -1, 0, 0)
+			channelfill(_dest, 255, -1, 0, 0)
 		else if (showChannels == 3)
-			channelfill(_img, 255, 0, -1, 0)
+			channelfill(_dest, 255, 0, -1, 0)
 		else 
-			channelfill(_img, 255, -1, -1, 0);
+			channelfill(_dest, 255, -1, -1, 0);
 		end if
-		dest = _img;
 	end if
 	
-
-
-
-//	NumReporter(dest, _innerColor.a, "_innerColor.a", kFloat2, 0, 32, kCenterJustify);
-
 
 end
 
@@ -348,22 +361,14 @@ point dims;
 DimensionsOf(dest, dims.x, dims.y);
 centerPt *= dims;
 
-point b1[4], b2[4], b3[4];
+point b1[4], b2[4];
 
 BoundsOf(dest, b1);
-MakeRect(b2, centerPt.x, centerPt.y, 30, 55);
-InterpolateBox(b1, b2, 0.5, b3);
+MakeRect(b2, centerPt.x - dims.x/10, centerPt.y - dims.y/10, dims.x/5, dims.y/5);
 
-//	RGBtoYUVcolor(outerColor);
-//	RGBtoYUVcolor(innerColor);
 
 outerColor.a = outerColorOpacity;
 innerColor.a = innerColorOpacity;
 
+
 vignette(dest, b1, b2, outerColor, innerColor, doOval)
-//Matte(dest, src1, dest, 1, kAlpha);
-
-
-
-//	WHY IS THE SECONDARY COLOR SHOWING UP TRANSPARENT?
-	// because of a bug in ChannelCopy regarding unspecified image buffers
