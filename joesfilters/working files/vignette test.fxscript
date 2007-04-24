@@ -7,7 +7,9 @@ input doOval, "do Oval", Checkbox, 0;
 input divisor, "divisor", Slider, 25, 1, 50;
 
 input doBlur, "do Blur", Checkbox, 1;
-input showChannels, "Show Channels", Checkbox, 0;
+//	input showChannels, "Show Channels", r, 0;
+
+input showChannels, "showChannels", RadioGroup, 1, "Merged", "Red (opacity ramp)", "Green (Overall Opacity)", "Red/Green";
 
 input outerColor, "outerColor", Color, 255, 127, 22, 0;
 input outerColorOpacity, "outerColorOpacity", Slider, 50, 0, 255;
@@ -43,6 +45,102 @@ end
 // END "RGBtoYUVcolor.fxscript"
 
 
+
+
+// INCLUDE "ChannelCopyFixed.fxscript" r275
+
+on ChannelCopyFixed(image _src, image _dest, value _A, value _R, value _G, value _B)
+			
+	// This function is a drop-in replacement for ChannelCopy
+	// there is a bug in FCP where the Green and Blue (or CrCb) channels will be slightly compressed when copied to the alpha channel
+	// The solution is to copy those channels through the Red channel then copy to Alpha. 
+	// In addition, there is one speed optimization for cases where many channels are swapped. In these cases a ColorTransform is faster than ChannelCopy
+	
+	
+	float _swapCount;
+	
+	_swapCount = 0; // this is for optimizing the ColorTransform, more than one channel swapped is faster, only one channel swapped isn't
+	_swapCount += integer(_R == kGreen || _R == kBlue);
+	_swapCount += integer(_G == kRed || _G == kBlue);
+	_swapCount += integer(_B == kRed || _B == kGreen);
+	
+
+	if ( _A != knone && !(_R==kAlpha || _G==kAlpha || _B==kAlpha) &&  !(_R==kNone || _G==kNone || _B==kNone) && !(_R==kRed && _G==kGreen && _B==kBlue) && _swapCount > 1)
+		// this is a special speed exception: 
+		//	kAlpha is not being copied to Red, Green or Blue
+		// 	Red, Green or Blue are not being skipped (knone)
+		//	red is not being copied to red
+		//	green is not being copied to green
+		//	blue is not being copied to blue
+
+		//	DebugText("swapping");
+	
+		float _mat[3][3], _offset[3];
+									
+		_mat[0] = {	integer(_R==kRed), 		integer(_G==kRed),		integer(_B==kRed)};
+		_mat[1] = {	integer(_R==kGreen),	integer(_G==kGreen),	integer(_B==kGreen)};
+		_mat[2] = {	integer(_R==kBlue), 	integer(_G==kBlue),		integer(_B==kBlue)};
+				
+		ColorTransform(_src, _dest, _mat, _offset, _offset);
+
+		// handle Alpha
+		// the following conditions select each channel based on its transformed result
+		
+		if(_A == kAlpha)
+ 			ChannelCopy(_src, _dest, kAlpha, kNone, kNone, kNone);
+
+		else if (_A == kRed && _R == kRed) || (_A == kGreen && _R == kGreen) || (_A == kBlue && _R == kBlue) // copy kRed
+			ChannelCopy(_dest, _dest, kred, knone, knone, knone);
+
+		else if (_A == kRed && _G == kRed) || (_A == kGreen && _G == kGreen) || (_A == kBlue && _G == kBlue)
+			ChannelCopy(_dest, _dest, kRed, kGreen, knone, knone);	// move Red out of the way
+			ChannelCopy(_dest, _dest, kRed, kAlpha, knone, knone);
+
+		else if (_A == kRed && _B == kRed) || (_A == kGreen && _B == kGreen) || (_A == kBlue && _B == kBlue)
+			ChannelCopy(_dest, _dest, kRed, kBlue, knone, knone);
+			ChannelCopy(_dest, _dest, kRed, kAlpha, knone, knone);
+		
+		else if (_A == kred)
+			ChannelCopy(_src, _dest, kred, knone, knone, knone);
+		
+		else if (_A == kgreen || _A == kblue)
+			ChannelCopy(_dest, _dest, kred, knone, knone, knone);
+			ChannelCopy(_src, _dest, knone, _A, knone, knone);
+		
+		end if
+
+	else if (_A == kgreen || _A == kblue)	
+		if (_R == knone) // preserve kRed in Alpha
+			DebugText("_R == knone, _A == kGreen || kBlue");
+			float _w, _h;
+			DimensionsOf(_dest, _w, _h);
+			image _img2[_w][_h];
+			
+			//	ChannelCopy(_src, _img2, knone, kgreen, knone, knone);	// move red out of the way because _R == knone, at 3 copies, this is the worst case scenerio
+			//	ChannelCopy(_src, _dest, knone, _A, _G, _B);	
+			//	ChannelCopy(_dest, _dest, kred, kAlpha, knone, knone);
+			
+			//	ChannelCopy(_src, _img2, kred, kgreen, knone, knone);
+			ChannelCopy(_src, _img2, _R, _A, _G, _B);	
+			ChannelCopy(_img2, _dest, kred, _R, _G, _B);
+			
+		
+		else	// red is getting obliterated, copy to Alpha 
+			DebugText("_A kGreen or kBlue, red getting replaced");
+			ChannelCopy(_src, _dest, _R, _A, _G, _B);	
+			ChannelCopy(_dest, _dest, kred, kAlpha, knone, knone);
+		
+		end if
+	
+	else // nothing special, do straight channelcopy
+		DebugText("nothing special, pass to ChannelCopy");
+		ChannelCopy(_src, _dest, _A, _R, _G, _B);
+	
+	end if
+		
+end
+
+// END "ChannelCopyFixed.fxscript"
 
 
 // INCLUDE "NumReporter.fxscript" r247
@@ -136,14 +234,12 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _outerColor, co
 	float _iterations, _i, _w, _h, _colorSpace;
 	point _iBox[4];
 	color _iColor;
-	
-//	_colorSpace = GetPixelFormat(_dest);
 
 	DimensionsOf(dest, _w, _h);
 	image _img[_w][_h], _bummer[_w][_h];
-	
-	channelfill(_img, 255, 255, 255, 255)
-	channelfill(_bummer, 255, 255, 255, 255)
+	SetPixelFormat(_img, kFormatRGB255);
+	//	channelfill(_img, 255, 255, 255, 255)
+	//	channelfill(_bummer, 255, 255, 255, 255)
 	
 	if (doOval)
 		_startPoly *= 2 * cos(45);
@@ -155,12 +251,13 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _outerColor, co
 	_iterations = min(_iterations, _w/2);	// limit _iterations to half the width of the frame to prevent runoffs with large frames and off-screen placement
 	
 	_iColor = {255, _outerColor.a,0, 0}; // setup initial fill color
+	
 	if (doOval)
 		FillPoly(_startPoly, _dest, _iColor);	// fill _startPoly first to eliminate circle edges
 	end if
 
-	//	_iColor *= 0;
-	//	_iColor += 255;
+	_iColor *= 0;
+	_iColor += 255;
 	for _i = 0 to _iterations
 		interpolateBox(_startPoly, _endPoly, _i/_iterations, _iBox)
 
@@ -170,9 +267,9 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _outerColor, co
 			_iColor.g = (_i/_iterations) * 255;
 		
 		if (_doOval)
-			frameOval(_iBox, _dest, _iColor, divisor+3)
+			frameOval(_iBox, _img, _iColor, divisor+3)
 		else 
-			FramePoly(_iBox, _dest, _iColor, divisor+1);
+			FramePoly(_iBox, _img, _iColor, divisor+1);
 		end if
 		
 	next;
@@ -180,59 +277,66 @@ on vignette(image _dest, point _startPoly, point _endPoly, color _outerColor, co
 	_iColor = {255, _innerColor.a, 255, 0}; // setup ending fill color
 	
 	if (doOval)
-		FillOval(_endPoly, _dest, _iColor)
-		frameOval(_endPoly, _dest, _iColor, divisor+3)
+		FillOval(_endPoly, _img, _iColor)
+		frameOval(_endPoly, _img, _iColor, divisor+3)
 	else
-		FillPoly(_endPoly, _dest, _iColor);
-		FramePoly(_endPoly, _dest, _iColor, divisor+1);
+		FillPoly(_endPoly, _img, _iColor);
+		FramePoly(_endPoly, _img, _iColor, divisor+1);
 	end if
 		
 	if (doBlur)
-		BlurChannel(_dest, _img, divisor, 1, 1, 1, 1, AspectOf(_dest));
+		BlurChannel(_img, _dest, divisor, 1, 1, 1, 1, AspectOf(_dest));
 	else
-	 	_img = _dest;
+	 	_dest = _img;
 	end if
 	
-	//	SetPixelFormat(_img, kFormatRGB255);
-	//	SetPixelFormat(_dest, kFormatRGB255);
+	//	RGBtoYUVcolor(_innerColor);
+	//	RGBtoYUVcolor(_outerColor);
 
-	if (!showChannels)
-		ChannelFill(_bummer, 255, _innerColor.r, _innerColor.g, _innerColor.b);
-		ChannelFill(_dest, 255, _outerColor.r, _outerColor.g, _outerColor.b);
-		ChannelCopy(_img, _bummer, kgreen, knone, knone, knone);	// move full gradient to start color channel
-		Matte(_bummer, _dest, _dest, 1, kAlpha);
-		//channelfill(dest, 255, -1, -1, -1)
-		ChannelCopy(_img, _dest, kred, knone, knone, knone);
+	if (showChannels == 1)
+		ChannelCopy(_dest, _dest, kgreen, knone, knone, knone);
 		
-	//ChannelCopy(_img, _dest, kred, knone, knone, knone);		
-	//ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
-
-
-	//	ChannelCopy(_img, _dest, knone, kred, kred, kred);
-
-		//	ChannelCopy(_img, _img, kred, knone, knone, knone);
-		//		ChannelCopy(_dest, _img, knone, kred, kgreen, kblue);
-		//		_dest = _img
-	
+			//	ChannelFill(_bummer, 255, _innerColor.r, _innerColor.g, _innerColor.b);
+			//	ChannelFill(_dest, 255, _outerColor.r, _outerColor.g, _outerColor.b);
+			//	ChannelCopyFixed(_img, _bummer, kgreen, knone, knone, knone);	// move full gradient to start color channel
+			//	Matte(_bummer, _dest, _dest, 1, kAlpha);
+			//	ChannelCopy(_img, _dest, kred, knone, knone, knone);
+		//	ChannelCopy(_img, _img, knone, kgreen, knone, knone);
+		//	ChannelCopyFixed(_img, _dest, kred, knone, knone, knone);
+		//	ChannelCopyFixed(_img, _dest, kred, kred, kred, kred);
+		//	ChannelCopyFixed(_img, _dest, kred, knone,knone, knone);
+		//	ChannelCopyFixed(_dest, _dest, kred, knone,knone, knone);
+		//	ChannelFill(_dest, -1, 0, 0, 255);
+		
+		//	
+		//	DimensionsOf(_dest, _w, _h);
+		//	image _img2[_w][_h];
+		//	
+		//	//	ChannelCopy(_dest, _dest, kred, kred, kgreen , kBlue);	// move red out of the way because _R == knone, at 3 copies, this is the worst case scenerio
+		//	ChannelCopy(_img, _img2, kred, kgreen, knone, knone);	
+		//	ChannelCopy(_img2, _dest, kred, kAlpha, knone, knone);
+		//	
 		if (checkAlpha)
-
-			ChannelCopy(_dest, _dest, knone, kalpha,kalpha,kalpha);
+			ChannelCopy(_dest, _dest, knone, kalpha, kalpha, kalpha);
 			ChannelFill(_dest, 255, -1, -1, -1);
 		end if
-	
-	 
-	else 
-
-	channelfill(_img, 255, -1, 0, 0)
-		//	ChannelFill(_dest, 255, 255, 0, 0);
-		//	ChannelCopy(_img, _img, kred, knone, knone, knone);
-		//	
-		//	ChannelCopy(_img, _dest, kalpha, knone, knone, knone);
+	else if (showChannels > 1)
 		
-			dest = _img; //channelcopy(_img, _dest, knone, kred, kgreen, kred)
+		if (showChannels == 2)
+			channelfill(_img, 255, -1, 0, 0)
+		else if (showChannels == 3)
+			channelfill(_img, 255, 0, -1, 0)
+		else 
+			channelfill(_img, 255, -1, -1, 0);
+		end if
+		dest = _img;
 	end if
 	
-//	SetPixelFormat(_dest, _colorSpace);
+
+
+
+//	NumReporter(dest, _innerColor.a, "_innerColor.a", kFloat2, 0, 32, kCenterJustify);
+
 
 end
 
