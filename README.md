@@ -1,4 +1,4 @@
-# Joe's Filters for Final Cut Pro
+# Joe’s Filters for Final Cut Pro
 
 This is my complete codebase for Joe's Filters. The last update was April 27, 2007. The first [Joe's Filters website snapshot][wayback 2001] in the Internet Archive is from August 2001.
 
